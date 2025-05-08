@@ -1,13 +1,14 @@
 import React from 'react';
+import { Routes, Route, useNavigate } from 'react-router-dom';
+import Homepage from '@/components/dashboard/Homepage';
+import ServicesPage from '@/components/dashboard/ServicesPage';
 
 const App: React.FC = () => {
   return (
-    <div className="min-h-screen bg-background text-foreground">
-      <div className="container mx-auto p-4">
-        <h1 className="text-4xl bg-green-500 font-bold mb-4">PraisePresent</h1>
-        <p className="text-lg">Welcome to your church presentation software!</p>
-      </div>
-    </div>
+    <Routes>
+      <Route path="/" element={<Homepage />} />
+      <Route path="/services/:id" element={<ServicesPage />} />
+    </Routes>
   );
 };
 
