@@ -1,3 +1,4 @@
+import { ChurchIcon } from 'lucide-react';
 import React from 'react';
 import { FiPlus, FiUser } from 'react-icons/fi';
 import { useNavigate } from 'react-router-dom';
@@ -31,16 +32,13 @@ const Homepage = () => {
 	return (
 		<div className="flex min-h-screen">
 			{/* Left: Start a new Service */}
-			<div className="flex flex-col justify-center items-center flex-1 bg-blue-600 text-white relative overflow-hidden">
+			<div className="flex flex-col justify-center items-center flex-1 bg-blue-800 dark:bg-slate-600  text-white relative overflow-hidden">
 				{/* Decorative circle */}
 				<div className="absolute top-0 left-0 w-1/2 h-1/2 rounded-full border-4 border-blue-400 opacity-30" style={{ transform: 'translate(-30%,-30%)' }} />
 				<div className="absolute bottom-0 right-0 w-1/2 h-1/2 rounded-full border-4 border-blue-400 opacity-30" style={{ transform: 'translate(30%,30%)' }} />
 				{/* Church Icon */}
-				<svg xmlns="http://www.w3.org/2000/svg" width="80" height="80" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" className="mb-8">
-					<path strokeLinecap="round" strokeLinejoin="round" d="M12 3v4m0 0l3 2m-3-2L9 7m9 4v7a2 2 0 01-2 2H8a2 2 0 01-2-2v-7m13 0l-7-5-7 5" />
-					<circle cx="12" cy="17" r="1.5" fill="currentColor" />
-				</svg>
-				<h2 className="text-2xl font-bold mb-4">Start a new Service</h2>
+				<ChurchIcon className='w-10 h-10 my-10' />
+				<h2 className="text-2xl font-bold mb-10">Start a new Service</h2>
 				<button
 					className="flex items-center gap-2 bg-white text-blue-600 font-semibold px-6 py-3 rounded shadow hover:bg-blue-50 transition"
 					onClick={() => alert('Start new service (to be implemented)')}
@@ -55,7 +53,7 @@ const Homepage = () => {
 					{services.map(service => (
 						<div
 							key={service.id}
-							className="bg-white rounded-lg shadow border p-6 flex items-center justify-between hover:bg-blue-50 transition cursor-pointer"
+							className="rounded-lg shadow border p-6 flex items-center justify-between hover:bg-blue-50 transition cursor-pointer"
 							onClick={() => navigate(`/services/${service.id}`)}
 						>
 							<div>
