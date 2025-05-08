@@ -1,0 +1,72 @@
+%%{init: {'theme': 'base', 'themeVariables': { 'primaryTextColor': '#000', 'secondaryTextColor': '#000', 'tertiaryTextColor': '#000', 'primaryColor': '#5D8AA8', 'secondaryColor': '#f5f5f5', 'lineColor': '#333333' }}}%%
+
+flowchart TD
+    subgraph "PraisePresent Development Progress"
+        direction TB
+        START((Project Start)) --> PHASE1[Phase 1: MVP]
+        PHASE1 --> PHASE2[Phase 2: Enhanced Features]
+        PHASE2 --> PHASE3[Phase 3: Advanced Features]
+        
+        PHASE1 --> MVP1[Application Framework]
+        PHASE1 --> MVP2[UI Foundation]
+        PHASE1 --> MVP3[Scripture Database]
+        PHASE1 --> MVP4[Basic Presentation Engine]
+        PHASE1 --> MVP5[Song Management]
+        PHASE1 --> MVP6[Media Handling]
+        PHASE1 --> MVP7[Live Controls]
+        PHASE1 --> MVP8[Data Management]
+        
+        PHASE2 --> ENH1[Advanced Scripture Search]
+        PHASE2 --> ENH2[Enhanced Media Management]
+        PHASE2 --> ENH3[Template System]
+        PHASE2 --> ENH4[Service Planning]
+        PHASE2 --> ENH5[Advanced Transitions]
+        
+        PHASE3 --> ADV1[Cloud Synchronization]
+        PHASE3 --> ADV2[Mobile Companion App]
+        PHASE3 --> ADV3[Collaborative Editing]
+        PHASE3 --> ADV4[Analytics & Reporting]
+        
+        %% Current Progress State
+        CURRENT((Current Progress<br>May 3, 2025)) -.- MVP3
+        CURRENT -.- MVP4
+        CURRENT -.- MVP8
+        
+        %% Styling
+        classDef phase fill:#5D8AA8,color:#fff,stroke:#333,stroke-width:1px
+        classDef complete fill:#d4f8d4,color:#000,stroke:#333,stroke-width:1px
+        classDef inprogress fill:#ffecb3,color:#000,stroke:#333,stroke-width:1px
+        classDef planned fill:#f1f1f1,color:#000,stroke:#333,stroke-width:1px
+        classDef milestone fill:#5D8AA8,color:#fff,stroke:#333,stroke-width:1px,shape:circle
+        
+        %% Apply styles
+        class PHASE1,PHASE2,PHASE3 phase
+        class MVP1,MVP2 complete
+        class MVP3,MVP4,MVP8 inprogress
+        class MVP5,MVP6,MVP7,ENH1,ENH2,ENH3,ENH4,ENH5,ADV1,ADV2,ADV3,ADV4 planned
+        class START,CURRENT milestone
+    end
+    
+    subgraph "Key Performance Indicators"
+        KPI1["Startup Time: 7.2s"]
+        KPI2["Memory Usage: 275MB"]
+        KPI3["Search Response: 180ms"]
+        KPI4["Slide Transition: 45ms"]
+        KPI5["CPU Usage (idle): 1.8%"]
+        
+        classDef target fill:#d4f8d4,color:#000,stroke:#333,stroke-width:1px
+        classDef needswork fill:#ffecb3,color:#000,stroke:#333,stroke-width:1px
+        
+        class KPI2,KPI4,KPI5 target
+        class KPI1,KPI3 needswork
+    end
+    
+    subgraph "Version History"
+        V1["v0.1.0-alpha<br>March 15, 2025"]
+        V2["v0.2.0-alpha<br>April 15, 2025"]
+        V3["v0.3.0-alpha<br>May 1, 2025"]
+        
+        V1 --> V2 --> V3
+        
+        class V1,V2,V3 complete
+    end
