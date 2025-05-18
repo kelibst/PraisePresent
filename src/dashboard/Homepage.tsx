@@ -32,7 +32,7 @@ const Homepage = () => {
 	return (
 		<div className="flex min-h-screen">
 			{/* Left: Start a new Service */}
-			<div className="flex flex-col justify-center items-center flex-1 bg-blue-800 dark:bg-slate-600  text-white relative overflow-hidden">
+			<div className="flex flex-col justify-center items-center flex-1 bg-blue-800 dark:bg-gray-900  text-white relative overflow-hidden">
 				{/* Decorative circle */}
 				<div className="absolute top-0 left-0 w-1/2 h-1/2 rounded-full border-4 border-blue-400 opacity-30" style={{ transform: 'translate(-30%,-30%)' }} />
 				<div className="absolute bottom-0 right-0 w-1/2 h-1/2 rounded-full border-4 border-blue-400 opacity-30" style={{ transform: 'translate(30%,30%)' }} />
@@ -40,7 +40,7 @@ const Homepage = () => {
 				<ChurchIcon className='w-10 h-10 my-10' />
 				<h2 className="text-2xl font-bold mb-10">Start a new Service</h2>
 				<button
-					className="flex items-center gap-2 bg-white text-blue-600 font-semibold px-6 py-3 rounded shadow hover:bg-blue-50 transition"
+					className="flex items-center gap-2 bg-white text-blue-600 font-semibold px-6 py-3 rounded shadow hover:bg-accent transition"
 					onClick={() => alert('Start new service (to be implemented)')}
 				>
 					<FiPlus /> New Service
@@ -53,7 +53,7 @@ const Homepage = () => {
 					{services.map(service => (
 						<div
 							key={service.id}
-							className="rounded-lg shadow border p-6 flex items-center justify-between hover:bg-blue-50 transition cursor-pointer"
+							className="rounded-lg shadow border p-6 flex items-center justify-between hover:bg-accent transition cursor-pointer"
 							onClick={() => navigate(`/services/${service.id}`)}
 						>
 							<div>
@@ -63,7 +63,7 @@ const Homepage = () => {
 									<span>Modified: {service.modified}</span>
 								</div>
 							</div>
-							<div className="flex items-center gap-2 text-blue-600">
+							<div className="flex items-center gap-2 text-blue-600 dark:text-white">
 								<FiUser />
 								<span className="font-medium">{service.createdBy}</span>
 							</div>

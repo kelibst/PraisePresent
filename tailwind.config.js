@@ -70,5 +70,17 @@ module.exports = {
       },
     },
   },
-  plugins: [require("tailwindcss-animate")],
+  plugins: [
+    require("tailwindcss-animate"),
+    function ({ addUtilities }) {
+      addUtilities({
+        '.app-region-drag': {
+          '-webkit-app-region': 'drag',
+        },
+        '.app-region-no-drag': {
+          '-webkit-app-region': 'no-drag',
+        },
+      });
+    },
+  ],
 } 

@@ -18,7 +18,7 @@ const ServicesPage = () => {
             {services.map((service: any) => (
               <div
                 key={service.id}
-                className=" rounded-lg shadow border p-6 flex items-center justify-between hover:bg-blue-50 transition cursor-pointer"
+                className=" rounded-lg shadow border p-6 flex items-center justify-between hover:bg-accent transition cursor-pointer"
                 onClick={() => navigate(`/services/${service.id}`)}
               >
                 <div>
@@ -28,7 +28,7 @@ const ServicesPage = () => {
                     <span>Modified: {service.modified}</span>
                   </div>
                 </div>
-                <div className="flex items-center gap-2 text-blue-600">
+                <div className="flex items-center gap-2 text-blue-600 dark:text-white">
                   <FiUser />
                   <span className="font-medium">{service.createdBy}</span>
                 </div>

@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
 import AnimatedSidebar from './AnimatedSidebar';
 import { Outlet } from 'react-router-dom';
+import CustomTitleBar from '../renderer/CustomTitleBar';
 
 const AppLayout: React.FC = () => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen flex flex-col overflow-hidden min-w-screen">
       {/* Top bar */}
       {/* <header className="h-16 flex items-center px-4 bg-background border-b shadow-sm sticky top-0 z-20">
         <button

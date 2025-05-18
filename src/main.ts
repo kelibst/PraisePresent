@@ -1,4 +1,4 @@
-import { app, BrowserWindow } from 'electron';
+import { app, BrowserWindow, ipcMain } from 'electron';
 import path from 'node:path';
 import started from 'electron-squirrel-startup';
 
@@ -7,11 +7,15 @@ if (started) {
   app.quit();
 }
 
+const isMac = process.platform === 'darwin';
+
 const createWindow = () => {
   // Create the browser window.
   const mainWindow = new BrowserWindow({
-    width: 800,
-    height: 600,
+    width: 1200,
+    height: 800,
+    frame: false,
+    ...(isMac && { titleBarStyle: 'hidden' }),
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
     },
@@ -48,6 +52,27 @@ app.on('activate', () => {
   if (BrowserWindow.getAllWindows().length === 0) {
     createWindow();
   }
+});
+
+// Add these after your app.on('activate', ...) handler
+ipcMain.on('window-minimize', () => {
+  const win = BrowserWindow.getFocusedWindow();
+  if (win) win.minimize();
+});
+
+ipcMain.on('window-maximize', () => {
+  const win = BrowserWindow.getFocusedWindow();
+  if (win && !win.isMaximized()) win.maximize();
+});
+
+ipcMain.on('window-unmaximize', () => {
+  const win = BrowserWindow.getFocusedWindow();
+  if (win && win.isMaximized()) win.unmaximize();
+});
+
+ipcMain.on('window-close', () => {
+  const win = BrowserWindow.getFocusedWindow();
+  if (win) win.close();
 });
 
 // In this file you can include the rest of your app's specific main process
