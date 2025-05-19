@@ -1,14 +1,14 @@
 import { FiPlus } from 'react-icons/fi';
 import { useNavigate } from 'react-router-dom';
-import { useTheme } from './AnimatedSidebar';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
+import { useTheme } from '@/components/layout/AnimatedSidebar';
 
 // Import images with correct paths
 /* @ts-ignore */
-import logoDark from '../assets/logo-dark.png';
+import logoDark from '../../assets/logo-dark.png';
 /* @ts-ignore */
-import logoLight from '../assets/logo-white.png';
+import logoLight from '../../assets/logo-white.png';
 
 const Homepage = () => {
 	const navigate = useNavigate();
@@ -154,4 +154,4 @@ const Homepage = () => {
 	);
 };
 
-export default Homepage;
+export default Homepage; 

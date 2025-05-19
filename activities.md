@@ -4,6 +4,13 @@
 
 ### May 2025
 
+- Implemented ScripturePage with comprehensive Bible search functionality
+- Created tabbed interface for reference, keyword, and topic searches
+- Added scripture display with presenter and audience views
+- Implemented mock data for Bible books, translations, and verses
+- Designed mobile remote control preview in Scripture page
+- Added service plan integration in Scripture interface
+- Created responsive layout with three panels for better UX
 - Completely redesigned Homepage with animated entry using Framer Motion
 - Added smooth animations for logo, text elements and buttons
 - Created staggered animation sequence for better visual appeal
@@ -44,6 +51,31 @@
 - Fixed window layout issues by implementing proper app container structure
 - Improved cleanup of event listeners to prevent memory leaks
 - Added hiddenInset title bar style for macOS for a more native look and feel
+
+## 2024-05-14: Project Restructuring
+
+### Pages Added or Moved
+- Moved Homepage from features/home to pages folder
+- Moved ScripturePage from features/scripture to pages folder
+- Moved ServicesPage and ServiceDetail from features/services to pages folder
+- Moved SongsPage from features/songs to pages folder 
+- Created new MediaPage in pages folder
+- Created new PresentationsPage in pages folder
+
+### Routes Updated
+- Updated routes.tsx to use components from the pages folder
+- Added missing routes for Songs, Media, and Presentations
+
+### Features
+- Ensured consistent styling across all pages
+- Consistent navigation with AnimatedSidebar on all dashboard pages
+- Mock data included for all pages to support development
+
+### Next Steps
+- Implement authentication system
+- Connect to backend APIs for real data
+- Add proper form validation for user input
+- Create reusable components for common UI elements
 
 ---
 
