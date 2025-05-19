@@ -1,5 +1,5 @@
 import { BellElectricIcon, BellIcon } from 'lucide-react';
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { FiPlay, FiSkipBack, FiSkipForward, FiMonitor, FiCheck, FiTrash2, FiEdit, FiBook, FiMusic, FiList } from 'react-icons/fi';
 
 type SlideType = {
@@ -13,6 +13,50 @@ const LivePresentation = () => {
   const [isLive, setIsLive] = useState(false);
   const [activeTab, setActiveTab] = useState('plan');
   const [currentLiveSlide, setCurrentLiveSlide] = useState<SlideType>(null);
+  const [leftPanelWidth, setLeftPanelWidth] = useState(50); // percentage
+  
+  const containerRef = useRef<HTMLDivElement>(null);
+  const isDraggingRef = useRef(false);
+
+  // Handle mouse down to start resizing
+  const handleDragStart = (e: React.MouseEvent) => {
+    e.preventDefault();
+    isDraggingRef.current = true;
+    document.body.style.cursor = 'col-resize';
+    document.addEventListener('mousemove', handleDrag);
+    document.addEventListener('mouseup', handleDragEnd);
+  };
+
+  // Handle dragging
+  const handleDrag = (e: MouseEvent) => {
+    if (!isDraggingRef.current || !containerRef.current) return;
+    
+    const containerRect = containerRef.current.getBoundingClientRect();
+    const containerWidth = containerRect.width;
+    const mouseX = e.clientX - containerRect.left;
+    
+    // Calculate percentage (constrain between 20% and 80%)
+    let newLeftWidth = (mouseX / containerWidth) * 100;
+    newLeftWidth = Math.max(20, Math.min(80, newLeftWidth));
+    
+    setLeftPanelWidth(newLeftWidth);
+  };
+
+  // Handle drag end
+  const handleDragEnd = () => {
+    isDraggingRef.current = false;
+    document.body.style.cursor = 'default';
+    document.removeEventListener('mousemove', handleDrag);
+    document.removeEventListener('mouseup', handleDragEnd);
+  };
+
+  // Clean up event listeners when unmounting
+  useEffect(() => {
+    return () => {
+      document.removeEventListener('mousemove', handleDrag);
+      document.removeEventListener('mouseup', handleDragEnd);
+    };
+  }, []);
 
   // Mock data based on the image
   const serviceTitle = "Live Sunday 9am Service";
@@ -229,10 +273,13 @@ const LivePresentation = () => {
         </div>
       </header>
 
-      {/* Main Content */}
-      <div className="flex flex-1 overflow-hidden">
+      {/* Main Content with Resizable Panels */}
+      <div ref={containerRef} className="flex flex-1 overflow-hidden relative">
         {/* Left Panel - Service Plan */}
-        <div className="w-1/2 border-r border-gray-200 dark:border-gray-700 overflow-y-auto p-4">
+        <div 
+          className="border-r border-gray-200 dark:border-gray-700 overflow-y-auto p-4"
+          style={{ width: `${leftPanelWidth}%` }}
+        >
           <div className="flex justify-between items-center mb-4">
             <div className="flex items-center gap-2">
               <FiMonitor className="text-gray-600 dark:text-gray-300" />
@@ -290,8 +337,20 @@ const LivePresentation = () => {
           {renderTabContent()}
         </div>
 
+        {/* Resizable Divider */}
+        <div 
+          className="absolute h-full w-1 bg-transparent hover:bg-blue-500 cursor-col-resize flex items-center justify-center z-10"
+          style={{ left: `${leftPanelWidth}%`, transform: 'translateX(-50%)' }}
+          onMouseDown={handleDragStart}
+        >
+          <div className="h-16 w-1 bg-gray-300 dark:bg-gray-600 rounded-full"></div>
+        </div>
+
         {/* Right Panel - Preview & Live */}
-        <div className="w-1/2 flex flex-col">
+        <div 
+          className="flex flex-col"
+          style={{ width: `${100 - leftPanelWidth}%` }}
+        >
           {/* Preview Section */}
           <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex-1 overflow-y-auto">
             <h2 className="text-center text-lg font-medium text-gray-800 dark:text-white mb-2">Preview</h2>

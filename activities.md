@@ -51,6 +51,12 @@
 - Created mock service items with dynamic selection
 - Implemented responsive layout that matches the design prototype
 - Added proper routing for the new LivePresentation page
+- Added resizable panels to LivePresentation with draggable divider
+- Implemented mouse event handling for panel resizing
+- Set minimum and maximum constraints for panel sizes (20-80%)
+- Added visual indicator for the draggable area
+- Ensured smooth resize operation with proper cursor feedback
+- Added proper cleanup of event listeners when component unmounts
 
 ### May 2023
 
