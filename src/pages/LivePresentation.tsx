@@ -1,6 +1,9 @@
 import { BellElectricIcon, BellIcon } from 'lucide-react';
 import React, { useState, useRef, useEffect } from 'react';
 import { FiPlay, FiSkipBack, FiSkipForward, FiMonitor, FiCheck, FiTrash2, FiEdit, FiBook, FiMusic, FiList } from 'react-icons/fi';
+import ScriptureSelector from '../components/ScriptureSelector';
+import ScriptureDisplay from '../components/ScriptureDisplay';
+import { Scripture } from '../database/models/bible';
 
 type SlideType = {
   title: string;
@@ -14,6 +17,9 @@ const LivePresentation = () => {
   const [activeTab, setActiveTab] = useState('plan');
   const [currentLiveSlide, setCurrentLiveSlide] = useState<SlideType>(null);
   const [leftPanelWidth, setLeftPanelWidth] = useState(50); // percentage
+  const [selectedScripture, setSelectedScripture] = useState<Scripture | null>(null);
+  const [previewScripture, setPreviewScripture] = useState<Scripture | null>(null);
+  const [liveScripture, setLiveScripture] = useState<Scripture | null>(null);
   
   const containerRef = useRef<HTMLDivElement>(null);
   const isDraggingRef = useRef(false);
@@ -57,6 +63,12 @@ const LivePresentation = () => {
       document.removeEventListener('mouseup', handleDragEnd);
     };
   }, []);
+
+  // Handle scripture selection
+  const handleScriptureSelect = (scripture: Scripture) => {
+    setSelectedScripture(scripture);
+    setPreviewScripture(scripture);
+  };
 
   // Mock data based on the image
   const serviceTitle = "Live Sunday 9am Service";
@@ -164,6 +176,9 @@ const LivePresentation = () => {
 
   const sendToLive = () => {
     setCurrentLiveSlide(currentSlide);
+    if (previewScripture) {
+      setLiveScripture(previewScripture);
+    }
   };
 
   const renderTabContent = () => {
@@ -200,22 +215,43 @@ const LivePresentation = () => {
         );
       case 'scripture':
         return (
-          <div className="space-y-3">
-            {scriptures.map((scripture) => (
-              <div 
-                key={scripture.id}
-                className="flex items-start p-3 rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800/50"
-              >
-                <div className="flex-1">
-                  <div className="flex justify-between">
-                    <h3 className="font-medium text-gray-800 dark:text-white">{scripture.reference}</h3>
-                    <span className="text-xs bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 px-2 py-1 rounded">{scripture.translation}</span>
+          <div className="space-y-5">
+            <ScriptureSelector onScriptureSelect={handleScriptureSelect} />
+            
+            <div className="mt-4">
+              <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Recently Used</h3>
+              {scriptures.map((scripture) => (
+                <div 
+                  key={scripture.id}
+                  className="flex items-start p-3 rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800/50 mb-2"
+                >
+                  <div className="flex-1">
+                    <div className="flex justify-between">
+                      <h3 className="font-medium text-gray-800 dark:text-white">{scripture.reference}</h3>
+                      <span className="text-xs bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 px-2 py-1 rounded">{scripture.translation}</span>
+                    </div>
+                    <p className="text-sm text-gray-700 dark:text-gray-300 mt-1">{scripture.text.substring(0, 60)}...</p>
+                    <button 
+                      className="mt-2 text-xs text-blue-600 dark:text-blue-400 hover:underline"
+                      onClick={() => setPreviewScripture({
+                        reference: scripture.reference,
+                        verses: [{ 
+                          id: scripture.id,
+                          bibleId: scripture.translation,
+                          book: 0, 
+                          chapter: 0, 
+                          verse: 1, 
+                          text: scripture.text 
+                        }],
+                        translation: scripture.translation
+                      })}
+                    >
+                      Show in Preview
+                    </button>
                   </div>
-                  <p className="text-sm text-gray-700 dark:text-gray-300 mt-1">{scripture.text.substring(0, 60)}...</p>
-                  <button className="mt-2 text-xs text-blue-600 dark:text-blue-400 hover:underline">Show in Preview</button>
                 </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
         );
       case 'songs':
@@ -358,11 +394,17 @@ const LivePresentation = () => {
             {/* Slide Preview */}
             <div className="bg-gradient-to-r from-blue-600 to-indigo-700 text-white rounded-lg p-6 mb-4 relative">              
               <div className="text-center flex flex-col items-center justify-center min-h-[140px]">
-                <h3 className="text-xl font-bold mb-3">FOR GOD SO LOVED THE WORLD</h3>
-                <p className="text-lg mb-3">
-                  For God so loved the world that he gave his one and only Son, that whoever believes in him shall not perish but have eternal life.
-                </p>
-                <span className="text-sm font-medium text-blue-200">John 3:16</span>
+                {previewScripture ? (
+                  <ScriptureDisplay scripture={previewScripture} />
+                ) : (
+                  <>
+                    <h3 className="text-xl font-bold mb-3">FOR GOD SO LOVED THE WORLD</h3>
+                    <p className="text-lg mb-3">
+                      For God so loved the world that he gave his one and only Son, that whoever believes in him shall not perish but have eternal life.
+                    </p>
+                    <span className="text-sm font-medium text-blue-200">John 3:16</span>
+                  </>
+                )}
               </div>
             </div>
             
@@ -410,11 +452,17 @@ const LivePresentation = () => {
               </div>
               
               <div className="text-center flex flex-col items-center justify-center min-h-[140px]">
-                <h3 className="text-xl font-bold mb-3">FOR GOD SO LOVED THE WORLD</h3>
-                <p className="text-lg mb-3">
-                  For God so loved the world that he gave his one and only Son, that whoever believes in him shall not perish but have eternal life.
-                </p>
-                <span className="text-sm font-medium text-blue-200">John 3:16</span>
+                {liveScripture ? (
+                  <ScriptureDisplay scripture={liveScripture} />
+                ) : (
+                  <>
+                    <h3 className="text-xl font-bold mb-3">FOR GOD SO LOVED THE WORLD</h3>
+                    <p className="text-lg mb-3">
+                      For God so loved the world that he gave his one and only Son, that whoever believes in him shall not perish but have eternal life.
+                    </p>
+                    <span className="text-sm font-medium text-blue-200">John 3:16</span>
+                  </>
+                )}
               </div>
             </div>
             
@@ -441,7 +489,7 @@ const LivePresentation = () => {
             <div className="border border-gray-200 dark:border-gray-700 rounded-md p-4 bg-white dark:bg-gray-800">
               <div className="text-center mb-2 text-gray-700 dark:text-gray-300">Current Slide:</div>
               <div className="text-center mb-4 text-sm text-gray-700 dark:text-gray-300 truncate">
-                For God so loved the world...
+                {liveScripture ? liveScripture.reference : "For God so loved the world..."}
               </div>
               
               <div className="flex justify-between">

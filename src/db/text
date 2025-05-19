@@ -1,0 +1,10 @@
+src/
+  database/
+    connection.ts         # Database connection manager
+    models/
+      bible.ts            # Bible model
+      verse.ts            # Verse model
+    repositories/
+      bibleRepository.ts  # Functions to access Bible data
+      verseRepository.ts  # Functions to access verse data
+    config.ts             # Database configuration
