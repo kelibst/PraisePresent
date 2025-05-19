@@ -1,77 +1,156 @@
-import { ChurchIcon } from 'lucide-react';
-import React from 'react';
-import { FiPlus, FiUser } from 'react-icons/fi';
+import { FiPlus } from 'react-icons/fi';
 import { useNavigate } from 'react-router-dom';
+import { useTheme } from './AnimatedSidebar';
+import { motion } from 'framer-motion';
+import { Button } from '@/components/ui/button';
 
-const services = [
-	{
-		id: '1',
-		name: 'Sunday Worship',
-		created: '2024-05-01',
-		modified: '2024-05-07',
-		createdBy: 'Pastor John',
-	},
-	{
-		id: '2',
-		name: 'Youth Service',
-		created: '2024-04-20',
-		modified: '2024-05-05',
-		createdBy: 'Sister Mary',
-	},
-	{
-		id: '3',
-		name: 'Prayer Meeting',
-		created: '2024-05-03',
-		modified: '2024-05-06',
-		createdBy: 'Brother Paul',
-	},
-];
+// Import images with correct paths
+/* @ts-ignore */
+import logoDark from '../assets/logo-dark.png';
+/* @ts-ignore */
+import logoLight from '../assets/logo-white.png';
 
 const Homepage = () => {
 	const navigate = useNavigate();
+	const [theme, setTheme] = useTheme();
+	
+	// Animation variants
+	const containerVariants = {
+		hidden: { opacity: 0 },
+		visible: { 
+			opacity: 1,
+			transition: { 
+				staggerChildren: 0.3,
+				delayChildren: 0.2,
+				duration: 0.5 
+			}
+		}
+	};
+	
+	const itemVariants = {
+		hidden: { opacity: 0, y: 50 },
+		visible: { 
+			opacity: 1, 
+			y: 0,
+			transition: { duration: 0.8, ease: "easeOut" }
+		}
+	};
+	
+	const logoVariants = {
+		hidden: { scale: 0.8, opacity: 0 },
+		visible: { 
+			scale: 1, 
+			opacity: 1,
+			transition: { 
+				type: "spring",
+				stiffness: 100,
+				damping: 15,
+				duration: 0.8
+			}
+		}
+	};
+	
+	const circleVariants = {
+		hidden: { scale: 0, opacity: 0 },
+		visible: { 
+			scale: 1, 
+			opacity: 0.3,
+			transition: { 
+				delay: 0.5,
+				duration: 1.2, 
+				ease: "easeOut"
+			}
+		}
+	};
+	
+	const buttonVariants = {
+		hidden: { opacity: 0, scale: 0.8 },
+		visible: { 
+			opacity: 1, 
+			scale: 1,
+			transition: { 
+				delay: 1.2,
+				duration: 0.5, 
+				type: "spring",
+				stiffness: 200
+			}
+		},
+		hover: { 
+			scale: 1.05,
+			boxShadow: "0px 5px 15px rgba(0, 0, 0, 0.1)",
+			transition: { 
+				duration: 0.3
+			}
+		}
+	};
+
 	return (
-		<div className="flex min-h-screen">
-			{/* Left: Start a new Service */}
-			<div className="flex flex-col justify-center items-center flex-1 bg-blue-800 dark:bg-gray-900  text-white relative overflow-hidden">
-				{/* Decorative circle */}
-				<div className="absolute top-0 left-0 w-1/2 h-1/2 rounded-full border-4 border-blue-400 opacity-30" style={{ transform: 'translate(-30%,-30%)' }} />
-				<div className="absolute bottom-0 right-0 w-1/2 h-1/2 rounded-full border-4 border-blue-400 opacity-30" style={{ transform: 'translate(30%,30%)' }} />
-				{/* Church Icon */}
-				<ChurchIcon className='w-10 h-10 my-10' />
-				<h2 className="text-2xl font-bold mb-10">Start a new Service</h2>
-				<button
-					className="flex items-center gap-2 bg-white text-blue-600 font-semibold px-6 py-3 rounded shadow hover:bg-accent transition"
-					onClick={() => alert('Start new service (to be implemented)')}
+		<motion.div 
+			className="flex min-h-screen"
+			initial="hidden"
+			animate="visible"
+			variants={containerVariants}
+		>
+			{/* Centered Content */}
+			<div className="flex flex-col justify-center items-center w-full bg-blue-600 dark:bg-slate-900 text-white relative overflow-hidden">
+				{/* Decorative circles */}
+				<motion.div 
+					className="absolute top-0 left-0 w-1/2 h-1/2 rounded-full border-4 border-blue-400 opacity-30" 
+					style={{ transform: 'translate(-30%,-30%)' }}
+					variants={circleVariants}
+				/>
+				<motion.div 
+					className="absolute bottom-0 right-0 w-1/2 h-1/2 rounded-full border-4 border-blue-400 opacity-30" 
+					style={{ transform: 'translate(30%,30%)' }}
+					variants={circleVariants}
+				/>
+				
+				{/* Logo */}
+				<motion.div
+					className="relative"
+					variants={logoVariants}
 				>
-					<FiPlus /> New Service
-				</button>
+					<motion.img 
+						src={theme === 'dark' ? logoLight : logoDark} 
+						alt="PraisePresent Logo" 
+						className="w-48 h-48 object-contain rounded-full my-6"
+						initial={{ rotate: -5 }}
+						animate={{ rotate: 5 }}
+						transition={{ 
+							repeat: Infinity, 
+							repeatType: "reverse", 
+							duration: 3,
+							ease: "easeInOut"
+						}}
+					/>
+				</motion.div>
+				
+				{/* Text Elements */}
+				<motion.h1 
+					className="text-4xl font-bold mb-2 text-center"
+					variants={itemVariants}
+				>
+					PraisePresent
+				</motion.h1>
+				
+				<motion.p 
+					className="text-xl mb-10 opacity-90 text-center max-w-md"
+					variants={itemVariants}
+				>
+					Create beautiful worship presentations for your church
+				</motion.p>
+				
+				{/* Button */}
+				<motion.div variants={buttonVariants} whileHover="hover">
+					<button
+						className="flex items-center gap-2 bg-white text-black font-semibold px-8 py-4 rounded-full shadow-lg hover:bg-blue-50 transition"
+						onClick={() => navigate('/services')}
+					>
+						<FiPlus /> Start New Service
+					</button>
+				</motion.div>
 			</div>
-			{/* Right: Services List */}
-			<div className="flex-1 bg-background p-12 flex flex-col">
-				<h2 className="text-2xl font-bold mb-8 text-foreground">Services List</h2>
-				<div className="flex flex-col gap-4">
-					{services.map(service => (
-						<div
-							key={service.id}
-							className="rounded-lg shadow border p-6 flex items-center justify-between hover:bg-accent transition cursor-pointer"
-							onClick={() => navigate(`/services/${service.id}`)}
-						>
-							<div>
-								<div className="text-lg font-semibold text-foreground">{service.name}</div>
-								<div className="text-sm text-muted-foreground flex gap-4 mt-1">
-									<span>Created: {service.created}</span>
-									<span>Modified: {service.modified}</span>
-								</div>
-							</div>
-							<div className="flex items-center gap-2 text-blue-600 dark:text-white">
-								<FiUser />
-								<span className="font-medium">{service.createdBy}</span>
-							</div>
-						</div>
-					))}
-				</div>
-			</div>
-		</div>
+		</motion.div>
 	);
 };
 

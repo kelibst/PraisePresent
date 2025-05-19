@@ -1,9 +1,11 @@
 import React from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
-import { FiHome, FiBook, FiMusic, FiImage, FiMonitor, FiList, FiChevronLeft, FiChevronRight, FiSun, FiMoon } from 'react-icons/fi';
+import { FiBook, FiMusic, FiImage, FiMonitor, FiList, FiChevronLeft, FiChevronRight, FiSun, FiMoon } from 'react-icons/fi';
+//@ts-expect-error logoLight is not a valid image
+import logoLight from '@/assets/logo-white.png';
 
 const menu = [
-  { label: 'Home', icon: <FiHome />, path: '/' },
+  { label: 'PraisePresent', icon: <img src={logoLight} alt="Church Logo" className='w-20 h-15 rounded-full my-10' />, path: '/' },
   { label: 'Scripture', icon: <FiBook />, path: '/scripture' },
   { label: 'Songs', icon: <FiMusic />, path: '/songs' },
   { label: 'Media', icon: <FiImage />, path: '/media' },
@@ -11,13 +13,14 @@ const menu = [
   { label: 'Services', icon: <FiList />, path: '/services' },
 ];
 
-function useTheme() {
+export function useTheme() {
   const [theme, setTheme] = React.useState(() => {
     if (typeof window !== 'undefined') {
       return localStorage.getItem('theme') || 'light';
     }
     return 'light';
   });
+
   React.useEffect(() => {
     document.documentElement.classList.toggle('dark', theme === 'dark');
     localStorage.setItem('theme', theme);
@@ -29,7 +32,7 @@ const AnimatedSidebar: React.FC<{ open: boolean; onToggle: () => void }> = ({ op
   const [theme, setTheme] = useTheme();
   return (
     <aside
-      className={`fixed top-0 left-0 h-full z-30 bg-secondary border-r shadow-lg flex flex-col gap-2 transition-all duration-500 ease-in-out
+      className={`fixed top-0 left-0 h-full z-30 bg-yellow-400 border-r shadow-lg flex flex-col gap-2 transition-all duration-500 ease-in-out
         ${open ? 'translate-x-0' : '-translate-x-full'} w-64`}
     >
       <button
@@ -39,7 +42,6 @@ const AnimatedSidebar: React.FC<{ open: boolean; onToggle: () => void }> = ({ op
       >
         {open ? <FiChevronLeft size={24} /> : <FiChevronRight size={24} />}
       </button>
-      <h2 className="text-lg font-bold mb-4 mt-8 px-4">Menu</h2>
       <nav className="flex flex-col gap-2 mt-2 px-2">
         {menu.map((item) => (
           <NavLink

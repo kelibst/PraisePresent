@@ -55,13 +55,74 @@
   * {
     @apply border-border;
   }
+  
+  /* Fix for scrollbars and fullscreen */
+  html, body {
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+  }
+  
   body {
     @apply bg-background text-foreground;
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica,
       Arial, sans-serif;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
   }
-  body, #root {
+  
+  #root {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    width: 100vw;
     margin: 0;
     padding: 0;
+    overflow: hidden;
+  }
+  
+  /* Custom scrollbar styling for elements that need scrolling */
+  .scrollable {
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: var(--secondary) var(--background);
+  }
+  
+  .scrollable::-webkit-scrollbar {
+    width: 6px;
+  }
+  
+  .scrollable::-webkit-scrollbar-track {
+    background: hsl(var(--background));
+  }
+  
+  .scrollable::-webkit-scrollbar-thumb {
+    background-color: hsl(var(--secondary));
+    border-radius: 20px;
+  }
+
+  /* Title bar styling for window frame */
+  .title-bar {
+    -webkit-app-region: drag;
+    app-region: drag;
+  }
+
+  .title-bar .non-draggable,
+  .title-bar button {
+    -webkit-app-region: no-drag;
+    app-region: no-drag;
+  }
+
+  /* Ensure content below title bar fills available space */
+  .app-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
   }
 }

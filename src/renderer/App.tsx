@@ -8,19 +8,21 @@ import CustomTitleBar from './CustomTitleBar';
 
 const App: React.FC = () => {
   return (
-    <>
+    <div className="flex flex-col h-screen w-screen overflow-hidden">
       <CustomTitleBar />
-      <Routes>
-        <Route path="/" element={<Homepage />} />
-        <Route element={<AppLayout />}>
-          <Route path="/services" element={<ServicesPage />}>
-            <Route index element={null} />
-            <Route path=":id" element={<ServiceDetail />} />
+      <div className="app-content">
+        <Routes>
+          <Route path="/" element={<Homepage />} />
+          <Route element={<AppLayout />}>
+            <Route path="/services" element={<ServicesPage />}>
+              <Route index element={null} />
+              <Route path=":id" element={<ServiceDetail />} />
+            </Route>
+            {/* Add other routes here, e.g. Scripture, Songs, Media, Presentations */}
           </Route>
-          {/* Add other routes here, e.g. Scripture, Songs, Media, Presentations */}
-        </Route>
-      </Routes>
-    </>
+        </Routes>
+      </div>
+    </div>
   );
 };
 
