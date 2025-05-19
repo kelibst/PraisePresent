@@ -1,6 +1,6 @@
 import React from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
-import { FiBook, FiMusic, FiImage, FiMonitor, FiList, FiChevronLeft, FiChevronRight, FiSun, FiMoon } from 'react-icons/fi';
+import { FiBook, FiMusic, FiImage, FiMonitor, FiList, FiChevronLeft, FiChevronRight, FiSun, FiMoon, FiVideo } from 'react-icons/fi';
 /* @ts-ignore */
 import logoLight from '../../assets/logo-white.png';
 
@@ -11,6 +11,7 @@ const menu = [
   { label: 'Media', icon: <FiImage />, path: '/media' },
   { label: 'Presentations', icon: <FiMonitor />, path: '/presentations' },
   { label: 'Services', icon: <FiList />, path: '/services' },
+  { label: 'Live Presentation', icon: <FiVideo />, path: '/live' },
 ];
 
 export function useTheme() {

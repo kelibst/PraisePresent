@@ -32,6 +32,25 @@
 - Added smooth transitions for sidebar and theme changes
 - Debugged Tailwind dark mode and variable cascade issues
 - Set up project for further feature expansion (songs, media, presentations)
+- Updated LivePresentation page with tabbed interface (Plan, Scripture, Songs)
+- Split presentation view into Preview and Live sections
+- Added "Send to Live" functionality to control what appears on the live display
+- Created separate controls for preview and live sections
+- Enhanced Scripture tab with reference, translation, and preview functionality
+- Added Songs tab with song information, key, and lyrics access
+- Implemented live status indicator with animation
+- Created proper TypeScript typing for slide data
+- Improved UI organization for better workflow
+- Created LivePresentation page with real-time presentation interface
+- Added split-view design with service plan and slide preview panels
+- Implemented mobile remote control preview in LivePresentation page
+- Added "Go Live" functionality with toggle button
+- Created navigation controls for slides (Previous, Next, Blank to Black)
+- Added LivePresentation to the sidebar menu with FiVideo icon
+- Designed dark mode support for the LivePresentation page
+- Created mock service items with dynamic selection
+- Implemented responsive layout that matches the design prototype
+- Added proper routing for the new LivePresentation page
 
 ### May 2023
 
