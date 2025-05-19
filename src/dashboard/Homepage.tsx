@@ -92,7 +92,7 @@ const Homepage = () => {
 			variants={containerVariants}
 		>
 			{/* Centered Content */}
-			<div className="flex flex-col justify-center items-center w-full bg-blue-600 dark:bg-slate-900 text-white relative overflow-hidden">
+			<div className="flex flex-col justify-center items-center w-full bg-yellow-400 dark:bg-slate-900 text-white relative overflow-hidden">
 				{/* Decorative circles */}
 				<motion.div 
 					className="absolute top-0 left-0 w-1/2 h-1/2 rounded-full border-4 border-blue-400 opacity-30" 

@@ -32,7 +32,7 @@ const AnimatedSidebar: React.FC<{ open: boolean; onToggle: () => void }> = ({ op
   const [theme, setTheme] = useTheme();
   return (
     <aside
-      className={`fixed top-0 left-0 h-full z-30 bg-yellow-400 border-r shadow-lg flex flex-col gap-2 transition-all duration-500 ease-in-out
+      className={`fixed top-0 left-0 h-full z-30bg-yellow-400 dark:bg-slate-900 text-white border-r shadow-lg flex flex-col gap-2 transition-all duration-500 ease-in-out
         ${open ? 'translate-x-0' : '-translate-x-full'} w-64`}
     >
       <button
