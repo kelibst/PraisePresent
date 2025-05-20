@@ -6,29 +6,7 @@ import { contextBridge, ipcRenderer } from 'electron';
 // Export empty object to make this a module
 export {};
 
-// Add window interface extension
-declare global {
-  interface Window {
-    // No modifiers on electronAPI
-    electronAPI: {
-      minimize: () => void;
-      maximize: () => void;
-      unmaximize: () => void;
-      close: () => void;
-      onMaximized: (callback: () => void) => void;
-      onUnmaximized: (callback: () => void) => void;
-      offMaximized: (callback: () => void) => void;
-      offUnmaximized: (callback: () => void) => void;
-      onThemeUpdate: (callback: (event: Electron.IpcRendererEvent, theme: string) => void) => void;
-      setTheme: (theme: string) => void;
-      getSystemTheme: () => Promise<string>;
-      database: {
-        getBibles: () => Promise<any[]>;
-        getScripture: (bibleId: string, book: number, chapter: number, fromVerse: number, toVerse: number) => Promise<any>;
-      }
-    };
-  }
-}
+// No need to redeclare the Window interface since it's in global.d.ts
 
 // Expose protected APIs to renderer process
 contextBridge.exposeInMainWorld('electronAPI', {

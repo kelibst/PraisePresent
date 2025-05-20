@@ -1,51 +1,9 @@
-import { Bible, Scripture } from '../database/models/bible';
+import { Bible, Scripture, Verse } from '../database/models/bible';
 
-// Mock Bible data
-const MOCK_BIBLES: Bible[] = [
-  { id: 'kjv', name: 'King James Version', abbreviation: 'KJV', language: 'English', hasStrongs: false },
-  { id: 'niv', name: 'New International Version', abbreviation: 'NIV', language: 'English', hasStrongs: false },
-  { id: 'esv', name: 'English Standard Version', abbreviation: 'ESV', language: 'English', hasStrongs: false },
-  { id: 'nasb', name: 'New American Standard Bible', abbreviation: 'NASB', language: 'English', hasStrongs: false },
-  { id: 'nlt', name: 'New Living Translation', abbreviation: 'NLT', language: 'English', hasStrongs: false },
-];
-
-// Mock verse data for John 3:16 for different translations
-const MOCK_VERSES: Record<string, Record<string, any>> = {
-  'kjv': {
-    'john316': {
-      reference: 'John 3:16',
-      verses: [
-        { id: 1, bibleId: 'kjv', book: 43, chapter: 3, verse: 16, text: 'For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life.' }
-      ],
-      translation: 'KJV'
-    },
-    'rom828': {
-      reference: 'Romans 8:28',
-      verses: [
-        { id: 2, bibleId: 'kjv', book: 45, chapter: 8, verse: 28, text: 'And we know that all things work together for good to them that love God, to them who are the called according to his purpose.' }
-      ],
-      translation: 'KJV'
-    }
-  },
-  'niv': {
-    'john316': {
-      reference: 'John 3:16',
-      verses: [
-        { id: 1, bibleId: 'niv', book: 43, chapter: 3, verse: 16, text: 'For God so loved the world that he gave his one and only Son, that whoever believes in him shall not perish but have eternal life.' }
-      ],
-      translation: 'NIV'
-    }
-  },
-  'esv': {
-    'john316': {
-      reference: 'John 3:16',
-      verses: [
-        { id: 1, bibleId: 'esv', book: 43, chapter: 3, verse: 16, text: 'For God so loved the world, that he gave his only Son, that whoever believes in him should not perish but have eternal life.' }
-      ],
-      translation: 'ESV'
-    }
-  }
-};
+// Type guard to check if database API is available
+function isDatabaseApiAvailable(): boolean {
+  return !!(window.electronAPI && 'database' in window.electronAPI && window.electronAPI.database);
+}
 
 class ScriptureService {
   // Book names used for parsing references
@@ -67,8 +25,36 @@ class ScriptureService {
   ];
 
   public async getAllBibles(): Promise<Bible[]> {
-    // Return mock Bible data instead of using the database
-    return Promise.resolve(MOCK_BIBLES);
+    try {
+      // Use Electron IPC to get Bibles from the database
+      if (isDatabaseApiAvailable() && window.electronAPI.database.getBibles) {
+        try {
+          const bibles = await window.electronAPI.database.getBibles();
+          if (bibles && bibles.length > 0) {
+            return bibles;
+          }
+          // Fall back to mock data if getBibles returned empty array
+          console.warn('No Bibles returned from database, using fallback mock data');
+        } catch (error) {
+          console.error('Error calling getBibles:', error);
+          console.warn('Database API call failed, using fallback mock data');
+        }
+      } else {
+        console.warn('Electron database API not available, using fallback mock data');
+      }
+      
+      // Fallback for development without Electron or if database call failed
+      return [
+        { id: 'kjv', name: 'King James Version', abbreviation: 'KJV', language: 'English', hasStrongs: false },
+        { id: 'niv', name: 'New International Version', abbreviation: 'NIV', language: 'English', hasStrongs: false },
+        { id: 'esv', name: 'English Standard Version', abbreviation: 'ESV', language: 'English', hasStrongs: false },
+        { id: 'nasb', name: 'New American Standard Bible', abbreviation: 'NASB', language: 'English', hasStrongs: false },
+        { id: 'nlt', name: 'New Living Translation', abbreviation: 'NLT', language: 'English', hasStrongs: false },
+      ];
+    } catch (error) {
+      console.error('Error getting Bibles:', error);
+      return [];
+    }
   }
 
   public async getBibleById(id: string): Promise<Bible | undefined> {
@@ -77,17 +63,81 @@ class ScriptureService {
   }
 
   public async getScripture(bibleId: string, book: number, chapter: number, fromVerse: number, toVerse: number): Promise<Scripture | null> {
-    // For simplicity, we'll just return John 3:16 for any request
-    // In a real implementation, this would use the parameters to query the database
-    const bookName = this.bookNames[book - 1]?.toLowerCase() || 'john';
-    const key = `${bookName}${chapter}${fromVerse}`;
+    try {
+      // Use Electron IPC to get scripture from the database
+      if (isDatabaseApiAvailable() && window.electronAPI.database.getScripture) {
+        try {
+          const scripture = await window.electronAPI.database.getScripture(bibleId, book, chapter, fromVerse, toVerse);
+          if (scripture) {
+            return scripture;
+          }
+          // Fall back to mock if getScripture returned null
+          console.warn('No scripture returned from database, using fallback mock data');
+        } catch (error) {
+          console.error('Error calling getScripture:', error);
+          console.warn('Database API call failed, using fallback mock data');
+        }
+      } else {
+        console.warn('Electron database API not available, using fallback mock data');
+      }
+      
+      // Generate a mock chapter for development without Electron or if database call failed
+      return this.generateMockChapter(book, chapter, this.getEstimatedVerseCount(book, chapter), bibleId);
+    } catch (error) {
+      console.error('Error getting scripture:', error);
+      return null;
+    }
+  }
+
+  // Estimate verse count for common books and chapters
+  private getEstimatedVerseCount(book: number, chapter: number): number {
+    // Genesis 1 has 31 verses
+    if (book === 1 && chapter === 1) return 31;
+    // John 3 has 36 verses
+    if (book === 43 && chapter === 3) return 36;
+    // Psalm 119 has 176 verses
+    if (book === 19 && chapter === 119) return 176;
+    // Default to 25 verses for other chapters
+    return 25;
+  }
+
+  // Generate mock chapter data for development without Electron
+  private generateMockChapter(book: number, chapter: number, verseCount: number, bibleId: string): Scripture {
+    const bookName = this.bookNames[book - 1] || `Book ${book}`;
+    const verses: Verse[] = [];
     
-    console.log(`Mock getScripture: ${bibleId}, key: ${key}`);
+    for (let i = 1; i <= verseCount; i++) {
+      verses.push({
+        id: i,
+        bibleId: bibleId,
+        book: book,
+        chapter: chapter,
+        verse: i,
+        text: `This is verse ${i} of ${bookName} chapter ${chapter}. Mock text for demonstration purposes.`
+      });
+    }
     
-    const mockTranslation = MOCK_VERSES[bibleId] || MOCK_VERSES['kjv'];
-    const mockVerse = mockTranslation[key] || mockTranslation['john316']; // Default to John 3:16
+    // Special cases for well-known verses
+    if (book === 1 && chapter === 1 && verseCount >= 1) {
+      // Genesis 1:1
+      verses[0].text = 'In the beginning God created the heaven and the earth.';
+    }
     
-    return Promise.resolve(mockVerse);
+    if (book === 43 && chapter === 3 && verseCount >= 16) {
+      // John 3:16
+      verses[15].text = 'For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life.';
+    }
+    
+    if (book === 43 && chapter === 11 && verseCount >= 35) {
+      // John 11:35 (shortest verse)
+      verses[34].text = 'Jesus wept.';
+    }
+    
+    return {
+      reference: `${bookName} ${chapter}`,
+      verses: verses,
+      translation: bibleId.toUpperCase()
+    };
   }
 
   // Parse a scripture reference like "John 3:16" or "Genesis 1:1-10"

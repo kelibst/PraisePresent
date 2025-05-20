@@ -1,10 +1,29 @@
 import { ipcMain, app } from 'electron';
 import path from 'path';
 import fs from 'fs';
-import Database from 'better-sqlite3';
+
+// Try to import better-sqlite3, but provide a fallback if it fails
+let Database: any;
+let hasSQLite = false;
+
+try {
+  // Dynamically import better-sqlite3
+  Database = require('better-sqlite3');
+  hasSQLite = true;
+  console.log('Successfully loaded better-sqlite3');
+} catch (error) {
+  console.error('Failed to load better-sqlite3:', error);
+  console.log('Using fallback mode without SQLite');
+  // Create a mock Database class
+  Database = class MockDatabase {
+    constructor() {
+      throw new Error('SQLite is not available');
+    }
+  };
+}
 
 // Database cache
-const connections: Record<string, Database.Database> = {};
+const connections: Record<string, any> = {};
 
 // Get the path to the database directory
 const dbDir = path.join(app.getPath('userData'), 'db');
@@ -25,10 +44,14 @@ if (!fs.existsSync(dbDir)) {
   }
 }
 
-// Database connection function
-function getConnection(bibleId: string): Database.Database {
+// Database connection function with better error handling
+function getConnection(bibleId: string): any {
   if (connections[bibleId]) {
     return connections[bibleId];
+  }
+
+  if (!hasSQLite) {
+    throw new Error('SQLite support is not available');
   }
 
   const dbPath = path.join(dbDir, bibleId + '.sqlite');
@@ -53,9 +76,14 @@ function getConnection(bibleId: string): Database.Database {
   }
 
   console.log('Opening database connection to:', finalPath);
-  const db = new Database(finalPath, { readonly: true });
-  connections[bibleId] = db;
-  return db;
+  try {
+    const db = new Database(finalPath, { readonly: true });
+    connections[bibleId] = db;
+    return db;
+  } catch (error: any) {
+    console.error(`Error opening database ${finalPath}:`, error);
+    throw new Error(`Failed to open database: ${error.message}`);
+  }
 }
 
 // Interface for metadata records
@@ -73,6 +101,15 @@ interface Bible {
   hasStrongs: boolean;
 }
 
+// Create fallback Bible data when SQLite is not available
+const fallbackBibles: Bible[] = [
+  { id: 'kjv', name: 'King James Version', abbreviation: 'KJV', language: 'English', hasStrongs: false },
+  { id: 'niv', name: 'New International Version', abbreviation: 'NIV', language: 'English', hasStrongs: false },
+  { id: 'esv', name: 'English Standard Version', abbreviation: 'ESV', language: 'English', hasStrongs: false },
+  { id: 'asv', name: 'American Standard Version', abbreviation: 'ASV', language: 'English', hasStrongs: false },
+  { id: 'web', name: 'World English Bible', abbreviation: 'WEB', language: 'English', hasStrongs: false },
+];
+
 // Setup IPC handlers
 export function setupDatabaseIPC() {
   console.log('Setting up database IPC handlers');
@@ -81,13 +118,19 @@ export function setupDatabaseIPC() {
   ipcMain.handle('db:get-bibles', (event) => {
     console.log('IPC: db:get-bibles called from', event.sender.getURL());
     
+    // If SQLite is not available, return fallback data
+    if (!hasSQLite) {
+      console.log('SQLite not available, returning fallback Bible data');
+      return fallbackBibles;
+    }
+    
     try {
       const englishDir = path.join(dbDir, 'EN-English');
       console.log('Looking for English Bibles in:', englishDir);
       
       if (!fs.existsSync(englishDir)) {
         console.error(`English Bible directory not found at ${englishDir}`);
-        return [];
+        return fallbackBibles;
       }
 
       const files = fs.readdirSync(englishDir);
@@ -126,17 +169,29 @@ export function setupDatabaseIPC() {
         }
       }
       
+      // Return fallback data if no Bibles were loaded successfully
+      if (bibles.length === 0) {
+        console.log('No Bibles loaded, returning fallback data');
+        return fallbackBibles;
+      }
+      
       console.log('Returning bibles:', bibles.length);
       return bibles;
     } catch (error) {
       console.error('Error getting Bibles:', error);
-      return [];
+      return fallbackBibles;
     }
   });
 
   // Get scripture by reference
   ipcMain.handle('db:get-scripture', (event, bibleId: string, book: number, chapter: number, fromVerse: number, toVerse: number) => {
     console.log('IPC: db:get-scripture called with', { bibleId, book, chapter, fromVerse, toVerse });
+    
+    // If SQLite is not available, return null (the renderer will use mock data)
+    if (!hasSQLite) {
+      console.log('SQLite not available, returning null for scripture (renderer will use mock data)');
+      return null;
+    }
     
     try {
       const db = getConnection(bibleId);
@@ -188,7 +243,7 @@ export function setupDatabaseIPC() {
       const result = {
         reference,
         verses,
-        translation: bibleId.split('/').pop()?.toUpperCase() || bibleId.toUpperCase()
+        translation: bibleId.toUpperCase()
       };
       
       console.log('Returning scripture reference:', reference);

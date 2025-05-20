@@ -4,8 +4,8 @@ import CustomTitleBar from './CustomTitleBar';
 
 const App: React.FC = () => {
   return (
-    <div className="flex flex-col h-screen w-screen overflow-hidden">
-      <CustomTitleBar />
+    <div className="flex flex-col h-screen w-screen">
+      {/* <CustomTitleBar /> */}
       <div className="app-content">
         <AppRoutes />
       </div>

@@ -5,13 +5,14 @@ import scriptureService from '../services/scriptureService';
 
 interface ScriptureSelectorProps {
   onScriptureSelect: (scripture: Scripture) => void;
+  onBibleSelect?: (bibleId: string) => void;
 }
 
 interface FormValues {
   reference: string;
 }
 
-const ScriptureSelector: React.FC<ScriptureSelectorProps> = ({ onScriptureSelect }) => {
+const ScriptureSelector: React.FC<ScriptureSelectorProps> = ({ onScriptureSelect, onBibleSelect }) => {
   const [bibles, setBibles] = useState<Bible[]>([]);
   const [selectedBible, setSelectedBible] = useState<string>('');
   const [loading, setLoading] = useState<boolean>(false);
@@ -30,8 +31,10 @@ const ScriptureSelector: React.FC<ScriptureSelectorProps> = ({ onScriptureSelect
         const kjv = availableBibles.find(bible => bible.id === 'kjv');
         if (kjv) {
           setSelectedBible(kjv.id);
+          if (onBibleSelect) onBibleSelect(kjv.id);
         } else if (availableBibles.length > 0) {
           setSelectedBible(availableBibles[0].id);
+          if (onBibleSelect) onBibleSelect(availableBibles[0].id);
         }
       } catch (err) {
         console.error('Failed to load Bibles:', err);
@@ -40,7 +43,7 @@ const ScriptureSelector: React.FC<ScriptureSelectorProps> = ({ onScriptureSelect
     };
     
     loadBibles();
-  }, []);
+  }, [onBibleSelect]);
 
   const onSubmit = handleSubmit(async (data: FormValues) => {
     if (!selectedBible) {
@@ -71,6 +74,12 @@ const ScriptureSelector: React.FC<ScriptureSelectorProps> = ({ onScriptureSelect
     }
   });
 
+  const handleBibleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const bibleId = e.target.value;
+    setSelectedBible(bibleId);
+    if (onBibleSelect) onBibleSelect(bibleId);
+  };
+
   return (
     <div className="p-4 border rounded-lg bg-white dark:bg-gray-800 shadow-sm">
       <h3 className="text-lg font-semibold mb-3 text-gray-800 dark:text-white">Find Scripture</h3>
@@ -89,7 +98,7 @@ const ScriptureSelector: React.FC<ScriptureSelectorProps> = ({ onScriptureSelect
           <select
             id="bible"
             value={selectedBible}
-            onChange={(e) => setSelectedBible(e.target.value)}
+            onChange={handleBibleChange}
             className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
           >
             {bibles.length === 0 ? (
