@@ -57,6 +57,7 @@
 - Added visual indicator for the draggable area
 - Ensured smooth resize operation with proper cursor feedback
 - Added proper cleanup of event listeners when component unmounts
+- **Evaluated Prisma vs Current SQLite Implementation**: After analysis, decided to keep the current better-sqlite3 + repository pattern setup. Current implementation is well-suited for read-only Bible data, works excellently with Electron, and provides all needed functionality without added complexity. Prisma would be reconsidered when adding user accounts, dynamic data, or complex relational features.
 
 ### May 2023
 

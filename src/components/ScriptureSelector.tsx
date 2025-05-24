@@ -23,6 +23,7 @@ const ScriptureSelector: React.FC<ScriptureSelectorProps> = ({ onScriptureSelect
   // Load available Bibles
   useEffect(() => {
     const loadBibles = async () => {
+      console.log('Loading Bibles', bibles);
       try {
         const availableBibles = await scriptureService.getAllBibles();
         setBibles(availableBibles);
@@ -76,8 +77,10 @@ const ScriptureSelector: React.FC<ScriptureSelectorProps> = ({ onScriptureSelect
 
   const handleBibleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const bibleId = e.target.value;
+    console.log('Bible changed to', bibleId);
     setSelectedBible(bibleId);
-    if (onBibleSelect) onBibleSelect(bibleId);
+    // if (onBibleSelect) onBibleSelect(bibleId);
+    
   };
 
   return (
