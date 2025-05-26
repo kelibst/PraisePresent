@@ -1,22 +1,13 @@
 import React from 'react';
-import { Routes, Route } from 'react-router-dom';
-import Homepage from '@/dashboard/Homepage';
-import ServicesPage from '@/dashboard/ServicesPage';
-import ServiceDetail from '@/dashboard/ServiceDetail';
-import AppLayout from '@/dashboard/AppLayout';
+import AppRoutes from '../routes';
 
 const App: React.FC = () => {
   return (
-    <Routes>
-      <Route path="/" element={<Homepage />} />
-      <Route element={<AppLayout />}>
-        <Route path="/services" element={<ServicesPage />}>
-          <Route index element={null} />
-          <Route path=":id" element={<ServiceDetail />} />
-        </Route>
-        {/* Add other routes here, e.g. Scripture, Songs, Media, Presentations */}
-      </Route>
-    </Routes>
+    <div className="flex flex-col h-screen w-screen overflow-hidden">
+      <div className="app-content">
+        <AppRoutes />
+      </div>
+    </div>
   );
 };
 
