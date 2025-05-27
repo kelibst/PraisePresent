@@ -31,7 +31,6 @@ const AnimatedSidebar: React.FC<{ open: boolean; onToggle: () => void }> = ({ op
 			>
 				{open ? <FiChevronLeft size={24} /> : <FiChevronRight size={24} />}
 			</button>
-			<h2 className="text-lg font-bold mb-4 mt-8 px-4">Menu</h2>
 			<nav className="flex flex-col gap-2 mt-2 px-2">
 				{menu.map((item) => (
 					<NavLink
