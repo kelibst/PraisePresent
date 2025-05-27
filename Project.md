@@ -848,3 +848,13 @@ The following documentation SHALL be provided:
 - Remote control security considerations
 - CCLI reporting integration details
 - Cross-platform testing strategy
+
+
+# Set up the database (one-time setup)
+npm run db:setup
+
+# View database in Prisma Studio
+npm run db:studio
+
+# Generate Prisma client after schema changes
+npm run db:generate

@@ -3,11 +3,10 @@ import { useSelector, useDispatch } from 'react-redux';
 import { RootState, AppDispatch } from '../../lib/store';
 import {
 	searchVerses,
-	loadVersions,
-	loadTranslations,
 	clearSearchResults,
 	Verse
 } from '../../lib/bibleSlice';
+
 // Utility function to parse scripture references
 const parseScriptureReference = (reference: string): {
 	book: string;
@@ -35,39 +34,17 @@ interface ScriptureSearchProps {
 const ScriptureSearch: React.FC<ScriptureSearchProps> = ({ onVerseSelect, className = '' }) => {
 	const dispatch = useDispatch<AppDispatch>();
 	const {
-		translations,
-		versions,
-		selectedTranslation,
-		selectedVersion,
 		searchResults,
 		loading,
 		error
 	} = useSelector((state: RootState) => state.bible);
+	const { selectedVersion } = useSelector((state: RootState) => state.presentation);
 
 	const [searchQuery, setSearchQuery] = useState('');
 	const [searchType, setSearchType] = useState<'keyword' | 'reference' | 'topic'>('keyword');
-	const [selectedSearchVersion, setSelectedSearchVersion] = useState<string>('');
-
-	// Load initial data
-	useEffect(() => {
-		dispatch(loadTranslations());
-	}, [dispatch]);
-
-	// Load all versions for search
-	useEffect(() => {
-		dispatch(loadVersions());
-	}, [dispatch]);
-
-	// Set default search version
-	useEffect(() => {
-		if (!selectedSearchVersion && versions.length > 0) {
-			const defaultVersion = versions.find(v => v.isDefault) || versions[0];
-			setSelectedSearchVersion(defaultVersion.id);
-		}
-	}, [versions, selectedSearchVersion]);
 
 	const handleSearch = async () => {
-		if (!searchQuery.trim()) return;
+		if (!searchQuery.trim() || !selectedVersion) return;
 
 		if (searchType === 'reference') {
 			// Handle reference search
@@ -78,7 +55,7 @@ const ScriptureSearch: React.FC<ScriptureSearchProps> = ({ onVerseSelect, classN
 					// For now, we'll use keyword search with the book name
 					dispatch(searchVerses({
 						query: reference.book,
-						versionId: selectedSearchVersion
+						versionId: selectedVersion
 					}));
 				}
 			} catch (error) {
@@ -88,7 +65,7 @@ const ScriptureSearch: React.FC<ScriptureSearchProps> = ({ onVerseSelect, classN
 			// Handle keyword and topic search
 			dispatch(searchVerses({
 				query: searchQuery,
-				versionId: selectedSearchVersion
+				versionId: selectedVersion
 			}));
 		}
 	};
@@ -123,7 +100,15 @@ const ScriptureSearch: React.FC<ScriptureSearchProps> = ({ onVerseSelect, classN
 		);
 	};
 
-	const currentSearchVersion = versions.find(v => v.id === selectedSearchVersion);
+	if (!selectedVersion) {
+		return (
+			<div className="text-center py-8">
+				<div className="text-gray-500 dark:text-gray-400">
+					Please select a Bible version from the sidebar to search scriptures.
+				</div>
+			</div>
+		);
+	}
 
 	return (
 		<div className={`space-y-4 ${className}`}>
@@ -163,24 +148,6 @@ const ScriptureSearch: React.FC<ScriptureSearchProps> = ({ onVerseSelect, classN
 							Topic
 						</button>
 					</div>
-				</div>
-
-				{/* Version Selector for Search */}
-				<div>
-					<label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-						Search Version
-					</label>
-					<select
-						value={selectedSearchVersion}
-						onChange={(e) => setSelectedSearchVersion(e.target.value)}
-						className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
-					>
-						{versions.map((version) => (
-							<option key={version.id} value={version.id}>
-								{version.name} - {version.fullName}
-							</option>
-						))}
-					</select>
 				</div>
 
 				{/* Search Input */}

@@ -1,3 +1,155 @@
+# PraisePresent Development Activities
+
+## December 19, 2024
+
+### Major UI/UX Improvements - Version Selection and Scripture Management
+
+**Moved Bible Version Selection to Sidebar**
+- Created `VersionSelector` component for compact version selection in sidebar
+- Integrated version selector into `AnimatedSidebar` component
+- Version selection now persists across all pages (Scripture and Live Presentation)
+- Removed redundant version selectors from individual page components
+
+**Implemented Scripture List with Preview/Live Functionality**
+- Created `ScriptureList` component with book/chapter navigation
+- Added scripture queue management with add/remove functionality
+- Implemented keyboard shortcuts:
+  - **Tab**: Send verse to preview
+  - **Double-click**: Send verse to live
+  - **Single click**: Add to scripture queue
+- Added visual action buttons for preview/live operations
+
+**Enhanced Redux State Management**
+- Created `presentationSlice` for managing preview and live content
+- Added actions for:
+  - `sendVerseToPreview`: Move scripture to preview area
+  - `sendVerseToLive`: Move scripture directly to live
+  - `sendPreviewToLive`: Promote preview content to live
+  - `addToScriptureList`: Add verses to queue
+  - `removeFromScriptureList`: Remove verses from queue
+- Integrated presentation state with both Scripture and Live Presentation pages
+
+**Updated Live Presentation Page**
+- Removed `BibleSelector` component (now in sidebar)
+- Integrated with Redux presentation state for preview/live content
+- Enhanced preview and live content rendering with proper scripture formatting
+- Added dynamic content display based on presentation state
+- Improved "Send to Live" functionality with proper state management
+
+**Updated Scripture Page**
+- Simplified interface by removing version selector (now in sidebar)
+- Added real-time preview and live status panels
+- Integrated with Redux presentation state
+- Enhanced user experience with immediate feedback on verse selection
+- Added visual indicators for preview and live content
+
+**Enhanced ScriptureSearch Component**
+- Removed version selector (now uses sidebar selection)
+- Simplified interface while maintaining full search functionality
+- Added proper error handling for missing version selection
+- Improved user guidance with clear instructions
+
+**Sidebar Enhancements**
+- Added conditional display of scripture list on relevant pages
+- Integrated version selector as persistent component
+- Improved layout with proper spacing and organization
+- Added responsive design for scripture list section
+
+**Key Features Implemented:**
+1. **Unified Version Selection**: Single source of truth for Bible version across all pages
+2. **Scripture Queue Management**: Add, remove, and organize verses for presentation
+3. **Preview/Live Workflow**: Seamless transition from selection to preview to live
+4. **Keyboard Shortcuts**: Efficient operation during live services
+5. **Visual Feedback**: Clear indicators for preview and live content status
+6. **Responsive Design**: Proper layout adaptation for different screen sizes
+
+**Technical Improvements:**
+- Enhanced Redux store with presentation management
+- Improved component separation and reusability
+- Better state management across multiple pages
+- Consistent UI patterns and interactions
+- Proper TypeScript typing for all new components
+
+These changes significantly improve the user experience for scripture management during live church services, providing a more intuitive and efficient workflow for operators.
+
+---
+
+## Previous Activities
+
+### December 18, 2024
+
+**Database Integration with Prisma ORM**
+- Set up comprehensive Prisma schema with models for Bible content, songs, media, presentations, and services
+- Created database utilities (`src/lib/database.ts`) with seeding and connection management
+- Implemented Bible importer (`src/lib/bible-importer.ts`) for importing 10 Bible translations
+- Added database service layer (`src/lib/database-service.ts`) with high-level operations
+- Set up IPC communication between main and renderer processes for database operations
+- Created setup scripts for automated database initialization and Bible import
+- Added comprehensive documentation in `DATABASE_SETUP.md`
+
+**Scripture Management System**
+- Implemented `BibleSelector` component for browsing Bible books, chapters, and verses
+- Created `ScriptureSearch` component with keyword, reference, and topic search
+- Added Redux slice (`bibleSlice`) for managing Bible state
+- Integrated database operations with React components via IPC
+- Added support for multiple Bible translations and versions
+- Implemented verse range selection and formatting
+
+**Live Presentation Interface**
+- Created comprehensive `LivePresentation` page with tabbed interface
+- Implemented resizable panels for service plan and preview/live sections
+- Added service planning with drag-and-drop functionality
+- Created preview and live content areas with proper formatting
+- Added mobile remote control interface
+- Implemented "Go Live" functionality with status indicators
+
+**UI/UX Enhancements**
+- Integrated Redux Toolkit for global state management of services
+- Updated routing/layout to use a layout component for all pages except homepage
+- Improved code structure for maintainability and scalability
+- Added service list and service detail pages with Redux state
+- Ensured theme toggle persists and updates the UI instantly
+- Added smooth transitions for sidebar and theme changes
+- Debugged Tailwind dark mode and variable cascade issues
+- Set up project for further feature expansion (songs, media, presentations)
+- Updated LivePresentation page with tabbed interface (Plan, Scripture, Songs)
+- Split presentation view into Preview and Live sections
+- Added "Send to Live" functionality to control what appears on the live display
+- Created separate controls for preview and live sections
+- Enhanced Scripture tab with reference, translation, and preview functionality
+- Added Songs tab with song information, key, and lyrics access
+- Implemented live status indicator with animation
+- Created proper TypeScript typing for slide data
+- Improved UI organization for better workflow
+- Created LivePresentation page with real-time presentation interface
+- Added split-view design with service plan and slide preview panels
+- Implemented mobile remote control preview in LivePresentation page
+- Added "Go Live" functionality with toggle button
+- Created navigation controls for slides (Previous, Next, Blank to Black)
+- Added LivePresentation to the sidebar menu with FiVideo icon
+- Designed dark mode support for the LivePresentation page
+- Created mock service items with dynamic selection
+- Implemented responsive layout that matches the design prototype
+- Added proper routing for the new LivePresentation page
+- Added resizable panels to LivePresentation with draggable divider
+- Implemented mouse event handling for panel resizing
+- Set minimum and maximum constraints for panel sizes (20-80%)
+- Added visual indicator for the draggable area
+
+### December 17, 2024
+
+**Project Setup and Foundation**
+- Initialized Electron + React + TypeScript project with Vite
+- Set up Tailwind CSS with dark mode support
+- Created responsive layout with animated sidebar
+- Implemented theme switching functionality
+- Added routing with React Router
+- Created homepage with animated logo and modern design
+- Set up project structure with components, pages, and utilities
+- Added custom CSS variables for consistent theming
+- Implemented smooth animations and transitions
+- Created reusable UI components and layout system
+
 # PraisePresent Activities Log
 
 ## Major Activities & Attempts
