@@ -1,8 +1,12 @@
 import React, { useState } from 'react';
 import { Outlet } from 'react-router-dom';
 import AnimatedSidebar from './AnimatedSidebar';
+import { useBibleInit } from '../../hooks/useBibleInit';
 const AppLayout: React.FC = () => {
 	const [sidebarOpen, setSidebarOpen] = useState(true);
+
+	// Initialize Bible data when the app starts
+	useBibleInit();
 
 	return (
 		<div className="min-h-screen flex flex-col overflow-hidden min-w-screen">

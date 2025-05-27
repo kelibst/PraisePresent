@@ -6,7 +6,7 @@ import AppLayout from '@/components/layout/AppLayout';
 
 // Page components from pages folder
 import Homepage from '@/pages/Homepage';
-
+import Scripture from '@/pages/Scripture';
 import LivePresentation from '@/pages/LivePresentation';
 
 const AppRoutes = () => {
@@ -14,6 +14,7 @@ const AppRoutes = () => {
 		<Routes>
 			<Route path="/" element={<Homepage />} />
 			<Route element={<AppLayout />}>
+				<Route path="/scripture" element={<Scripture />} />
 				<Route path="/live" element={<LivePresentation />} />
 			</Route>
 		</Routes>

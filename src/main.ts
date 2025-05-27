@@ -1,6 +1,7 @@
 import { app, BrowserWindow } from 'electron';
 import path from 'node:path';
 import started from 'electron-squirrel-startup';
+import { initializeDatabaseMain } from './main/database-main';
 
 // These constants are injected by Electron Forge and Vite
 declare const MAIN_WINDOW_VITE_DEV_SERVER_URL: string | undefined;
@@ -18,6 +19,8 @@ const createWindow = () => {
     height: 720,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
+      contextIsolation: true,
+      nodeIntegration: false,
     },
   });
 
@@ -35,7 +38,17 @@ const createWindow = () => {
 // This method will be called when Electron has finished
 // initialization and is ready to create browser windows.
 // Some APIs can only be used after this event occurs.
-app.on('ready', createWindow);
+app.on('ready', async () => {
+  // Initialize database in main process
+  try {
+    await initializeDatabaseMain();
+    console.log('Database initialized successfully');
+  } catch (error) {
+    console.error('Failed to initialize database:', error);
+  }
+  
+  createWindow();
+});
 
 // Quit when all windows are closed, except on macOS. There, it's common
 // for applications and their menu bar to stay active until the user quits

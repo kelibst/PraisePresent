@@ -7,7 +7,7 @@ import { useTheme } from '@/lib/useTheme';
 
 const menu = [
 	{ label: 'PraisePresent', icon: <img src={logoLight} alt="Church Logo" className='w-20 h-15 rounded-full my-10' />, path: '/' },
-	// { label: 'Scripture', icon: <FiBook />, path: '/scripture' },
+	{ label: 'Scripture', icon: <FiBook />, path: '/scripture' },
 	// { label: 'Songs', icon: <FiMusic />, path: '/songs' },
 	// { label: 'Media', icon: <FiImage />, path: '/media' },
 	// { label: 'Presentations', icon: <FiMonitor />, path: '/presentations' },

@@ -9,7 +9,11 @@
     "package": "electron-forge package",
     "make": "electron-forge make",
     "publish": "electron-forge publish",
-    "lint": "eslint --ext .ts,.tsx ."
+    "lint": "eslint --ext .ts,.tsx .",
+    "db:setup": "node scripts/setup-database.js",
+    "db:generate": "prisma generate",
+    "db:push": "prisma db push",
+    "db:studio": "prisma studio"
   },
   "keywords": [],
   "author": "kelib",
@@ -24,6 +28,7 @@
     "@electron-forge/plugin-fuses": "^7.8.0",
     "@electron-forge/plugin-vite": "^7.8.0",
     "@electron/fuses": "^1.8.0",
+    "@types/electron-squirrel-startup": "^1.0.2",
     "@types/node": "^20.11.24",
     "@types/react": "^18.2.61",
     "@types/react-dom": "^18.2.19",
@@ -33,12 +38,14 @@
     "electron": "36.2.0",
     "eslint": "^8.57.1",
     "eslint-plugin-import": "^2.31.0",
+    "prisma": "^6.8.2",
     "tailwindcss-animate": "^1.0.7",
     "ts-node": "^10.9.2",
-    "typescript": "~4.5.4",
+    "typescript": "^5.8.3",
     "vite": "^5.4.19"
   },
   "dependencies": {
+    "@prisma/client": "^6.8.2",
     "@radix-ui/react-dialog": "^1.1.13",
     "@radix-ui/react-slot": "^1.2.2",
     "@reduxjs/toolkit": "^2.8.1",
@@ -54,6 +61,7 @@
     "react-icons": "^5.5.0",
     "react-redux": "^9.2.0",
     "react-router-dom": "^7.5.3",
+    "sqlite3": "^5.1.7",
     "tailwind-merge": "^2.2.1",
     "tailwindcss": "^3.4.1"
   }

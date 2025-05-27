@@ -1,6 +1,8 @@
 import { BellElectricIcon, BellIcon } from 'lucide-react';
 import React, { useState, useRef, useEffect } from 'react';
 import { FiPlay, FiSkipBack, FiSkipForward, FiMonitor, FiCheck, FiTrash2, FiEdit, FiBook, FiMusic, FiList } from 'react-icons/fi';
+import BibleSelector from '../components/bible/BibleSelector';
+import { Verse } from '../lib/bibleSlice';
 
 type SlideType = {
 	title: string;
@@ -199,22 +201,14 @@ const LivePresentation = () => {
 				);
 			case 'scripture':
 				return (
-					<div className="space-y-3">
-						{scriptures.map((scripture) => (
-							<div
-								key={scripture.id}
-								className="flex items-start p-3 rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800/50"
-							>
-								<div className="flex-1">
-									<div className="flex justify-between">
-										<h3 className="font-medium text-gray-800 dark:text-white">{scripture.reference}</h3>
-										<span className="text-xs bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 px-2 py-1 rounded">{scripture.translation}</span>
-									</div>
-									<p className="text-sm text-gray-700 dark:text-gray-300 mt-1">{scripture.text.substring(0, 60)}...</p>
-									<button className="mt-2 text-xs text-blue-600 dark:text-blue-400 hover:underline">Show in Preview</button>
-								</div>
-							</div>
-						))}
+					<div className="space-y-4">
+						<BibleSelector
+							onVerseSelect={(verse: Verse) => {
+								// Handle verse selection for preview/live
+								console.log('Selected verse:', verse);
+								// You can add logic here to send the verse to preview or live
+							}}
+						/>
 					</div>
 				);
 			case 'songs':
