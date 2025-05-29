@@ -8,6 +8,8 @@ import PreviewLivePanel from '../components/shared/PreviewLivePanel';
 import QuickScriptureSearch from '../components/shared/QuickScriptureSearch';
 import VersionSelector from '../components/bible/VersionSelector';
 import { Verse } from '../lib/bibleSlice';
+import ScriptureList from '@/components/bible/ScriptureList';
+import ScriptureLiveList from '@/components/bible/ScriptureLiveList';
 
 const LivePresentation = () => {
 	const dispatch = useDispatch<AppDispatch>();
@@ -198,18 +200,7 @@ const LivePresentation = () => {
 			case 'scripture':
 				return (
 					<div className="h-full flex flex-col">
-						{/* Version Selector */}
-						<div className="p-4 border-b border-gray-200 dark:border-gray-700">
-							<VersionSelector />
-						</div>
-
-						{/* Quick Scripture Search */}
-						<div className="flex-1 p-4 overflow-y-auto">
-							<QuickScriptureSearch
-								onVerseSelect={handleVerseSelect}
-								compact={true}
-							/>
-						</div>
+						<QuickScriptureSearch />
 					</div>
 				);
 

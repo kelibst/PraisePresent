@@ -192,7 +192,7 @@ const PreviewLivePanel: React.FC<PreviewLivePanelProps> = ({
 
 
 
-			<div className="flex-1 flex flex-col lg:flex-row max-h-[50vh]">
+			<div className="flex-1 flex flex-col lg:flex-row lg:max-h-[50vh] overflow-y-auto lg:overflow-y-hidden">
 				<div className="flex-1 p-6 border-r border-gray-200 dark:border-gray-700">
 					<div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 h-full">
 						<div className="p-4 border-b border-gray-200 dark:border-gray-700">

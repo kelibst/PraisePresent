@@ -23,6 +23,7 @@ const VersionSelector: React.FC = () => {
 	}, [versions, selectedVersion, dispatch]);
 
 	const handleVersionChange = (versionId: string) => {
+		console.log('versionId', versionId);
 		dispatch(setSelectedVersion(versionId));
 	};
 

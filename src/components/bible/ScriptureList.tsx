@@ -1,7 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { RootState, AppDispatch } from '../../lib/store';
-import { loadBooks, loadVerses } from '../../lib/bibleSlice';
+import {
+	loadBooks,
+	loadVerses,
+	initializeBibleDefaults,
+	setSelectedBook,
+	setSelectedChapter
+} from '../../lib/bibleSlice';
 import {
 	addToScriptureList,
 	removeFromScriptureList,
@@ -12,46 +18,70 @@ import { FiX, FiEye, FiMonitor } from 'react-icons/fi';
 
 const ScriptureList: React.FC = () => {
 	const dispatch = useDispatch<AppDispatch>();
-	const { books, loading } = useSelector((state: RootState) => state.bible);
-	const { selectedVersion, scriptureList } = useSelector((state: RootState) => state.presentation);
+	const {
+		books,
+		loading,
+		selectedVersion,
+		selectedBook,
+		selectedChapter,
+		verses,
+		isInitialized
+	} = useSelector((state: RootState) => state.bible);
+	const { scriptureList } = useSelector((state: RootState) => state.presentation);
 
-	const [selectedBook, setSelectedBook] = useState<number | null>(null);
-	const [selectedChapter, setSelectedChapter] = useState<number | null>(null);
-	const [verses, setVerses] = useState<any[]>([]);
+	const [localSelectedBook, setLocalSelectedBook] = useState<number | null>(selectedBook);
+	const [localSelectedChapter, setLocalSelectedChapter] = useState<number | null>(selectedChapter);
 	const [loadingVerses, setLoadingVerses] = useState(false);
 
-	// Load books on mount
+	// Initialize Bible defaults when component mounts
 	useEffect(() => {
-		dispatch(loadBooks());
-	}, [dispatch]);
+		if (!isInitialized) {
+			dispatch(initializeBibleDefaults());
+		}
+	}, [dispatch, isInitialized]);
 
-	// Load verses when book, chapter, or version changes
+	// Sync local state with Redux state
 	useEffect(() => {
-		if (selectedVersion && selectedBook && selectedChapter) {
+		setLocalSelectedBook(selectedBook);
+	}, [selectedBook]);
+
+	useEffect(() => {
+		setLocalSelectedChapter(selectedChapter);
+	}, [selectedChapter]);
+
+	// Load books if not already loaded
+	useEffect(() => {
+		if (isInitialized && books.length === 0) {
+			dispatch(loadBooks());
+		}
+	}, [dispatch, isInitialized, books.length]);
+
+	// Load verses when selections change
+	useEffect(() => {
+		if (selectedVersion && localSelectedBook && localSelectedChapter) {
 			setLoadingVerses(true);
 			dispatch(loadVerses({
 				versionId: selectedVersion,
-				bookId: selectedBook,
-				chapter: selectedChapter
-			})).then((result: any) => {
-				if (result.payload) {
-					setVerses(result.payload);
-				}
+				bookId: localSelectedBook,
+				chapter: localSelectedChapter
+			})).finally(() => {
 				setLoadingVerses(false);
 			});
 		}
-	}, [selectedVersion, selectedBook, selectedChapter, dispatch]);
+	}, [selectedVersion, localSelectedBook, localSelectedChapter, dispatch]);
 
-	const currentBook = books.find(book => book.id === selectedBook);
+	const currentBook = books.find(book => book.id === localSelectedBook);
 
 	const handleBookChange = (bookId: number) => {
-		setSelectedBook(bookId);
-		setSelectedChapter(null);
-		setVerses([]);
+		setLocalSelectedBook(bookId);
+		setLocalSelectedChapter(1); // Reset to chapter 1 when book changes
+		dispatch(setSelectedBook(bookId));
+		dispatch(setSelectedChapter(1));
 	};
 
 	const handleChapterChange = (chapter: number) => {
-		setSelectedChapter(chapter);
+		setLocalSelectedChapter(chapter);
+		dispatch(setSelectedChapter(chapter));
 	};
 
 	const handleVerseClick = (verse: any, event: React.MouseEvent) => {
@@ -86,10 +116,22 @@ const ScriptureList: React.FC = () => {
 		dispatch(sendVerseToLive(verse));
 	};
 
+	// Show loading state during initialization
+	if (!isInitialized || loading) {
+		return (
+			<div className="flex flex-col h-full">
+				<div className="p-4 text-center text-gray-500 dark:text-gray-400">
+					<div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto mb-4"></div>
+					<div className="text-sm">Initializing Bible...</div>
+				</div>
+			</div>
+		);
+	}
+
 	if (!selectedVersion) {
 		return (
 			<div className="p-4 text-center text-gray-500 dark:text-gray-400">
-				<div className="text-sm">Select a Bible version to browse scriptures</div>
+				<div className="text-sm">Loading Bible version...</div>
 			</div>
 		);
 	}
@@ -145,16 +187,28 @@ const ScriptureList: React.FC = () => {
 				</div>
 			)}
 
+			{/* Current Selection Info */}
+			{currentBook && localSelectedChapter && (
+				<div className="border-b border-gray-200 dark:border-gray-700 p-4 bg-blue-50 dark:bg-blue-900/30">
+					<div className="text-sm font-medium text-blue-900 dark:text-blue-200">
+						Current: {currentBook.name} {localSelectedChapter}
+					</div>
+					<div className="text-xs text-blue-700 dark:text-blue-300 mt-1">
+						{verses.length} verses • {selectedVersion || 'No version'} selected
+					</div>
+				</div>
+			)}
+
 			{/* Book Selector */}
 			<div className="p-4 border-b border-gray-200 dark:border-gray-700">
 				<label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
 					Book
 				</label>
 				<select
-					value={selectedBook || ''}
+					value={localSelectedBook || ''}
 					onChange={(e) => handleBookChange(parseInt(e.target.value))}
 					className="w-full text-xs px-2 py-1 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
-					disabled={loading}
+					disabled={loading || books.length === 0}
 				>
 					<option value="">Select Book</option>
 					{books.map((book) => (
@@ -172,7 +226,7 @@ const ScriptureList: React.FC = () => {
 						Chapter
 					</label>
 					<select
-						value={selectedChapter || ''}
+						value={localSelectedChapter || ''}
 						onChange={(e) => handleChapterChange(parseInt(e.target.value))}
 						className="w-full text-xs px-2 py-1 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
 					>
@@ -190,6 +244,7 @@ const ScriptureList: React.FC = () => {
 			<div className="flex-1 overflow-y-auto">
 				{loadingVerses ? (
 					<div className="p-4 text-center text-gray-500 dark:text-gray-400">
+						<div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500 mx-auto mb-2"></div>
 						<div className="text-xs">Loading verses...</div>
 					</div>
 				) : verses.length > 0 ? (
@@ -219,7 +274,7 @@ const ScriptureList: React.FC = () => {
 							))}
 						</div>
 					</div>
-				) : selectedBook && selectedChapter ? (
+				) : localSelectedBook && localSelectedChapter ? (
 					<div className="p-4 text-center text-gray-500 dark:text-gray-400">
 						<div className="text-xs">No verses found</div>
 					</div>
