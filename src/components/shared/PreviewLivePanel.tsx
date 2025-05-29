@@ -49,7 +49,7 @@ const PreviewLivePanel: React.FC<PreviewLivePanelProps> = ({
 						<button
 							onClick={sendToLive}
 							disabled={!previewItem}
-							className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed font-medium flex items-center gap-2"
+							className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:bg-gray-300 disabled:text-black disabled:cursor-not-allowed font-medium flex items-center gap-2"
 						>
 							<FiPlay size={16} />
 							Send to Live
@@ -72,7 +72,7 @@ const PreviewLivePanel: React.FC<PreviewLivePanelProps> = ({
 				</div>
 			)}
 
-			<div className="flex-1 flex flex-col lg:flex-row">
+			<div className="flex-1 flex flex-col lg:flex-row max-h-[50vh]">
 				{/* Preview Panel */}
 				<div className="flex-1 p-6 border-r border-gray-200 dark:border-gray-700">
 					<div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 h-full">
@@ -185,6 +185,50 @@ const PreviewLivePanel: React.FC<PreviewLivePanelProps> = ({
 									</div>
 								</div>
 							)}
+						</div>
+					</div>
+				</div>
+			</div>
+
+
+
+			<div className="flex-1 flex flex-col lg:flex-row max-h-[50vh]">
+				<div className="flex-1 p-6 border-r border-gray-200 dark:border-gray-700">
+					<div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 h-full">
+						<div className="p-4 border-b border-gray-200 dark:border-gray-700">
+							<div className="p-4 border-t border-gray-200 dark:border-gray-700">
+								<div className="flex items-center justify-center mb-2">
+									<svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-gray-500 dark:text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+										<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
+									</svg>
+									<span className="ml-2 text-gray-700 dark:text-gray-300">Mobile Remote Control</span>
+								</div>
+
+								<div className="border border-gray-200 dark:border-gray-700 rounded-md p-4 bg-white dark:bg-gray-800">
+									<div className="text-center mb-2 text-gray-700 dark:text-gray-300">Current Slide:</div>
+									<div className="text-center mb-4 text-sm text-gray-700 dark:text-gray-300 truncate">
+										{liveItem ? liveItem.title : 'Nothing live'}
+									</div>
+
+									<div className="flex justify-between">
+										<button className="w-12 h-10 bg-gray-200 dark:bg-gray-700 rounded flex items-center justify-center text-gray-700 dark:text-gray-300">
+											<FiSkipBack />
+										</button>
+										<button className="w-12 h-10 bg-gray-200 dark:bg-gray-700 rounded flex items-center justify-center text-gray-700 dark:text-gray-300">
+											<FiSkipForward />
+										</button>
+									</div>
+
+									<div className="mt-3 text-center">
+										<button
+											onClick={blankToBlack}
+											className="w-full py-2 bg-gray-200 dark:bg-gray-700 rounded text-sm text-gray-700 dark:text-gray-300"
+										>
+											Blank to Black
+										</button>
+									</div>
+								</div>
+							</div>
 						</div>
 					</div>
 				</div>
