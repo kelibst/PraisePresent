@@ -1,211 +1,165 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { RootState, AppDispatch } from '../lib/store';
-import { sendVerseToPreview, sendVerseToLive } from '../lib/presentationSlice';
-import ScriptureSearch from '../components/bible/ScriptureSearch';
+import { sendVerseToPreview } from '../lib/presentationSlice';
+import PreviewLivePanel from '../components/shared/PreviewLivePanel';
+import QuickScriptureSearch from '../components/shared/QuickScriptureSearch';
+import VersionSelector from '../components/bible/VersionSelector';
+import ScriptureList from '../components/bible/ScriptureList';
 import { Verse } from '../lib/bibleSlice';
-import { FiEye, FiMonitor } from 'react-icons/fi';
 
 const Scripture: React.FC = () => {
 	const dispatch = useDispatch<AppDispatch>();
-	const { previewItem, liveItem } = useSelector((state: RootState) => state.presentation);
-	const [activeTab, setActiveTab] = useState<'search'>('search');
+	const [leftPanelWidth, setLeftPanelWidth] = useState(40); // percentage
+	const [activeTab, setActiveTab] = useState<'search' | 'browse'>('search');
+
+	const containerRef = useRef<HTMLDivElement>(null);
+	const isDraggingRef = useRef(false);
+
+	// Handle mouse down to start resizing
+	const handleDragStart = (e: React.MouseEvent) => {
+		e.preventDefault();
+		isDraggingRef.current = true;
+		document.body.style.cursor = 'col-resize';
+		document.addEventListener('mousemove', handleDrag);
+		document.addEventListener('mouseup', handleDragEnd);
+	};
+
+	// Handle dragging
+	const handleDrag = (e: MouseEvent) => {
+		if (!isDraggingRef.current || !containerRef.current) return;
+
+		const containerRect = containerRef.current.getBoundingClientRect();
+		const containerWidth = containerRect.width;
+		const mouseX = e.clientX - containerRect.left;
+
+		// Calculate percentage (constrain between 20% and 70%)
+		let newLeftWidth = (mouseX / containerWidth) * 100;
+		newLeftWidth = Math.max(20, Math.min(70, newLeftWidth));
+
+		setLeftPanelWidth(newLeftWidth);
+	};
+
+	// Handle drag end
+	const handleDragEnd = () => {
+		isDraggingRef.current = false;
+		document.body.style.cursor = 'default';
+		document.removeEventListener('mousemove', handleDrag);
+		document.removeEventListener('mouseup', handleDragEnd);
+	};
+
+	// Clean up event listeners when unmounting
+	useEffect(() => {
+		return () => {
+			document.removeEventListener('mousemove', handleDrag);
+			document.removeEventListener('mouseup', handleDragEnd);
+		};
+	}, []);
 
 	const handleVerseSelect = (verse: Verse) => {
-		// Send to preview by default
 		dispatch(sendVerseToPreview(verse));
-	};
-
-	const handleSendToPreview = (verse: Verse) => {
-		dispatch(sendVerseToPreview(verse));
-	};
-
-	const handleSendToLive = (verse: Verse) => {
-		dispatch(sendVerseToLive(verse));
-	};
-
-	const formatVerseReference = (verse: Verse) => {
-		return `${verse.book?.name} ${verse.chapter}:${verse.verse}`;
 	};
 
 	return (
-		<div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+		<div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex flex-col">
 			{/* Header */}
 			<div className="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700">
-				<div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-					<div className="flex justify-between items-center py-6">
+				<div className="px-6 py-4">
+					<div className="flex justify-between items-center">
 						<div>
-							<h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+							<h1 className="text-2xl font-bold text-gray-900 dark:text-white">
 								Scripture
 							</h1>
 							<p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-								Search Bible verses and manage your scripture presentations
+								Search and present Bible verses
 							</p>
+						</div>
+						<div className="flex items-center gap-4">
+							<span className="bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 text-xs font-medium px-2.5 py-1 rounded">
+								Scripture Mode
+							</span>
 						</div>
 					</div>
 				</div>
 			</div>
 
-			<div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-				<div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-					{/* Left Panel - Scripture Search */}
-					<div className="lg:col-span-2">
-						<div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
-							{/* Header */}
-							<div className="border-b border-gray-200 dark:border-gray-700 p-6">
-								<h2 className="text-lg font-medium text-gray-900 dark:text-white">
-									Scripture Search
-								</h2>
-								<p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-									Bible version selection is available in the sidebar. Browse scriptures from the left panel.
-								</p>
-							</div>
-
-							{/* Search Content */}
-							<div className="p-6">
-								<ScriptureSearch
-									onVerseSelect={handleVerseSelect}
-									className="max-w-none"
-								/>
-							</div>
-						</div>
+			{/* Main Content with Resizable Panels */}
+			<div ref={containerRef} className="flex flex-1 overflow-hidden relative">
+				{/* Left Panel - Scripture Search and Browse */}
+				<div
+					className="flex flex-col bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700"
+					style={{ width: `${leftPanelWidth}%` }}
+				>
+					{/* Tab Navigation */}
+					<div className="flex border-b border-gray-200 dark:border-gray-700">
+						<button
+							onClick={() => setActiveTab('search')}
+							className={`flex-1 px-4 py-3 text-sm font-medium border-b-2 transition-colors ${activeTab === 'search'
+									? 'border-blue-500 text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30'
+									: 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
+								}`}
+						>
+							Quick Search
+						</button>
+						<button
+							onClick={() => setActiveTab('browse')}
+							className={`flex-1 px-4 py-3 text-sm font-medium border-b-2 transition-colors ${activeTab === 'browse'
+									? 'border-blue-500 text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30'
+									: 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
+								}`}
+						>
+							Browse
+						</button>
 					</div>
 
-					{/* Right Panel - Preview & Live Status */}
-					<div className="lg:col-span-1 space-y-6">
-						{/* Preview Panel */}
-						<div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-							<h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
-								Preview
-							</h3>
+					{/* Version Selector */}
+					<div className="p-4 border-b border-gray-200 dark:border-gray-700">
+						<VersionSelector />
+					</div>
 
-							{previewItem && previewItem.type === 'scripture' ? (
-								<div className="space-y-4">
-									{/* Verse Display */}
-									<div className="bg-blue-50 dark:bg-blue-900/30 rounded-lg p-4">
-										<div className="text-sm font-medium text-blue-600 dark:text-blue-400 mb-2">
-											{previewItem.reference}
-										</div>
-										<div className="text-gray-900 dark:text-white leading-relaxed">
-											{previewItem.content}
-										</div>
-										<div className="text-xs text-gray-500 dark:text-gray-400 mt-2">
-											{previewItem.translation}
-										</div>
-									</div>
-
-									{/* Action Buttons */}
-									<div className="space-y-2">
-										<button
-											onClick={() => handleSendToLive(previewItem.verse!)}
-											className="w-full px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 font-medium flex items-center justify-center gap-2"
-										>
-											<FiMonitor size={16} />
-											Send to Live
-										</button>
-									</div>
-								</div>
-							) : (
-								<div className="text-center py-8">
-									<div className="text-gray-400 dark:text-gray-500 mb-2">
-										<FiEye className="mx-auto h-12 w-12" />
-									</div>
-									<div className="text-gray-500 dark:text-gray-400 text-sm">
-										No scripture in preview
-									</div>
-									<div className="text-gray-400 dark:text-gray-500 text-xs mt-1">
-										Search and select a verse to preview
-									</div>
-								</div>
-							)}
-						</div>
-
-						{/* Live Panel */}
-						<div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-							<h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
-								Currently Live
-							</h3>
-
-							{liveItem && liveItem.type === 'scripture' ? (
-								<div className="space-y-4">
-									{/* Live Indicator */}
-									<div className="flex items-center gap-2 mb-3">
-										<span className="inline-block w-3 h-3 rounded-full bg-red-500 animate-pulse"></span>
-										<span className="text-sm font-medium text-red-600 dark:text-red-400">LIVE</span>
-									</div>
-
-									{/* Verse Display */}
-									<div className="bg-red-50 dark:bg-red-900/30 rounded-lg p-4">
-										<div className="text-sm font-medium text-red-600 dark:text-red-400 mb-2">
-											{liveItem.reference}
-										</div>
-										<div className="text-gray-900 dark:text-white leading-relaxed">
-											{liveItem.content}
-										</div>
-										<div className="text-xs text-gray-500 dark:text-gray-400 mt-2">
-											{liveItem.translation}
-										</div>
-									</div>
-								</div>
-							) : (
-								<div className="text-center py-8">
-									<div className="text-gray-400 dark:text-gray-500 mb-2">
-										<FiMonitor className="mx-auto h-12 w-12" />
-									</div>
-									<div className="text-gray-500 dark:text-gray-400 text-sm">
-										Nothing currently live
-									</div>
-									<div className="text-gray-400 dark:text-gray-500 text-xs mt-1">
-										Send content to live from preview
-									</div>
-								</div>
-							)}
-						</div>
-
-						{/* Quick Actions */}
-						<div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-							<h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
-								Quick Actions
-							</h3>
-							<div className="space-y-2">
-								<button className="w-full px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-md hover:bg-gray-200 dark:hover:bg-gray-600 text-sm">
-									View Recent Verses
-								</button>
-								<button className="w-full px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-md hover:bg-gray-200 dark:hover:bg-gray-600 text-sm">
-									Browse Topics
-								</button>
-								<button className="w-full px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-md hover:bg-gray-200 dark:hover:bg-gray-600 text-sm">
-									Manage Favorites
-								</button>
+					{/* Tab Content */}
+					<div className="flex-1 overflow-hidden">
+						{activeTab === 'search' ? (
+							<div className="p-6 h-full overflow-y-auto">
+								<QuickScriptureSearch
+									onVerseSelect={handleVerseSelect}
+									compact={false}
+								/>
 							</div>
-						</div>
-
-						{/* Scripture Statistics */}
-						<div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-							<h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
-								Scripture Library
-							</h3>
-							<div className="space-y-3">
-								<div className="flex justify-between text-sm">
-									<span className="text-gray-600 dark:text-gray-400">Translations</span>
-									<span className="font-medium text-gray-900 dark:text-white">10</span>
-								</div>
-								<div className="flex justify-between text-sm">
-									<span className="text-gray-600 dark:text-gray-400">Books</span>
-									<span className="font-medium text-gray-900 dark:text-white">66</span>
-								</div>
-								<div className="flex justify-between text-sm">
-									<span className="text-gray-600 dark:text-gray-400">Verses</span>
-									<span className="font-medium text-gray-900 dark:text-white">31,000+</span>
-								</div>
-								<div className="flex justify-between text-sm">
-									<span className="text-gray-600 dark:text-gray-400">Topics</span>
-									<span className="font-medium text-gray-900 dark:text-white">15</span>
-								</div>
+						) : (
+							<div className="h-full">
+								<ScriptureList />
 							</div>
+						)}
+					</div>
+
+					{/* Quick Actions */}
+					<div className="p-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
+						<div className="space-y-2">
+							<button className="w-full px-3 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-md hover:bg-gray-200 dark:hover:bg-gray-600 text-sm font-medium">
+								View Recent Verses
+							</button>
+							<button className="w-full px-3 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-md hover:bg-gray-200 dark:hover:bg-gray-600 text-sm font-medium">
+								Browse by Topic
+							</button>
 						</div>
 					</div>
 				</div>
+
+				{/* Resizable Divider */}
+				<div
+					className="absolute h-full w-1 bg-transparent hover:bg-blue-500 cursor-col-resize flex items-center justify-center z-10 transition-colors"
+					style={{ left: `${leftPanelWidth}%`, transform: 'translateX(-50%)' }}
+					onMouseDown={handleDragStart}
+				>
+					<div className="h-16 w-1 bg-gray-300 dark:bg-gray-600 rounded-full hover:bg-blue-500 transition-colors"></div>
+				</div>
+
+				{/* Right Panel - Shared Preview & Live */}
+				<PreviewLivePanel
+					leftPanelWidth={leftPanelWidth}
+					showControls={false}
+				/>
 			</div>
 		</div>
 	);
