@@ -1,6 +1,7 @@
 import { ipcMain } from 'electron';
 import { getDatabase, initializeDatabase, seedDatabase } from '../lib/database';
 import { bibleImporter } from '../lib/bible-importer';
+import { sqliteBibleImporter } from '../lib/sqlite-bible-importer';
 
 // Initialize database in main process
 let db: any = null;
@@ -147,6 +148,36 @@ function setupDatabaseIPC() {
       return { success: true };
     } catch (error) {
       console.error('Error importing Bibles:', error);
+      throw error;
+    }
+  });
+
+  ipcMain.handle('db:importBiblesSQLite', async () => {
+    try {
+      await sqliteBibleImporter.importAllVersions();
+      return { success: true };
+    } catch (error) {
+      console.error('Error importing Bibles from SQLite:', error);
+      throw error;
+    }
+  });
+
+  ipcMain.handle('db:importSingleBibleSQLite', async (event, versionName: string) => {
+    try {
+      await sqliteBibleImporter.importSingleVersionFromSQLite(versionName);
+      return { success: true };
+    } catch (error) {
+      console.error('Error importing single Bible from SQLite:', error);
+      throw error;
+    }
+  });
+
+  ipcMain.handle('db:getImportStats', async () => {
+    try {
+      const stats = await sqliteBibleImporter.getImportStats();
+      return stats;
+    } catch (error) {
+      console.error('Error getting import stats:', error);
       throw error;
     }
   });

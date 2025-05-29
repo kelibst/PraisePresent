@@ -7,15 +7,15 @@ This document explains how to set up and use the SQLite database with Prisma ORM
 PraisePresent uses:
 - **SQLite** as the database engine for local storage
 - **Prisma** as the ORM for type-safe database operations
-- **Multiple Bible translations** imported from JSON files
+- **Multiple Bible translations** imported from pre-built SQLite files
 - **Comprehensive schema** covering all application features
 
-## Quick Setup
+## Quick Setup (Recommended - Fast SQLite Import)
 
-Run the automated setup script:
+Run the fast setup script that imports directly from SQLite files:
 
 ```bash
-npm run db:setup
+npm run db:setup-fast
 ```
 
 This will:
@@ -23,8 +23,28 @@ This will:
 2. Generate the Prisma client
 3. Create the database and apply the schema
 4. Seed initial data (books, settings, default user)
-5. Import the KJV Bible translation
+5. Import ALL Bible translations from SQLite files (very fast!)
 6. Create basic topics for scripture search
+
+## Alternative Setup Methods
+
+### Standard Setup (Slower JSON Import)
+
+```bash
+npm run db:setup
+```
+
+### SQLite-only Seeding (if database already exists)
+
+```bash
+npm run db:setup-sqlite
+```
+
+### Test SQLite Import
+
+```bash
+node scripts/test-sqlite-import.js
+```
 
 ## Manual Setup
 
@@ -49,6 +69,27 @@ npm run db:push
 ```
 
 ### 4. Import Bible Data
+
+#### Fast SQLite Import (Recommended)
+
+```javascript
+import { sqliteBibleImporter } from './src/lib/sqlite-bible-importer.js';
+
+// Import all available translations from SQLite files (fast!)
+await sqliteBibleImporter.importAllVersions();
+
+// Or import specific translation from SQLite
+await sqliteBibleImporter.importSingleVersionFromSQLite('KJV');
+
+// Get import statistics
+const stats = await sqliteBibleImporter.getImportStats();
+console.log(stats); // { KJV: 31102, ASV: 31086, ... }
+
+// Verify import integrity
+const isValid = await sqliteBibleImporter.verifyImport('KJV');
+```
+
+#### Standard JSON Import (Slower)
 
 ```javascript
 import { bibleImporter } from './src/lib/bible-importer.js';

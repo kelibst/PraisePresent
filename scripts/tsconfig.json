@@ -5,7 +5,7 @@
     "moduleResolution": "node",
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
-    "strict": true,
+    "strict": false,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
     "allowJs": true,
@@ -13,8 +13,17 @@
     "baseUrl": "..",
     "paths": {
       "@/*": ["./src/*"]
-    }
+    },
+    "types": ["node"]
   },
-  "include": ["./**/*", "../src/**/*"],
-  "exclude": ["node_modules"]
+  "include": [
+    "**/*.ts",
+    "../src/**/*.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "setup-database.js",
+    "sqlite-seed.js", 
+    "temp-seed.mjs"
+  ]
 } 

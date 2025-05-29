@@ -42,6 +42,18 @@ export class DatabaseIPC {
     return await window.electronAPI.invoke('db:importBibles');
   }
 
+  async importBiblesSQLite() {
+    return await window.electronAPI.invoke('db:importBiblesSQLite');
+  }
+
+  async importSingleBibleSQLite(versionName: string) {
+    return await window.electronAPI.invoke('db:importSingleBibleSQLite', versionName);
+  }
+
+  async getImportStats() {
+    return await window.electronAPI.invoke('db:getImportStats');
+  }
+
   // Song operations (for future use)
   async loadSongs({ search, limit = 50 }: { search?: string; limit?: number } = {}) {
     return await window.electronAPI.invoke('db:loadSongs', { search, limit });
