@@ -1,5 +1,5 @@
-import { BrowserWindow, screen } from 'electron';
-import { displayManager } from '../services/DisplayManager';
+import { BrowserWindow, screen } from "electron";
+import { displayManager } from "../services/DisplayManager";
 
 export interface LiveWindowConfig {
   displayId: number;
@@ -30,10 +30,10 @@ export class LiveDisplayWindow {
     if (this.isInitialized) {
       return;
     }
-    
-    console.log('Initializing LiveDisplayWindow manager...');
+
+    console.log("Initializing LiveDisplayWindow manager...");
     this.isInitialized = true;
-    console.log('LiveDisplayWindow manager initialized successfully');
+    console.log("LiveDisplayWindow manager initialized successfully");
   }
 
   /**
@@ -51,14 +51,33 @@ export class LiveDisplayWindow {
         throw new Error(`Display with ID ${config.displayId} not found`);
       }
 
-      console.log(`Creating live window on display ${config.displayId}: ${display.friendlyName || display.label}`);
+      console.log(
+        `Creating live window on display ${config.displayId}: ${
+          display.friendlyName || display.label
+        }`
+      );
+      console.log("Display bounds:", display.bounds);
 
-      // Create the live presentation window
-      this.liveWindow = new BrowserWindow({
-        x: display.bounds.x,
-        y: display.bounds.y,
-        width: display.bounds.width,
-        height: display.bounds.height,
+      // Ensure we have the latest screen information
+      const electronDisplays = screen.getAllDisplays();
+      const electronDisplay = electronDisplays.find(
+        (d) => d.id === config.displayId
+      );
+
+      if (!electronDisplay) {
+        throw new Error(
+          `Electron display with ID ${config.displayId} not found`
+        );
+      }
+
+      console.log("Electron display bounds:", electronDisplay.bounds);
+
+      // Use Electron's native display bounds for more accurate positioning
+      const windowConfig = {
+        x: electronDisplay.bounds.x,
+        y: electronDisplay.bounds.y,
+        width: electronDisplay.bounds.width,
+        height: electronDisplay.bounds.height,
         fullscreen: config.fullscreen ?? true,
         frame: config.frame ?? false,
         alwaysOnTop: config.alwaysOnTop ?? true,
@@ -67,26 +86,55 @@ export class LiveDisplayWindow {
           nodeIntegration: false,
           contextIsolation: true,
           webSecurity: false,
-          preload: require('path').join(__dirname, '../preload.js'),
+          preload: require("path").join(__dirname, "../preload.js"),
         },
+        // Additional configuration for better positioning
+        skipTaskbar: true,
+        minimizable: false,
+        maximizable: false,
+        resizable: false,
+      };
+
+      console.log("Creating BrowserWindow with config:", windowConfig);
+
+      // Create the live presentation window
+      this.liveWindow = new BrowserWindow(windowConfig);
+
+      // Force the window to the correct display after creation
+      this.liveWindow.setBounds({
+        x: electronDisplay.bounds.x,
+        y: electronDisplay.bounds.y,
+        width: electronDisplay.bounds.width,
+        height: electronDisplay.bounds.height,
       });
+
+      // Set fullscreen on the correct display
+      if (config.fullscreen ?? true) {
+        this.liveWindow.setFullScreen(true);
+      }
 
       // Load the live display renderer
       if (process.env.VITE_DEV_SERVER_URL) {
-        await this.liveWindow.loadURL(`${process.env.VITE_DEV_SERVER_URL}#/live-display`);
+        await this.liveWindow.loadURL(
+          `${process.env.VITE_DEV_SERVER_URL}#/live-display`
+        );
       } else {
-        await this.liveWindow.loadFile('dist/renderer/index.html', { hash: 'live-display' });
+        await this.liveWindow.loadFile("dist/renderer/index.html", {
+          hash: "live-display",
+        });
       }
 
       // Set up window event handlers
       this.setupWindowEvents();
 
       this.currentDisplayId = config.displayId;
-      console.log('Live window created successfully');
-      
+
+      console.log("Live window created successfully");
+      console.log("Window bounds after creation:", this.liveWindow.getBounds());
+
       return true;
     } catch (error) {
-      console.error('Failed to create live window:', error);
+      console.error("Failed to create live window:", error);
       return false;
     }
   }
@@ -96,9 +144,26 @@ export class LiveDisplayWindow {
    */
   public showLiveWindow(): void {
     if (this.liveWindow && !this.liveWindow.isDestroyed()) {
+      // Ensure window is on correct display before showing
+      if (this.currentDisplayId) {
+        const electronDisplays = screen.getAllDisplays();
+        const targetDisplay = electronDisplays.find(
+          (d) => d.id === this.currentDisplayId
+        );
+
+        if (targetDisplay) {
+          this.liveWindow.setBounds({
+            x: targetDisplay.bounds.x,
+            y: targetDisplay.bounds.y,
+            width: targetDisplay.bounds.width,
+            height: targetDisplay.bounds.height,
+          });
+        }
+      }
+
       this.liveWindow.show();
       this.liveWindow.focus();
-      console.log('Live window shown');
+      console.log("Live window shown on display:", this.currentDisplayId);
     }
   }
 
@@ -108,7 +173,7 @@ export class LiveDisplayWindow {
   public hideLiveWindow(): void {
     if (this.liveWindow && !this.liveWindow.isDestroyed()) {
       this.liveWindow.hide();
-      console.log('Live window hidden');
+      console.log("Live window hidden");
     }
   }
 
@@ -120,7 +185,7 @@ export class LiveDisplayWindow {
       this.liveWindow.close();
       this.liveWindow = null;
       this.currentDisplayId = null;
-      console.log('Live window closed');
+      console.log("Live window closed");
     }
   }
 
@@ -128,14 +193,20 @@ export class LiveDisplayWindow {
    * Check if live window exists and is visible
    */
   public isLiveWindowActive(): boolean {
-    return !!(this.liveWindow && !this.liveWindow.isDestroyed() && this.liveWindow.isVisible());
+    return !!(
+      this.liveWindow &&
+      !this.liveWindow.isDestroyed() &&
+      this.liveWindow.isVisible()
+    );
   }
 
   /**
    * Get current live window
    */
   public getLiveWindow(): BrowserWindow | null {
-    return this.liveWindow && !this.liveWindow.isDestroyed() ? this.liveWindow : null;
+    return this.liveWindow && !this.liveWindow.isDestroyed()
+      ? this.liveWindow
+      : null;
   }
 
   /**
@@ -154,26 +225,41 @@ export class LiveDisplayWindow {
       return this.createLiveWindow({ displayId });
     }
 
-    const display = displayManager.getDisplayById(displayId);
-    if (!display) {
+    const electronDisplays = screen.getAllDisplays();
+    const targetDisplay = electronDisplays.find((d) => d.id === displayId);
+
+    if (!targetDisplay) {
       console.error(`Display with ID ${displayId} not found`);
       return false;
     }
 
     try {
+      console.log(
+        `Moving live window to display ${displayId}:`,
+        targetDisplay.bounds
+      );
+
+      // Exit fullscreen first to allow moving
+      if (this.liveWindow.isFullScreen()) {
+        this.liveWindow.setFullScreen(false);
+      }
+
       // Move and resize window to new display
       this.liveWindow.setBounds({
-        x: display.bounds.x,
-        y: display.bounds.y,
-        width: display.bounds.width,
-        height: display.bounds.height,
+        x: targetDisplay.bounds.x,
+        y: targetDisplay.bounds.y,
+        width: targetDisplay.bounds.width,
+        height: targetDisplay.bounds.height,
       });
 
+      // Re-enter fullscreen on new display
+      this.liveWindow.setFullScreen(true);
+
       this.currentDisplayId = displayId;
-      console.log(`Live window moved to display ${displayId}: ${display.friendlyName || display.label}`);
+      console.log(`Live window moved to display ${displayId}`);
       return true;
     } catch (error) {
-      console.error('Failed to move live window:', error);
+      console.error("Failed to move live window:", error);
       return false;
     }
   }
@@ -183,10 +269,10 @@ export class LiveDisplayWindow {
    */
   public sendContentToLive(content: any): void {
     if (this.liveWindow && !this.liveWindow.isDestroyed()) {
-      this.liveWindow.webContents.send('live-content-update', content);
-      console.log('Content sent to live window:', content);
+      this.liveWindow.webContents.send("live-content-update", content);
+      console.log("Content sent to live window:", content);
     } else {
-      console.warn('No active live window to send content to');
+      console.warn("No active live window to send content to");
     }
   }
 
@@ -195,8 +281,8 @@ export class LiveDisplayWindow {
    */
   public clearLiveContent(): void {
     if (this.liveWindow && !this.liveWindow.isDestroyed()) {
-      this.liveWindow.webContents.send('live-content-clear');
-      console.log('Live content cleared');
+      this.liveWindow.webContents.send("live-content-clear");
+      console.log("Live content cleared");
     }
   }
 
@@ -205,8 +291,8 @@ export class LiveDisplayWindow {
    */
   public showBlackScreen(): void {
     if (this.liveWindow && !this.liveWindow.isDestroyed()) {
-      this.liveWindow.webContents.send('live-show-black');
-      console.log('Black screen displayed');
+      this.liveWindow.webContents.send("live-show-black");
+      console.log("Black screen displayed");
     }
   }
 
@@ -215,8 +301,8 @@ export class LiveDisplayWindow {
    */
   public showLogoScreen(): void {
     if (this.liveWindow && !this.liveWindow.isDestroyed()) {
-      this.liveWindow.webContents.send('live-show-logo');
-      console.log('Logo screen displayed');
+      this.liveWindow.webContents.send("live-show-logo");
+      console.log("Logo screen displayed");
     }
   }
 
@@ -226,30 +312,49 @@ export class LiveDisplayWindow {
   private setupWindowEvents(): void {
     if (!this.liveWindow) return;
 
-    this.liveWindow.on('closed', () => {
-      console.log('Live window was closed');
+    this.liveWindow.on("closed", () => {
+      console.log("Live window was closed");
       this.liveWindow = null;
       this.currentDisplayId = null;
     });
 
-    this.liveWindow.on('ready-to-show', () => {
-      console.log('Live window ready to show');
+    this.liveWindow.on("ready-to-show", () => {
+      console.log("Live window ready to show");
+      // Ensure window is positioned correctly when ready
+      if (this.currentDisplayId) {
+        const electronDisplays = screen.getAllDisplays();
+        const targetDisplay = electronDisplays.find(
+          (d) => d.id === this.currentDisplayId
+        );
+
+        if (targetDisplay && this.liveWindow) {
+          this.liveWindow.setBounds({
+            x: targetDisplay.bounds.x,
+            y: targetDisplay.bounds.y,
+            width: targetDisplay.bounds.width,
+            height: targetDisplay.bounds.height,
+          });
+        }
+      }
     });
 
-    this.liveWindow.on('focus', () => {
-      console.log('Live window focused');
+    this.liveWindow.on("focus", () => {
+      console.log("Live window focused");
     });
 
-    this.liveWindow.on('blur', () => {
-      console.log('Live window lost focus');
+    this.liveWindow.on("blur", () => {
+      console.log("Live window lost focus");
     });
 
     // Handle display changes
-    screen.on('display-removed', () => {
+    screen.on("display-removed", () => {
       if (this.currentDisplayId) {
-        const display = displayManager.getDisplayById(this.currentDisplayId);
-        if (!display) {
-          console.warn('Current display was removed, closing live window');
+        const electronDisplays = screen.getAllDisplays();
+        const stillExists = electronDisplays.find(
+          (d) => d.id === this.currentDisplayId
+        );
+        if (!stillExists) {
+          console.warn("Current display was removed, closing live window");
           this.closeLiveWindow();
         }
       }
@@ -262,15 +367,23 @@ export class LiveDisplayWindow {
   public getStatus(): object {
     return {
       hasWindow: !!this.liveWindow && !this.liveWindow.isDestroyed(),
-      isVisible: this.liveWindow && !this.liveWindow.isDestroyed() ? this.liveWindow.isVisible() : false,
+      isVisible:
+        this.liveWindow && !this.liveWindow.isDestroyed()
+          ? this.liveWindow.isVisible()
+          : false,
       currentDisplayId: this.currentDisplayId,
-      bounds: this.liveWindow && !this.liveWindow.isDestroyed() 
-        ? this.liveWindow.getBounds() 
-        : null,
+      bounds:
+        this.liveWindow && !this.liveWindow.isDestroyed()
+          ? this.liveWindow.getBounds()
+          : null,
       isInitialized: this.isInitialized,
+      isFullscreen:
+        this.liveWindow && !this.liveWindow.isDestroyed()
+          ? this.liveWindow.isFullScreen()
+          : false,
     };
   }
 }
 
 // Export singleton instance
-export const liveDisplayWindow = LiveDisplayWindow.getInstance(); 
+export const liveDisplayWindow = LiveDisplayWindow.getInstance();
