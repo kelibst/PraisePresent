@@ -10,6 +10,9 @@ import Scripture from '@/pages/Scripture';
 import LivePresentation from '@/pages/LivePresentation';
 import Settings from '@/pages/Settings';
 
+// Live Display component (no layout)
+import LiveDisplayWindow from '@/components/LiveDisplay/LiveDisplayWindow';
+
 const AppRoutes = () => {
 	return (
 		<Routes>
@@ -19,6 +22,8 @@ const AppRoutes = () => {
 				<Route path="/live" element={<LivePresentation />} />
 				<Route path="/settings" element={<Settings />} />
 			</Route>
+			{/* Live Display Route - No layout for fullscreen display */}
+			<Route path="/live-display" element={<LiveDisplayWindow />} />
 		</Routes>
 	);
 };

@@ -24,54 +24,11 @@ import {
 import { RootState, AppDispatch } from '@/lib/store';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Alert, AlertDescription } from '../ui/Alert';
+import Badge from '../ui/Badge';
 
-// Simple Badge component since it's not available
-const Badge: React.FC<{
-	children: React.ReactNode;
-	variant?: 'default' | 'secondary' | 'outline';
-	className?: string;
-}> = ({ children, variant = 'default', className = '' }) => {
-	const baseClasses = "inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium";
-	const variantClasses = {
-		default: "bg-primary text-primary-foreground",
-		secondary: "bg-secondary text-secondary-foreground",
-		outline: "border border-input bg-background text-foreground"
-	};
 
-	return (
-		<span className={`${baseClasses} ${variantClasses[variant]} ${className}`}>
-			{children}
-		</span>
-	);
-};
 
-// Simple Alert component since it's not available
-const Alert: React.FC<{
-	children: React.ReactNode;
-	variant?: 'default' | 'destructive';
-	className?: string;
-}> = ({ children, variant = 'default', className = '' }) => {
-	const baseClasses = "relative w-full rounded-lg border p-4";
-	const variantClasses = {
-		default: "border-border bg-background",
-		destructive: "border-destructive/50 text-destructive dark:border-destructive [&>svg]:text-destructive"
-	};
-
-	return (
-		<div className={`${baseClasses} ${variantClasses[variant]} ${className}`}>
-			{children}
-		</div>
-	);
-};
-
-const AlertDescription: React.FC<{ children: React.ReactNode; className?: string }> = ({
-	children,
-	className = ''
-}) => (
-	<div className={`text-sm ${className}`}>
-		{children}
-	</div>
-);
 
 // Display Preview Component
 const DisplayPreview: React.FC<{ displayId: number }> = ({ displayId }) => {
@@ -132,6 +89,27 @@ const DisplayPreview: React.FC<{ displayId: number }> = ({ displayId }) => {
 	);
 };
 
+// Live Display Window IPC calls
+const createLiveDisplay = async (displayId: number) => {
+	return window.electronAPI?.invoke('live-display:create', { displayId });
+};
+
+const showLiveDisplay = async () => {
+	return window.electronAPI?.invoke('live-display:show');
+};
+
+const hideLiveDisplay = async () => {
+	return window.electronAPI?.invoke('live-display:hide');
+};
+
+const closeLiveDisplay = async () => {
+	return window.electronAPI?.invoke('live-display:close');
+};
+
+const getLiveDisplayStatus = async () => {
+	return window.electronAPI?.invoke('live-display:getStatus');
+};
+
 const DisplaySettings: React.FC = () => {
 	const dispatch = useDispatch<AppDispatch>();
 
@@ -145,10 +123,75 @@ const DisplaySettings: React.FC = () => {
 	const isLoading = useSelector(selectDisplayLoading);
 	const error = useSelector(selectDisplayError);
 
-	// Load displays on component mount
+	// Live display state
+	const [liveDisplayStatus, setLiveDisplayStatus] = React.useState<any>(null);
+	const [isCreatingLive, setIsCreatingLive] = React.useState(false);
+
+	// Load displays on component mount and check live display status
 	useEffect(() => {
 		dispatch(refreshDisplays());
+		checkLiveDisplayStatus();
 	}, [dispatch]);
+
+	const checkLiveDisplayStatus = async () => {
+		try {
+			const status = await getLiveDisplayStatus();
+			setLiveDisplayStatus(status);
+		} catch (error) {
+			console.error('Failed to get live display status:', error);
+		}
+	};
+
+	const handleCreateLiveDisplay = async () => {
+		if (!selectedLiveDisplay) {
+			alert('Please select a display for live output first');
+			return;
+		}
+
+		setIsCreatingLive(true);
+		try {
+			const result = await createLiveDisplay(selectedLiveDisplay.id);
+			if (result?.success) {
+				await checkLiveDisplayStatus();
+				console.log('Live display created successfully');
+			}
+		} catch (error) {
+			console.error('Failed to create live display:', error);
+			alert('Failed to create live display');
+		} finally {
+			setIsCreatingLive(false);
+		}
+	};
+
+	const handleShowLiveDisplay = async () => {
+		try {
+			await showLiveDisplay();
+			await checkLiveDisplayStatus();
+		} catch (error) {
+			console.error('Failed to show live display:', error);
+			alert('Failed to show live display');
+		}
+	};
+
+	const handleHideLiveDisplay = async () => {
+		try {
+			await hideLiveDisplay();
+			await checkLiveDisplayStatus();
+		} catch (error) {
+			console.error('Failed to hide live display:', error);
+			alert('Failed to hide live display');
+		}
+	};
+
+	const handleCloseLiveDisplay = async () => {
+		try {
+			await closeLiveDisplay();
+			await checkLiveDisplayStatus();
+		} catch (error) {
+			console.error('Failed to close live display:', error);
+			alert('Failed to close live display');
+		}
+	};
 
 	const handleRefreshDisplays = () => {
 		dispatch(refreshDisplays());
