@@ -1,6 +1,6 @@
 import React from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
-import { FiBook, FiMusic, FiImage, FiMonitor, FiList, FiChevronLeft, FiChevronRight, FiSun, FiMoon, FiVideo } from 'react-icons/fi';
+import { FiBook, FiMusic, FiImage, FiMonitor, FiList, FiChevronLeft, FiChevronRight, FiSun, FiMoon, FiVideo, FiSettings } from 'react-icons/fi';
 /* @ts-ignore */
 import logoLight from '../../assets/logo-white.png';
 import { useTheme } from '@/lib/useTheme';
@@ -15,6 +15,7 @@ const menu = [
 	// { label: 'Presentations', icon: <FiMonitor />, path: '/presentations' },
 	// { label: 'Services', icon: <FiList />, path: '/services' },
 	{ label: 'Live Presentation', icon: <FiVideo />, path: '/live' },
+	{ label: 'Settings', icon: <FiSettings />, path: '/settings' },
 ];
 
 const AnimatedSidebar: React.FC<{ open: boolean; onToggle: () => void }> = ({ open, onToggle }) => {

@@ -8,6 +8,7 @@ import AppLayout from '@/components/layout/AppLayout';
 import Homepage from '@/pages/Homepage';
 import Scripture from '@/pages/Scripture';
 import LivePresentation from '@/pages/LivePresentation';
+import Settings from '@/pages/Settings';
 
 const AppRoutes = () => {
 	return (
@@ -16,6 +17,7 @@ const AppRoutes = () => {
 			<Route element={<AppLayout />}>
 				<Route path="/scripture" element={<Scripture />} />
 				<Route path="/live" element={<LivePresentation />} />
+				<Route path="/settings" element={<Settings />} />
 			</Route>
 		</Routes>
 	);

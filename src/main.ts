@@ -2,6 +2,7 @@ import { app, BrowserWindow } from 'electron';
 import path from 'node:path';
 import started from 'electron-squirrel-startup';
 import { initializeDatabaseMain } from './main/database-main';
+import { initializeDisplayMain } from './main/display-main';
 
 // These constants are injected by Electron Forge and Vite
 declare const MAIN_WINDOW_VITE_DEV_SERVER_URL: string | undefined;
@@ -45,6 +46,14 @@ app.on('ready', async () => {
     console.log('Database initialized successfully');
   } catch (error) {
     console.error('Failed to initialize database:', error);
+  }
+  
+  // Initialize display management
+  try {
+    initializeDisplayMain();
+    console.log('Display management initialized successfully');
+  } catch (error) {
+    console.error('Failed to initialize display management:', error);
   }
   
   createWindow();
