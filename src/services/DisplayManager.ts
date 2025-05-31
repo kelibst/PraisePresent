@@ -1,6 +1,6 @@
-import { screen, Display, nativeImage, desktopCapturer } from 'electron';
-import { execSync } from 'child_process';
-import { platform } from 'os';
+import { screen, Display, nativeImage, desktopCapturer } from "electron";
+import { execSync } from "child_process";
+import { platform } from "os";
 
 export interface DisplayInfo {
   id: number;
@@ -22,11 +22,11 @@ export interface DisplayInfo {
   };
   scaleFactor: number;
   rotation: number;
-  touchSupport: 'available' | 'unavailable' | 'unknown';
+  touchSupport: "available" | "unavailable" | "unknown";
   isPrimary: boolean;
   colorSpace?: string;
   colorDepth?: number;
-  accelerometerSupport?: 'available' | 'unavailable' | 'unknown';
+  accelerometerSupport?: "available" | "unavailable" | "unknown";
   nativeInfo?: any; // For debugging native display data
 }
 
@@ -65,13 +65,13 @@ export class DisplayManager {
     if (this.isInitialized) {
       return;
     }
-    
-    console.log('Initializing DisplayManager...');
+
+    console.log("Initializing DisplayManager...");
     this.loadNativeDisplayInfo(); // Load native display info first
     this.refreshDisplays();
     this.setupEventListeners();
     this.isInitialized = true;
-    console.log('DisplayManager initialized successfully');
+    console.log("DisplayManager initialized successfully");
   }
 
   /**
@@ -79,25 +79,28 @@ export class DisplayManager {
    */
   private loadNativeDisplayInfo(): void {
     try {
-      console.log('Loading native display information...');
-      console.log('Platform detected:', platform());
-      console.log('Process platform:', process.platform);
-      
+      console.log("Loading native display information...");
+      console.log("Platform detected:", platform());
+      console.log("Process platform:", process.platform);
+
       // Check for WSL environment
       const isWSL = this.isWSLEnvironment();
-      console.log('WSL environment detected:', isWSL);
-      
-      if (platform() === 'win32' || isWSL) {
+      console.log("WSL environment detected:", isWSL);
+
+      if (platform() === "win32" || isWSL) {
         this.loadWindowsDisplayInfo();
-      } else if (platform() === 'darwin') {
+      } else if (platform() === "darwin") {
         this.loadMacDisplayInfo();
       } else {
         this.loadLinuxDisplayInfo();
       }
-      
-      console.log('Native display info loaded:', Array.from(this.nativeDisplays.entries()));
+
+      console.log(
+        "Native display info loaded:",
+        Array.from(this.nativeDisplays.entries())
+      );
     } catch (error) {
-      console.warn('Failed to load native display info:', error);
+      console.warn("Failed to load native display info:", error);
     }
   }
 
@@ -107,16 +110,21 @@ export class DisplayManager {
   private isWSLEnvironment(): boolean {
     try {
       // Check for WSL indicators
-      const fs = require('fs');
-      if (fs.existsSync('/proc/version')) {
-        const version = fs.readFileSync('/proc/version', 'utf8');
-        return version.toLowerCase().includes('microsoft') || version.toLowerCase().includes('wsl');
+      const fs = require("fs");
+      if (fs.existsSync("/proc/version")) {
+        const version = fs.readFileSync("/proc/version", "utf8");
+        return (
+          version.toLowerCase().includes("microsoft") ||
+          version.toLowerCase().includes("wsl")
+        );
       }
-      
+
       // Alternative checks
-      return !!(process.env.WSL_DISTRO_NAME || 
-               process.env.WSLENV ||
-               (process.platform === 'linux' && process.env.PATH?.includes('/mnt/c')));
+      return !!(
+        process.env.WSL_DISTRO_NAME ||
+        process.env.WSLENV ||
+        (process.platform === "linux" && process.env.PATH?.includes("/mnt/c"))
+      );
     } catch (error) {
       return false;
     }
@@ -127,12 +135,12 @@ export class DisplayManager {
    */
   private loadWindowsDisplayInfo(): void {
     try {
-      console.log('Attempting to get Windows display info via PowerShell...');
-      
+      console.log("Attempting to get Windows display info via PowerShell...");
+
       // Simplified PowerShell command that should work in WSL too
       const powershellCommand = `Get-WmiObject -Class Win32_DesktopMonitor | Select-Object Name, MonitorManufacturer, MonitorType | ConvertTo-Json`;
-      
-      let command = '';
+
+      let command = "";
       if (this.isWSLEnvironment()) {
         // WSL2 - call PowerShell through Windows
         command = `powershell.exe -Command "${powershellCommand}"`;
@@ -140,38 +148,37 @@ export class DisplayManager {
         // Native Windows
         command = `powershell -Command "${powershellCommand}"`;
       }
-      
-      console.log('Executing command:', command);
-      
-      const result = execSync(command, { 
-        encoding: 'utf8',
-        timeout: 15000 
+
+      console.log("Executing command:", command);
+
+      const result = execSync(command, {
+        encoding: "utf8",
+        timeout: 15000,
       });
-      
-      console.log('PowerShell result:', result);
-      
+
+      console.log("PowerShell result:", result);
+
       if (result.trim()) {
         const monitors = JSON.parse(result);
         const monitorArray = Array.isArray(monitors) ? monitors : [monitors];
-        
+
         monitorArray.forEach((monitor, index) => {
           console.log(`Processing monitor ${index}:`, monitor);
           if (monitor) {
             const key = `monitor_${index}`;
             this.nativeDisplays.set(key, {
-              manufacturer: monitor.MonitorManufacturer || 'Unknown',
-              model: monitor.MonitorType || monitor.Name || 'Unknown',
-              name: monitor.Name || `Monitor ${index + 1}`
+              manufacturer: monitor.MonitorManufacturer || "Unknown",
+              model: monitor.MonitorType || monitor.Name || "Unknown",
+              name: monitor.Name || `Monitor ${index + 1}`,
             });
           }
         });
       }
-      
+
       // Also try to get PnP device info for more details
       this.loadWindowsPnPDevices();
-      
     } catch (error) {
-      console.warn('Failed to get Windows display info via PowerShell:', error);
+      console.warn("Failed to get Windows display info via PowerShell:", error);
       this.loadWindowsDisplayInfoFallback();
     }
   }
@@ -181,42 +188,41 @@ export class DisplayManager {
    */
   private loadWindowsPnPDevices(): void {
     try {
-      console.log('Getting PnP device information...');
-      
+      console.log("Getting PnP device information...");
+
       const pnpCommand = `Get-PnpDevice -Class Monitor | Select-Object FriendlyName, Manufacturer, Status | ConvertTo-Json`;
-      
-      let command = '';
+
+      let command = "";
       if (this.isWSLEnvironment()) {
         command = `powershell.exe -Command "${pnpCommand}"`;
       } else {
         command = `powershell -Command "${pnpCommand}"`;
       }
-      
-      const result = execSync(command, { 
-        encoding: 'utf8',
-        timeout: 10000 
+
+      const result = execSync(command, {
+        encoding: "utf8",
+        timeout: 10000,
       });
-      
-      console.log('PnP result:', result);
-      
+
+      console.log("PnP result:", result);
+
       if (result.trim()) {
         const devices = JSON.parse(result);
         const deviceArray = Array.isArray(devices) ? devices : [devices];
-        
+
         deviceArray.forEach((device, index) => {
-          if (device && device.Status === 'OK') {
+          if (device && device.Status === "OK") {
             const key = `pnp_monitor_${index}`;
             this.nativeDisplays.set(key, {
-              manufacturer: device.Manufacturer || 'Unknown',
-              model: device.FriendlyName || 'Unknown',
-              name: device.FriendlyName
+              manufacturer: device.Manufacturer || "Unknown",
+              model: device.FriendlyName || "Unknown",
+              name: device.FriendlyName,
             });
           }
         });
       }
-      
     } catch (error) {
-      console.warn('Failed to get PnP device info:', error);
+      console.warn("Failed to get PnP device info:", error);
     }
   }
 
@@ -225,36 +231,40 @@ export class DisplayManager {
    */
   private loadWindowsDisplayInfoFallback(): void {
     try {
-      console.log('Attempting WMIC fallback...');
-      
-      let command = '';
+      console.log("Attempting WMIC fallback...");
+
+      let command = "";
       if (this.isWSLEnvironment()) {
-        command = 'wmic.exe desktopmonitor get name,monitormanufacturer,monitortype /format:csv';
+        command =
+          "wmic.exe desktopmonitor get name,monitormanufacturer,monitortype /format:csv";
       } else {
-        command = 'wmic desktopmonitor get name,monitormanufacturer,monitortype /format:csv';
+        command =
+          "wmic desktopmonitor get name,monitormanufacturer,monitortype /format:csv";
       }
-      
-      const wmicResult = execSync(command, { 
-        encoding: 'utf8',
-        timeout: 5000 
+
+      const wmicResult = execSync(command, {
+        encoding: "utf8",
+        timeout: 5000,
       });
-      
-      console.log('WMIC result:', wmicResult);
-      
-      const lines = wmicResult.split('\n').filter(line => line.trim() && !line.startsWith('Node'));
+
+      console.log("WMIC result:", wmicResult);
+
+      const lines = wmicResult
+        .split("\n")
+        .filter((line) => line.trim() && !line.startsWith("Node"));
       lines.forEach((line, index) => {
-        const parts = line.split(',').map(p => p.trim());
+        const parts = line.split(",").map((p) => p.trim());
         if (parts.length >= 3) {
           const key = `wmic_monitor_${index}`;
           this.nativeDisplays.set(key, {
-            manufacturer: parts[1] || 'Unknown',
-            model: parts[2] || parts[3] || 'Unknown',
-            name: parts[3] || `Monitor ${index + 1}`
+            manufacturer: parts[1] || "Unknown",
+            model: parts[2] || parts[3] || "Unknown",
+            name: parts[3] || `Monitor ${index + 1}`,
           });
         }
       });
     } catch (error) {
-      console.warn('WMIC fallback also failed:', error);
+      console.warn("WMIC fallback also failed:", error);
     }
   }
 
@@ -263,25 +273,26 @@ export class DisplayManager {
    */
   private loadMacDisplayInfo(): void {
     try {
-      const result = execSync('system_profiler SPDisplaysDataType -json', { 
-        encoding: 'utf8',
-        timeout: 10000 
+      const result = execSync("system_profiler SPDisplaysDataType -json", {
+        encoding: "utf8",
+        timeout: 10000,
       });
-      
+
       const data = JSON.parse(result);
       const displays = data.SPDisplaysDataType || [];
-      
+
       displays.forEach((display: any, index: number) => {
         const key = `mac_display_${index}`;
         this.nativeDisplays.set(key, {
-          manufacturer: display._name?.split(' ')[0] || 'Unknown',
-          model: display._name || 'Unknown',
+          manufacturer: display._name?.split(" ")[0] || "Unknown",
+          model: display._name || "Unknown",
           name: display._name,
-          deviceString: display.spdisplays_display_vendor || display.spdisplays_vendor
+          deviceString:
+            display.spdisplays_display_vendor || display.spdisplays_vendor,
         });
       });
     } catch (error) {
-      console.warn('Failed to get macOS display info:', error);
+      console.warn("Failed to get macOS display info:", error);
     }
   }
 
@@ -291,46 +302,48 @@ export class DisplayManager {
   private loadLinuxDisplayInfo(): void {
     try {
       // Try xrandr first
-      const xrandrResult = execSync('xrandr --verbose', { 
-        encoding: 'utf8',
-        timeout: 5000 
+      const xrandrResult = execSync("xrandr --verbose", {
+        encoding: "utf8",
+        timeout: 5000,
       });
-      
-      const lines = xrandrResult.split('\n');
+
+      const lines = xrandrResult.split("\n");
       let currentDisplay: any = {};
       let displayIndex = 0;
-      
-      lines.forEach(line => {
+
+      lines.forEach((line) => {
         if (line.match(/^\w+.*connected/)) {
           if (currentDisplay.name) {
             const key = `linux_display_${displayIndex++}`;
             this.nativeDisplays.set(key, currentDisplay);
           }
-          currentDisplay = { name: line.split(' ')[0] };
-        } else if (line.includes('Brightness:')) {
-          currentDisplay.brightness = line.split(':')[1].trim();
-        } else if (line.includes('EDID:')) {
+          currentDisplay = { name: line.split(" ")[0] };
+        } else if (line.includes("Brightness:")) {
+          currentDisplay.brightness = line.split(":")[1].trim();
+        } else if (line.includes("EDID:")) {
           // EDID info follows, but it's complex to parse
         }
       });
-      
+
       if (currentDisplay.name) {
         const key = `linux_display_${displayIndex}`;
         this.nativeDisplays.set(key, currentDisplay);
       }
-      
     } catch (error) {
-      console.warn('Failed to get Linux display info via xrandr:', error);
-      
+      console.warn("Failed to get Linux display info via xrandr:", error);
+
       // Try alternative methods
       try {
-        const lsResult = execSync('ls /sys/class/drm/card*/edid 2>/dev/null || true', { 
-          encoding: 'utf8',
-          timeout: 3000 
-        });
-        console.log('Available EDID files:', lsResult);
+        const lsResult = execSync(
+          "ls /sys/class/drm/card*/edid 2>/dev/null || true",
+          {
+            encoding: "utf8",
+            timeout: 3000,
+          }
+        );
+        console.log("Available EDID files:", lsResult);
       } catch (err) {
-        console.warn('No EDID files found');
+        console.warn("No EDID files found");
       }
     }
   }
@@ -338,40 +351,59 @@ export class DisplayManager {
   /**
    * Match native display info with Electron display
    */
-  private matchNativeDisplay(electronDisplay: Display, index: number): NativeDisplayInfo | null {
+  private matchNativeDisplay(
+    electronDisplay: Display,
+    index: number
+  ): NativeDisplayInfo | null {
     // Try to match by resolution, position, or index
     const resolution = `${electronDisplay.bounds.width}x${electronDisplay.bounds.height}`;
-    
+
     // First, try to find by index from different sources (order of preference)
-    const byIndex = this.nativeDisplays.get(`pnp_monitor_${index}`) ||    // PnP devices (most reliable)
-                    this.nativeDisplays.get(`monitor_${index}`) ||        // WMI Win32_DesktopMonitor
-                    this.nativeDisplays.get(`mac_display_${index}`) ||
-                    this.nativeDisplays.get(`linux_display_${index}`) ||
-                    this.nativeDisplays.get(`wmic_monitor_${index}`);
-    
-    if (byIndex && byIndex.manufacturer !== 'Unknown') {
-      console.log(`Matched display ${electronDisplay.id} (index ${index}) with native info:`, byIndex);
+    const byIndex =
+      this.nativeDisplays.get(`pnp_monitor_${index}`) || // PnP devices (most reliable)
+      this.nativeDisplays.get(`monitor_${index}`) || // WMI Win32_DesktopMonitor
+      this.nativeDisplays.get(`mac_display_${index}`) ||
+      this.nativeDisplays.get(`linux_display_${index}`) ||
+      this.nativeDisplays.get(`wmic_monitor_${index}`);
+
+    if (byIndex && byIndex.manufacturer !== "Unknown") {
+      console.log(
+        `Matched display ${electronDisplay.id} (index ${index}) with native info:`,
+        byIndex
+      );
       return byIndex;
     }
-    
+
     // If we have only as many native displays as Electron displays, match by order
     const nativeDisplaysArray = Array.from(this.nativeDisplays.values());
-    console.log(`Available native displays: ${nativeDisplaysArray.length}, electron displays: need index ${index}`);
-    
+    console.log(
+      `Available native displays: ${nativeDisplaysArray.length}, electron displays: need index ${index}`
+    );
+
     if (nativeDisplaysArray.length > 0 && index < nativeDisplaysArray.length) {
       // Filter out 'Unknown' entries and prefer those with real manufacturer info
-      const validDisplays = nativeDisplaysArray.filter(d => d.manufacturer && d.manufacturer !== 'Unknown');
+      const validDisplays = nativeDisplaysArray.filter(
+        (d) => d.manufacturer && d.manufacturer !== "Unknown"
+      );
       if (validDisplays.length > index) {
-        console.log(`Matched display ${electronDisplay.id} with valid native info at index ${index}:`, validDisplays[index]);
+        console.log(
+          `Matched display ${electronDisplay.id} with valid native info at index ${index}:`,
+          validDisplays[index]
+        );
         return validDisplays[index];
       }
-      
+
       // Fallback to any available info
-      console.log(`Fallback match for display ${electronDisplay.id} at index ${index}:`, nativeDisplaysArray[index]);
+      console.log(
+        `Fallback match for display ${electronDisplay.id} at index ${index}:`,
+        nativeDisplaysArray[index]
+      );
       return nativeDisplaysArray[index];
     }
-    
-    console.log(`No native display info found for display ${electronDisplay.id} (index ${index})`);
+
+    console.log(
+      `No native display info found for display ${electronDisplay.id} (index ${index})`
+    );
     return null;
   }
 
@@ -403,7 +435,7 @@ export class DisplayManager {
    * Get display by ID
    */
   public getDisplayById(id: number): DisplayInfo | null {
-    return this.displays.find(display => display.id === id) || null;
+    return this.displays.find((display) => display.id === id) || null;
   }
 
   /**
@@ -426,8 +458,8 @@ export class DisplayManager {
   public async captureDisplay(displayId: number): Promise<string | null> {
     try {
       const sources = await desktopCapturer.getSources({
-        types: ['screen'],
-        thumbnailSize: { width: 320, height: 180 }
+        types: ["screen"],
+        thumbnailSize: { width: 320, height: 180 },
       });
 
       // Find the source that matches our display
@@ -438,15 +470,17 @@ export class DisplayManager {
 
       // For now, return the first screen source as a fallback
       // In a more sophisticated implementation, you'd match by display bounds
-      const source = sources.find(source => source.display_id === displayId.toString()) || sources[0];
-      
+      const source =
+        sources.find((source) => source.display_id === displayId.toString()) ||
+        sources[0];
+
       if (source && source.thumbnail) {
         return source.thumbnail.toDataURL();
       }
-      
+
       return null;
     } catch (error) {
-      console.error('Failed to capture display:', error);
+      console.error("Failed to capture display:", error);
       return null;
     }
   }
@@ -456,24 +490,26 @@ export class DisplayManager {
    */
   private setupEventListeners(): void {
     if (!this.isInitialized) {
-      console.warn('DisplayManager not initialized, skipping event listeners setup');
+      console.warn(
+        "DisplayManager not initialized, skipping event listeners setup"
+      );
       return;
     }
 
-    screen.on('display-added', () => {
-      console.log('Display added');
+    screen.on("display-added", () => {
+      console.log("Display added");
       this.refreshDisplays();
       this.notifyDisplayChange();
     });
 
-    screen.on('display-removed', () => {
-      console.log('Display removed');
+    screen.on("display-removed", () => {
+      console.log("Display removed");
       this.refreshDisplays();
       this.notifyDisplayChange();
     });
 
-    screen.on('display-metrics-changed', () => {
-      console.log('Display metrics changed');
+    screen.on("display-metrics-changed", () => {
+      console.log("Display metrics changed");
       this.refreshDisplays();
       this.notifyDisplayChange();
     });
@@ -482,22 +518,28 @@ export class DisplayManager {
   /**
    * Extract manufacturer and model from display label with native info enhancement
    */
-  private parseDisplayInfo(label: string, nativeInfo?: NativeDisplayInfo): { manufacturer?: string; model?: string; friendlyName: string } {
+  private parseDisplayInfo(
+    label: string,
+    nativeInfo?: NativeDisplayInfo
+  ): { manufacturer?: string; model?: string; friendlyName: string } {
     // If we have native info, use it first
-    if (nativeInfo?.manufacturer && nativeInfo?.manufacturer !== 'Unknown') {
+    if (nativeInfo?.manufacturer && nativeInfo?.manufacturer !== "Unknown") {
       const manufacturer = nativeInfo.manufacturer;
-      const model = nativeInfo.model && nativeInfo.model !== 'Unknown' ? nativeInfo.model : nativeInfo.name || '';
-      
+      const model =
+        nativeInfo.model && nativeInfo.model !== "Unknown"
+          ? nativeInfo.model
+          : nativeInfo.name || "";
+
       if (model) {
         return {
           manufacturer,
           model,
-          friendlyName: `${manufacturer} ${model}`.trim()
+          friendlyName: `${manufacturer} ${model}`.trim(),
         };
       } else {
         return {
           manufacturer,
-          friendlyName: `${manufacturer} Monitor`
+          friendlyName: `${manufacturer} Monitor`,
         };
       }
     }
@@ -519,42 +561,52 @@ export class DisplayManager {
         return {
           manufacturer: manufacturer.trim(),
           model: model.trim(),
-          friendlyName: `${manufacturer.trim()} ${model.trim()}`
+          friendlyName: `${manufacturer.trim()} ${model.trim()}`,
         };
       }
     }
 
     // Enhanced generic display names
-    if (label.toLowerCase().includes('display')) {
+    if (label.toLowerCase().includes("display")) {
       const displayNumber = label.match(/\d+/)?.[0];
       return {
-        friendlyName: displayNumber ? `Monitor ${displayNumber}` : 'External Monitor'
+        friendlyName: displayNumber
+          ? `Monitor ${displayNumber}`
+          : "External Monitor",
       };
     }
 
-    return { friendlyName: label || 'Unknown Display' };
+    return { friendlyName: label || "Unknown Display" };
   }
 
   /**
    * Generate a friendly display name with position info
    */
   private generateDisplayName(display: DisplayInfo, index: number): string {
-    const { manufacturer, model, friendlyName } = this.parseDisplayInfo(display.label, display.nativeInfo);
-    
+    const { manufacturer, model, friendlyName } = this.parseDisplayInfo(
+      display.label,
+      display.nativeInfo
+    );
+
     if (manufacturer && model) {
-      return display.isPrimary ? `${friendlyName} (Primary)` : `${friendlyName} (Secondary)`;
+      return display.isPrimary
+        ? `${friendlyName} (Primary)`
+        : `${friendlyName} (Secondary)`;
     }
 
     // Fallback naming based on position and characteristics
     const resolution = `${display.bounds.width}×${display.bounds.height}`;
-    const position = display.isPrimary ? 'Primary' : 'Secondary';
-    
+    const position = display.isPrimary ? "Primary" : "Secondary";
+
     // Use native info if available for better names
-    if (display.nativeInfo?.manufacturer && display.nativeInfo.manufacturer !== 'Unknown') {
+    if (
+      display.nativeInfo?.manufacturer &&
+      display.nativeInfo.manufacturer !== "Unknown"
+    ) {
       const manufacturerName = display.nativeInfo.manufacturer;
       return `${manufacturerName} ${position} Monitor (${resolution})`;
     }
-    
+
     if (display.bounds.width >= 2560) {
       return `${position} Monitor (4K ${resolution})`;
     } else if (display.bounds.width >= 1920) {
@@ -569,14 +621,14 @@ export class DisplayManager {
    */
   private refreshDisplays(): void {
     if (!this.isInitialized) {
-      console.warn('DisplayManager not initialized, cannot refresh displays');
+      console.warn("DisplayManager not initialized, cannot refresh displays");
       return;
     }
 
     try {
       const electronDisplays = screen.getAllDisplays();
       const primaryElectronDisplay = screen.getPrimaryDisplay();
-      console.log('Raw Electron displays:', electronDisplays);
+      // console.log('Raw Electron displays:', electronDisplays);
 
       this.displays = electronDisplays.map((display, index) => {
         const nativeInfo = this.matchNativeDisplay(display, index);
@@ -585,27 +637,40 @@ export class DisplayManager {
         displayInfo.friendlyName = this.generateDisplayName(displayInfo, index);
         return displayInfo;
       });
-      
-      const primaryNativeInfo = this.matchNativeDisplay(primaryElectronDisplay, 0);
-      this.primaryDisplay = this.convertElectronDisplay(primaryElectronDisplay, primaryNativeInfo);
-      if (this.primaryDisplay) {
-        this.primaryDisplay.friendlyName = this.generateDisplayName(this.primaryDisplay, 0);
-      }
-      
-      this.secondaryDisplay = this.displays.find(display => !display.isPrimary) || null;
 
-      console.log(`Found ${this.displays.length} display(s):`, this.displays.map(d => ({
-        id: d.id,
-        label: d.label,
-        friendlyName: d.friendlyName,
-        manufacturer: d.manufacturer,
-        model: d.model,
-        bounds: d.bounds,
-        isPrimary: d.isPrimary,
-        nativeInfo: d.nativeInfo
-      })));
+      const primaryNativeInfo = this.matchNativeDisplay(
+        primaryElectronDisplay,
+        0
+      );
+      this.primaryDisplay = this.convertElectronDisplay(
+        primaryElectronDisplay,
+        primaryNativeInfo
+      );
+      if (this.primaryDisplay) {
+        this.primaryDisplay.friendlyName = this.generateDisplayName(
+          this.primaryDisplay,
+          0
+        );
+      }
+
+      this.secondaryDisplay =
+        this.displays.find((display) => !display.isPrimary) || null;
+
+      console.log(
+        `Found ${this.displays.length} display(s):`,
+        this.displays.map((d) => ({
+          id: d.id,
+          label: d.label,
+          friendlyName: d.friendlyName,
+          manufacturer: d.manufacturer,
+          model: d.model,
+          bounds: d.bounds,
+          isPrimary: d.isPrimary,
+          nativeInfo: d.nativeInfo,
+        }))
+      );
     } catch (error) {
-      console.error('Error refreshing displays:', error);
+      console.error("Error refreshing displays:", error);
       this.displays = [];
       this.primaryDisplay = null;
       this.secondaryDisplay = null;
@@ -615,9 +680,15 @@ export class DisplayManager {
   /**
    * Convert Electron Display to DisplayInfo with native info integration
    */
-  private convertElectronDisplay(display: Display, nativeInfo?: NativeDisplayInfo | null): DisplayInfo {
-    const { manufacturer, model, friendlyName } = this.parseDisplayInfo(display.label, nativeInfo || undefined);
-    
+  private convertElectronDisplay(
+    display: Display,
+    nativeInfo?: NativeDisplayInfo | null
+  ): DisplayInfo {
+    const { manufacturer, model, friendlyName } = this.parseDisplayInfo(
+      display.label,
+      nativeInfo || undefined
+    );
+
     return {
       id: display.id,
       label: display.label || `Display ${display.id}`,
@@ -686,4 +757,4 @@ export class DisplayManager {
 }
 
 // Export a singleton instance but don't initialize it yet
-export const displayManager = DisplayManager.getInstance(); 
+export const displayManager = DisplayManager.getInstance();
