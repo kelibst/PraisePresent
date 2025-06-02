@@ -4,6 +4,7 @@ import bibleReducer from "./bibleSlice";
 import presentationReducer from "./presentationSlice";
 import displayReducer from "./displaySlice";
 import settingsReducer from "./settingsSlice";
+import liveDisplayReducer from "./liveDisplaySlice";
 
 export const store = configureStore({
   reducer: {
@@ -12,6 +13,7 @@ export const store = configureStore({
     presentation: presentationReducer,
     display: displayReducer,
     settings: settingsReducer,
+    liveDisplay: liveDisplayReducer,
   },
 });
 

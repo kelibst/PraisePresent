@@ -1,18 +1,33 @@
+/// <reference path="../global.d.ts" />
 import React, { useEffect, useState } from "react";
-import { useSelector } from "react-redux";
+import { useSelector, useDispatch } from "react-redux";
 import { motion, AnimatePresence } from "framer-motion";
-import { RootState } from "@/lib/store";
+import { RootState, AppDispatch } from "@/lib/store";
 import { selectSettings } from "@/lib/settingsSlice";
+import { setPreviewItem } from "@/lib/presentationSlice";
 
 /* @ts-ignore */
 import logoDark from "../assets/logo-dark.png";
 /* @ts-ignore */
 import logoLight from "../assets/logo-white.png";
 
+// Define types for live content
+interface LiveContent {
+  type: 'default' | 'scripture' | 'song' | 'announcement' | 'black' | 'logo';
+  title?: string;
+  content?: string;
+  subtitle?: string;
+  metadata?: any;
+}
+
 const LiveDisplay: React.FC = () => {
+  const dispatch = useDispatch<AppDispatch>();
   const settings = useSelector(selectSettings);
   const { liveItem } = useSelector((state: RootState) => state.presentation);
   const [currentTime, setCurrentTime] = useState(new Date());
+  const [liveContent, setLiveContent] = useState<LiveContent>({ type: 'default' });
+  const [showBlack, setShowBlack] = useState(false);
+  const [showLogo, setShowLogo] = useState(false);
 
   // Update time every second
   useEffect(() => {
@@ -22,6 +37,75 @@ const LiveDisplay: React.FC = () => {
 
     return () => clearInterval(timer);
   }, []);
+
+  // Listen for IPC messages from main process
+  useEffect(() => {
+    console.log("Live display component mounted and ready for content");
+
+    // Create default content and set it as preview
+    const defaultContent = {
+      type: 'default' as const,
+      title: 'Welcome to Worship',
+      content: 'Preparing for an amazing time of praise and worship',
+      subtitle: 'Your Church Name'
+    };
+
+    // Set the default content as the preview item so it shows in LivePresentation
+    dispatch(setPreviewItem({
+      id: 'default-live-display',
+      type: 'slide',
+      title: defaultContent.title,
+      content: defaultContent.content,
+      reference: defaultContent.subtitle
+    }));
+
+    // Set up IPC listeners for live display control
+    const handleContentUpdate = (event: any, content: LiveContent) => {
+      console.log("Received live content update:", content);
+      setLiveContent(content);
+      setShowBlack(false);
+      setShowLogo(false);
+    };
+
+    const handleContentClear = () => {
+      console.log("Clearing live content, returning to default");
+      setLiveContent({ type: 'default' });
+      setShowBlack(false);
+      setShowLogo(false);
+    };
+
+    const handleShowBlack = () => {
+      console.log("Showing black screen");
+      setShowBlack(true);
+      setShowLogo(false);
+    };
+
+    const handleShowLogo = () => {
+      console.log("Showing logo screen");
+      setShowLogo(true);
+      setShowBlack(false);
+    };
+
+    // TODO: Fix TypeScript types for IPC listeners
+    // Register IPC listeners
+    // if (window.electronAPI) {
+    //   window.electronAPI.on('live-content-update', handleContentUpdate);
+    //   window.electronAPI.on('live-content-clear', handleContentClear);
+    //   window.electronAPI.on('live-show-black', handleShowBlack);
+    //   window.electronAPI.on('live-show-logo', handleShowLogo);
+    // }
+
+    return () => {
+      console.log("Live display component unmounting");
+      // Clean up IPC listeners
+      // if (window.electronAPI) {
+      //   window.electronAPI.removeAllListeners('live-content-update');
+      //   window.electronAPI.removeAllListeners('live-content-clear');
+      //   window.electronAPI.removeAllListeners('live-show-black');
+      //   window.electronAPI.removeAllListeners('live-show-logo');
+      // }
+    };
+  }, [dispatch]);
 
   // Animation variants
   const containerVariants = {
@@ -72,19 +156,6 @@ const LiveDisplay: React.FC = () => {
     },
   };
 
-  // Listen for IPC messages from main process
-  useEffect(() => {
-    // Live display is ready to receive content
-    console.log("Live display component mounted and ready for content");
-
-    // Content will be managed via Redux store
-    // Main process will update the store, and this component will react to changes
-
-    return () => {
-      console.log("Live display component unmounting");
-    };
-  }, []);
-
   // Determine theme based on settings
   const isDark =
     settings.theme === "dark" ||
@@ -110,31 +181,135 @@ const LiveDisplay: React.FC = () => {
     });
   };
 
-  // If there's live content, show it; otherwise show intro
-  if (liveItem) {
+  // Black screen
+  if (showBlack) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-black text-white p-8">
-        <div className="max-w-4xl text-center">
-          {/* Live content will be rendered here */}
-          <div className="text-6xl font-bold mb-8">{liveItem.title}</div>
-          {liveItem.content && (
-            <div className="text-3xl leading-relaxed whitespace-pre-line">
-              {liveItem.content}
-            </div>
-          )}
-        </div>
+      <div className="flex items-center justify-center min-h-screen bg-black">
+        {/* Completely black screen for emergencies */}
       </div>
     );
   }
 
-  // Default intro screen
+  // Logo screen
+  if (showLogo) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-black">
+        <motion.img
+          src={logoLight}
+          alt="Church Logo"
+          className="w-96 h-96 object-contain"
+          initial={{ opacity: 0, scale: 0.5 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.5 }}
+        />
+      </div>
+    );
+  }
+
+  // Live content from presentation system
+  if (liveItem && liveContent.type !== 'default') {
+    return (
+      <AnimatePresence mode="wait">
+        <motion.div
+          key="live-content"
+          className="flex items-center justify-center min-h-screen bg-gradient-to-b from-gray-900 to-black text-white p-8"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.5 }}
+        >
+          <div className="max-w-5xl text-center">
+            {/* Live content will be rendered here */}
+            <motion.div
+              className="text-7xl font-bold mb-8 leading-tight"
+              initial={{ y: 50, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              transition={{ delay: 0.2, duration: 0.8 }}
+            >
+              {liveItem.title}
+            </motion.div>
+            {liveItem.content && (
+              <motion.div
+                className="text-4xl leading-relaxed whitespace-pre-line"
+                initial={{ y: 50, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                transition={{ delay: 0.4, duration: 0.8 }}
+              >
+                {liveItem.content}
+              </motion.div>
+            )}
+            {liveItem.reference && (
+              <motion.div
+                className="text-2xl opacity-75 mt-8"
+                initial={{ y: 50, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                transition={{ delay: 0.6, duration: 0.8 }}
+              >
+                - {liveItem.reference}
+              </motion.div>
+            )}
+          </div>
+        </motion.div>
+      </AnimatePresence>
+    );
+  }
+
+  // Custom live content
+  if (liveContent.type !== 'default') {
+    return (
+      <AnimatePresence mode="wait">
+        <motion.div
+          key="custom-content"
+          className="flex items-center justify-center min-h-screen bg-gradient-to-b from-gray-900 to-black text-white p-8"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.5 }}
+        >
+          <div className="max-w-5xl text-center">
+            {liveContent.title && (
+              <motion.div
+                className="text-7xl font-bold mb-8 leading-tight"
+                initial={{ y: 50, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                transition={{ delay: 0.2, duration: 0.8 }}
+              >
+                {liveContent.title}
+              </motion.div>
+            )}
+            {liveContent.content && (
+              <motion.div
+                className="text-4xl leading-relaxed whitespace-pre-line"
+                initial={{ y: 50, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                transition={{ delay: 0.4, duration: 0.8 }}
+              >
+                {liveContent.content}
+              </motion.div>
+            )}
+            {liveContent.subtitle && (
+              <motion.div
+                className="text-2xl opacity-75 mt-8"
+                initial={{ y: 50, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                transition={{ delay: 0.6, duration: 0.8 }}
+              >
+                {liveContent.subtitle}
+              </motion.div>
+            )}
+          </div>
+        </motion.div>
+      </AnimatePresence>
+    );
+  }
+
+  // Default intro screen (similar to Homepage)
   return (
     <motion.div
-      className={`flex min-h-screen ${
-        isDark
-          ? "bg-gradient-to-b from-blue-900 to-purple-900"
-          : "bg-gradient-to-b from-blue-500 to-purple-500"
-      } text-white relative overflow-hidden`}
+      className={`flex min-h-screen ${isDark
+        ? "bg-gradient-to-b from-blue-900 to-purple-900"
+        : "bg-gradient-to-b from-blue-500 to-purple-500"
+        } text-white relative overflow-hidden`}
       initial="hidden"
       animate="visible"
       variants={containerVariants}

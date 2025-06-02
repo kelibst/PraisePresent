@@ -1,5 +1,10 @@
 import { BrowserWindow, screen } from "electron";
 import { displayManager } from "../services/DisplayManager";
+import path from "path";
+
+// These constants are injected by Electron Forge and Vite
+declare const MAIN_WINDOW_VITE_DEV_SERVER_URL: string | undefined;
+declare const MAIN_WINDOW_VITE_NAME: string;
 
 export interface LiveWindowConfig {
   displayId: number;
@@ -114,14 +119,33 @@ export class LiveDisplayWindow {
       }
 
       // Load the live display renderer
-      if (process.env.VITE_DEV_SERVER_URL) {
-        await this.liveWindow.loadURL(
-          `${process.env.VITE_DEV_SERVER_URL}#/live-display`
-        );
+      const devServerUrl = MAIN_WINDOW_VITE_DEV_SERVER_URL;
+      console.log("Development server URL:", devServerUrl);
+      console.log("Environment NODE_ENV:", process.env.NODE_ENV);
+      
+      if (devServerUrl) {
+        const liveDisplayUrl = `${devServerUrl}/#/live-display`;
+        console.log("Loading live display from dev server:", liveDisplayUrl);
+        await this.liveWindow.loadURL(liveDisplayUrl);
       } else {
-        await this.liveWindow.loadFile("dist/renderer/index.html", {
-          hash: "live-display",
-        });
+        console.log("Loading live display from production build");
+        // In production, use the proper build path
+        const indexPath = path.join(__dirname, `../renderer/${MAIN_WINDOW_VITE_NAME}/index.html`);
+        console.log("Attempting to load from:", indexPath);
+        
+        try {
+          await this.liveWindow.loadFile(indexPath, {
+            hash: "/live-display",
+          });
+        } catch (error) {
+          console.error("Failed to load from file, trying alternative approach:", error);
+          // Alternative: Load the main app and navigate
+          await this.liveWindow.loadFile(indexPath);
+          // Then navigate to the live display route
+          await this.liveWindow.webContents.executeJavaScript(`
+            window.location.hash = '/live-display';
+          `);
+        }
       }
 
       // Set up window event handlers

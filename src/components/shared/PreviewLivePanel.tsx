@@ -122,16 +122,51 @@ const PreviewLivePanel: React.FC<PreviewLivePanelProps> = ({
                     </div>
                   )}
                 </div>
+              ) : previewItem ? (
+                <div className="space-y-4">
+                  {/* Non-scripture content display */}
+                  <div className="bg-blue-50 dark:bg-blue-900/30 rounded-lg p-6">
+                    <div className="text-sm font-medium text-blue-600 dark:text-blue-400 mb-3">
+                      {previewItem.type.toUpperCase()}
+                    </div>
+                    <div className="text-xl font-bold text-gray-900 dark:text-white mb-3">
+                      {previewItem.title}
+                    </div>
+                    {previewItem.content && (
+                      <div className="text-lg text-gray-900 dark:text-white leading-relaxed mb-3">
+                        {previewItem.content}
+                      </div>
+                    )}
+                    {previewItem.reference && (
+                      <div className="text-xs text-gray-500 dark:text-gray-400">
+                        {previewItem.reference}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Action Buttons - only show if not in live presentation controls */}
+                  {!showControls && (
+                    <div className="space-y-2">
+                      <button
+                        onClick={sendToLive}
+                        className="w-full px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 font-medium flex items-center justify-center gap-2"
+                      >
+                        <FiMonitor size={16} />
+                        Send to Live
+                      </button>
+                    </div>
+                  )}
+                </div>
               ) : (
                 <div className="text-center py-12">
                   <div className="text-gray-400 dark:text-gray-500 mb-4">
                     <FiEye className="mx-auto h-16 w-16" />
                   </div>
                   <div className="text-gray-500 dark:text-gray-400">
-                    No scripture in preview
+                    No content in preview
                   </div>
                   <div className="text-gray-400 dark:text-gray-500 text-sm mt-2">
-                    Search and select a verse to preview
+                    Search and select content to preview
                   </div>
                 </div>
               )}
@@ -140,7 +175,7 @@ const PreviewLivePanel: React.FC<PreviewLivePanelProps> = ({
         </div>
 
         {/* Live Panel */}
-        <div className="flex-1 p-6">
+        <div className="flex-1 p-6 border-r border-gray-200 dark:border-gray-700">
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 h-full">
             <div className="p-4 border-b border-gray-200 dark:border-gray-700">
               <h3 className="text-lg font-medium text-gray-900 dark:text-white flex items-center gap-2">
@@ -182,6 +217,39 @@ const PreviewLivePanel: React.FC<PreviewLivePanelProps> = ({
                     </button>
                   </div>
                 </div>
+              ) : liveItem ? (
+                <div className="space-y-4">
+                  {/* Non-scripture live content */}
+                  <div className="bg-red-50 dark:bg-red-900/30 rounded-lg p-6">
+                    <div className="text-sm font-medium text-red-600 dark:text-red-400 mb-3">
+                      {liveItem.type.toUpperCase()} • LIVE
+                    </div>
+                    <div className="text-xl font-bold text-gray-900 dark:text-white mb-3">
+                      {liveItem.title}
+                    </div>
+                    {liveItem.content && (
+                      <div className="text-lg text-gray-900 dark:text-white leading-relaxed mb-3">
+                        {liveItem.content}
+                      </div>
+                    )}
+                    {liveItem.reference && (
+                      <div className="text-xs text-gray-500 dark:text-gray-400">
+                        {liveItem.reference}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Live Actions */}
+                  <div className="flex gap-2">
+                    <button
+                      onClick={blankToBlack}
+                      className="flex-1 px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 font-medium flex items-center justify-center gap-2"
+                    >
+                      <FiSquare size={16} />
+                      Blank
+                    </button>
+                  </div>
+                </div>
               ) : (
                 <div className="text-center py-12">
                   <div className="text-gray-400 dark:text-gray-500 mb-4">
@@ -198,11 +266,21 @@ const PreviewLivePanel: React.FC<PreviewLivePanelProps> = ({
             </div>
           </div>
         </div>
-      </div>
 
-      {/* Live Display Preview Section */}
-      <div className="border-t border-gray-200 dark:border-gray-700 p-6">
-        <LiveDisplayPreview className="max-w-md mx-auto" />
+        {/* Live Display Preview Panel */}
+        <div className="w-80 p-6">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 h-full">
+            <div className="p-4 border-b border-gray-200 dark:border-gray-700">
+              <h3 className="text-lg font-medium text-gray-900 dark:text-white flex items-center gap-2">
+                <FiMonitor size={20} />
+                Live Display
+              </h3>
+            </div>
+            <div className="p-4">
+              <LiveDisplayPreview />
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );
