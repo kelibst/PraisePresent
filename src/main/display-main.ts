@@ -1,6 +1,6 @@
 import { ipcMain, screen, desktopCapturer, BrowserWindow } from "electron";
 import { displayManager, DisplayInfo } from "../services/DisplayManager";
-import { liveDisplayWindow, LiveDisplayWindow } from "@/main/LiveDisplayWindow";
+import { liveDisplayWindow } from "./LiveDisplayWindow";
 
 // Store app settings (in a real app, this would be in a persistent store)
 let displaySettings = {
@@ -10,7 +10,6 @@ let displaySettings = {
   liveDisplayAlwaysOnTop: true,
   testMode: false,
 };
-
 
 export function initializeDisplayMain(): void {
   console.log("Initializing display IPC handlers...");
@@ -58,7 +57,9 @@ export function initializeDisplayMain(): void {
         throw new Error(`Display with ID ${displayId} not found`);
       }
 
-      // Capture the screen
+      console.log("Target display bounds:", targetDisplay.bounds);
+
+      // Capture the screen with display-specific bounds
       const sources = await desktopCapturer.getSources({
         types: ["screen"],
         thumbnailSize: {
@@ -67,19 +68,70 @@ export function initializeDisplayMain(): void {
         },
       });
 
-      // Find the source that matches our display
-      // For now, we'll use the first source, but this could be improved
-      const source =
-        sources.find((source) => source.display_id === displayId.toString()) ||
-        sources[0];
+      console.log(
+        "Available sources:",
+        sources.map((s) => ({
+          id: s.id,
+          name: s.name,
+          display_id: s.display_id,
+        }))
+      );
+
+      // Try multiple strategies to find the correct source for this display
+      let source = null;
+
+      // Strategy 1: Match by display_id as string
+      source = sources.find((s) => s.display_id === displayId.toString());
+      if (source) {
+        console.log("Found source by display_id string match:", source.id);
+      }
+
+      // Strategy 2: Match by display_id as number
+      if (!source) {
+        source = sources.find((s) => parseInt(s.display_id) === displayId);
+        if (source) {
+          console.log("Found source by display_id number match:", source.id);
+        }
+      }
+
+      // Strategy 3: Match by position - find source that includes target display bounds
+      if (!source && sources.length > 1) {
+        // For multi-monitor setups, try to find source by screen position
+        // This is a fallback approach when display_id matching fails
+        const primaryDisplay = screen.getPrimaryDisplay();
+
+        if (displayId !== primaryDisplay.id) {
+          // For non-primary displays, try to get the second source
+          source = sources[1] || sources[0];
+          console.log(
+            "Using secondary source for non-primary display:",
+            source?.id
+          );
+        } else {
+          source = sources[0];
+          console.log("Using primary source for primary display:", source?.id);
+        }
+      }
+
+      // Strategy 4: Last resort - use first source but log warning
+      if (!source && sources.length > 0) {
+        source = sources[0];
+        console.warn(
+          `No specific match for display ${displayId}, using first source:`,
+          source.id
+        );
+      }
 
       if (!source || !source.thumbnail) {
-        throw new Error("Failed to capture display");
+        throw new Error("Failed to capture display - no valid source found");
       }
 
       // Convert to base64
       const screenshot = source.thumbnail.toDataURL();
-      console.log("IPC: Display captured successfully");
+      console.log(
+        `IPC: Display ${displayId} captured successfully using source:`,
+        source.id
+      );
 
       return screenshot;
     } catch (error) {

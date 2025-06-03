@@ -19,6 +19,7 @@ const DisplayPreview: React.FC<DisplayPreviewProps> = ({ displayId }) => {
   const isCapturing = useSelector(selectIsCapturing(displayId));
 
   const handleCapture = useCallback(() => {
+    console.log("DisplayPreview: Capturing display ID:", displayId);
     dispatch(captureDisplay(displayId));
   }, [dispatch, displayId]);
 

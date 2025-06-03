@@ -67,6 +67,8 @@ const DisplaySettings: React.FC = () => {
     }
   }, [selectedLiveDisplayId, displays, dispatch]);
 
+  console.log(error, "displaysettings error");
+
   // Event handlers
   const handleRefreshDisplays = () => {
     dispatch(refreshDisplays());
@@ -96,7 +98,7 @@ const DisplaySettings: React.FC = () => {
     displays.find((d) => d.id === selectedLiveDisplayId) || selectedLiveDisplay;
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-6 space-y-6 overflow-y-auto">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -176,6 +178,7 @@ const DisplaySettings: React.FC = () => {
               {displays.map((display) => (
                 <DisplayListItem
                   key={display.id}
+                  displayId={display.id}
                   display={display}
                   isSelected={selectedLiveDisplayId === display.id}
                   isTestMode={displaySettings.testMode}

@@ -8,6 +8,7 @@ interface DisplayListItemProps {
   display: any;
   isSelected: boolean;
   isTestMode: boolean;
+  displayId: number;
   onSelect: (displayId: number | null) => void;
   onTest: (displayId: number) => void;
   onCapture: (displayId: number) => void;
@@ -34,6 +35,7 @@ const DisplayListItem: React.FC<DisplayListItemProps> = ({
   display,
   isSelected,
   isTestMode,
+  displayId,
   onSelect,
   onTest,
   onCapture,
@@ -54,7 +56,7 @@ const DisplayListItem: React.FC<DisplayListItemProps> = ({
           </div>
 
           {/* Display Preview */}
-          <DisplayPreview displayId={display.id} />
+          <DisplayPreview displayId={displayId} />
 
           <div className="flex-1">
             <div className="flex items-center gap-2 mb-1">
