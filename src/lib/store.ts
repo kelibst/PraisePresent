@@ -31,6 +31,8 @@ liveDisplayMiddleware.startListening({
           content: liveItem.content,
           verse: liveItem.content,
           title: liveItem.title,
+          translation: liveItem.translation,
+          subtitle: liveItem.translation,
         };
       } else if (liveItem.type === "placeholder") {
         liveContent = {
@@ -38,12 +40,35 @@ liveDisplayMiddleware.startListening({
           title: liveItem.title,
           content: liveItem.content,
         };
+      } else if (liveItem.type === "song") {
+        liveContent = {
+          type: "song",
+          title: liveItem.title,
+          content: liveItem.content,
+          lines: liveItem.content?.lines || [],
+          subtitle: liveItem.content?.artist || liveItem.content?.album,
+        };
+      } else if (liveItem.type === "media") {
+        liveContent = {
+          type: "media",
+          title: liveItem.title,
+          content: liveItem.content,
+          subtitle: liveItem.content?.description,
+        };
+      } else if (liveItem.type === "slide") {
+        liveContent = {
+          type: "slide",
+          title: liveItem.title,
+          content: liveItem.content,
+          subtitle: liveItem.content?.notes,
+        };
       } else {
-        // Handle other content types (song, announcement, etc.)
+        // Handle other content types (announcement, etc.)
         liveContent = {
           type: liveItem.type,
           title: liveItem.title,
           content: liveItem.content,
+          subtitle: liveItem.content?.subtitle,
         };
       }
 
@@ -76,6 +101,8 @@ liveDisplayMiddleware.startListening({
           content: liveItem.content,
           verse: liveItem.content,
           title: liveItem.title,
+          translation: liveItem.translation,
+          subtitle: liveItem.translation,
         };
         await window.electronAPI.invoke(
           "live-display:sendContent",

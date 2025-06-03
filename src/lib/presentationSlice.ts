@@ -64,6 +64,8 @@ export const sendContentToLiveDisplay = createAsyncThunk(
           content: content.content,
           verse: content.content,
           title: content.title,
+          translation: content.translation,
+          subtitle: content.translation,
         };
       } else if (content.type === "placeholder") {
         liveContent = {
@@ -71,12 +73,35 @@ export const sendContentToLiveDisplay = createAsyncThunk(
           title: content.title,
           content: content.content,
         };
+      } else if (content.type === "song") {
+        liveContent = {
+          type: "song",
+          title: content.title,
+          content: content.content,
+          lines: content.content?.lines || [],
+          subtitle: content.content?.artist || content.content?.album,
+        };
+      } else if (content.type === "media") {
+        liveContent = {
+          type: "media",
+          title: content.title,
+          content: content.content,
+          subtitle: content.content?.description,
+        };
+      } else if (content.type === "slide") {
+        liveContent = {
+          type: "slide",
+          title: content.title,
+          content: content.content,
+          subtitle: content.content?.notes,
+        };
       } else {
-        // Handle other content types (song, announcement, etc.)
+        // Handle other content types (announcement, etc.)
         liveContent = {
           type: content.type,
           title: content.title,
           content: content.content,
+          subtitle: content.content?.subtitle,
         };
       }
 
@@ -220,8 +245,11 @@ const presentationSlice = createSlice({
         // Could add loading state if needed
       })
       .addCase(sendContentToLiveDisplay.fulfilled, (state, action) => {
-        // Live display content was successfully sent
-        console.log("Content sent to live display successfully");
+        // Update the live item in Redux state when content is successfully sent
+        state.liveItem = action.payload;
+        console.log(
+          "Content sent to live display successfully, Redux state updated"
+        );
       })
       .addCase(sendContentToLiveDisplay.rejected, (state, action) => {
         console.error(

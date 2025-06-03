@@ -28,6 +28,8 @@ interface LiveContent {
     | "scripture"
     | "song"
     | "announcement"
+    | "media"
+    | "slide"
     | "black"
     | "logo"
     | "placeholder";
@@ -37,6 +39,7 @@ interface LiveContent {
   reference?: string;
   lines?: string[];
   subtitle?: string;
+  translation?: string;
 }
 
 const defaultTheme: LiveDisplayTheme = {
@@ -599,24 +602,24 @@ const LiveDisplayRenderer: React.FC = () => {
         <div style={getContentContainerStyle()}>
           {content.type === "scripture" && (
             <div className="scripture-content">
-              <div
-                style={{
-                  ...getTextStyle(),
-                  fontSize: "2rem",
-                  marginBottom: "1rem",
-                  opacity: 0.8,
-                }}
-              >
-                📖 SCRIPTURE CONTENT
-              </div>
               {content.reference && (
                 <div style={getTextStyle(false, true)}>{content.reference}</div>
               )}
               <div style={getTextStyle()}>
                 {content.content || content.verse}
               </div>
-              {content.subtitle && (
-                <div style={getTextStyle(true)}>{content.subtitle}</div>
+              {(content.subtitle || content.translation) && (
+                <div
+                  style={{
+                    ...getTextStyle(true),
+                    fontSize: "1.8rem",
+                    opacity: 0.8,
+                    marginTop: "1.5rem",
+                    fontStyle: "italic",
+                  }}
+                >
+                  — {content.translation || content.subtitle}
+                </div>
               )}
             </div>
           )}
@@ -624,12 +627,38 @@ const LiveDisplayRenderer: React.FC = () => {
           {content.type === "song" && (
             <div className="song-content">
               {content.title && (
-                <div style={getTextStyle(false, true)}>{content.title}</div>
+                <div
+                  style={{
+                    ...getTextStyle(false, true),
+                    fontSize: "2.5rem",
+                    marginBottom: "2rem",
+                  }}
+                >
+                  🎵 {content.title}
+                </div>
               )}
               <div style={getTextStyle()}>
-                {content.lines ? (
+                {content.lines && Array.isArray(content.lines) ? (
                   content.lines.map((line, index) => (
-                    <div key={index} style={{ marginBottom: "1rem" }}>
+                    <div
+                      key={index}
+                      style={{
+                        marginBottom: "1.5rem",
+                        lineHeight: 1.6,
+                      }}
+                    >
+                      {line}
+                    </div>
+                  ))
+                ) : content.content && typeof content.content === "string" ? (
+                  content.content.split("\n").map((line, index) => (
+                    <div
+                      key={index}
+                      style={{
+                        marginBottom: "1.5rem",
+                        lineHeight: 1.6,
+                      }}
+                    >
                       {line}
                     </div>
                   ))
@@ -637,15 +666,145 @@ const LiveDisplayRenderer: React.FC = () => {
                   <div>{content.content}</div>
                 )}
               </div>
+              {content.subtitle && (
+                <div
+                  style={{
+                    ...getTextStyle(true),
+                    fontSize: "1.8rem",
+                    opacity: 0.7,
+                    marginTop: "2rem",
+                    fontStyle: "italic",
+                  }}
+                >
+                  {content.subtitle}
+                </div>
+              )}
             </div>
           )}
 
           {content.type === "announcement" && (
             <div className="announcement-content">
+              <div
+                style={{
+                  fontSize: "3rem",
+                  marginBottom: "2rem",
+                  opacity: 0.8,
+                  color: theme.referenceColor,
+                }}
+              >
+                📢
+              </div>
               {content.title && (
-                <div style={getTextStyle(false, true)}>{content.title}</div>
+                <div
+                  style={{
+                    ...getTextStyle(false, true),
+                    fontSize: "2.5rem",
+                    marginBottom: "2rem",
+                  }}
+                >
+                  {content.title}
+                </div>
               )}
-              <div style={getTextStyle()}>{content.content}</div>
+              <div style={getTextStyle()}>
+                {typeof content.content === "string"
+                  ? content.content.split("\n").map((line, index) => (
+                      <div key={index} style={{ marginBottom: "1rem" }}>
+                        {line}
+                      </div>
+                    ))
+                  : content.content}
+              </div>
+              {content.subtitle && (
+                <div
+                  style={{
+                    ...getTextStyle(true),
+                    fontSize: "1.8rem",
+                    opacity: 0.7,
+                    marginTop: "2rem",
+                  }}
+                >
+                  {content.subtitle}
+                </div>
+              )}
+            </div>
+          )}
+
+          {content.type === "media" && (
+            <div className="media-content">
+              <div
+                style={{
+                  fontSize: "4rem",
+                  marginBottom: "2rem",
+                  opacity: 0.8,
+                  color: theme.referenceColor,
+                }}
+              >
+                🎬
+              </div>
+              {content.title && (
+                <div
+                  style={{
+                    ...getTextStyle(false, true),
+                    fontSize: "2.5rem",
+                    marginBottom: "2rem",
+                  }}
+                >
+                  {content.title}
+                </div>
+              )}
+              {content.content && (
+                <div style={getTextStyle()}>{content.content}</div>
+              )}
+              {content.subtitle && (
+                <div
+                  style={{
+                    ...getTextStyle(true),
+                    fontSize: "1.8rem",
+                    opacity: 0.7,
+                    marginTop: "2rem",
+                  }}
+                >
+                  {content.subtitle}
+                </div>
+              )}
+            </div>
+          )}
+
+          {content.type === "slide" && (
+            <div className="slide-content">
+              {content.title && (
+                <div
+                  style={{
+                    ...getTextStyle(false, true),
+                    fontSize: "2.5rem",
+                    marginBottom: "2rem",
+                  }}
+                >
+                  📄 {content.title}
+                </div>
+              )}
+              <div style={getTextStyle()}>
+                {typeof content.content === "string"
+                  ? content.content.split("\n").map((line, index) => (
+                      <div key={index} style={{ marginBottom: "1rem" }}>
+                        {line}
+                      </div>
+                    ))
+                  : content.content}
+              </div>
+              {content.subtitle && (
+                <div
+                  style={{
+                    ...getTextStyle(true),
+                    fontSize: "1.6rem",
+                    opacity: 0.6,
+                    marginTop: "2rem",
+                    fontStyle: "italic",
+                  }}
+                >
+                  {content.subtitle}
+                </div>
+              )}
             </div>
           )}
 
