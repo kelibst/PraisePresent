@@ -1,0 +1,148 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
+.live-display-container {
+  width: 100vw;
+  height: 100vh;
+  margin: 0;
+  padding: 0;
+  background: #000000;
+  color: #ffffff;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  cursor: none;
+}
+
+.black-screen {
+  background: #000000;
+}
+
+.logo-screen {
+  background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
+}
+
+.logo-container {
+  text-align: center;
+  animation: fadeIn 1s ease-in;
+}
+
+.church-logo {
+  font-size: 8rem;
+  margin-bottom: 2rem;
+  text-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+}
+
+.church-name {
+  font-size: 4rem;
+  font-weight: 300;
+  opacity: 0.9;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.content-container {
+  width: 90%;
+  max-width: 1200px;
+  text-align: center;
+  animation: fadeIn 0.5s ease-in;
+}
+
+.scripture-content {
+  padding: 2rem;
+}
+
+.scripture-reference {
+  font-size: 2.5rem;
+  font-weight: 600;
+  margin-bottom: 2rem;
+  color: #60a5fa;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+}
+
+.scripture-text {
+  font-size: 3.5rem;
+  line-height: 1.4;
+  font-weight: 300;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+  max-width: 1000px;
+  margin: 0 auto;
+}
+
+.song-content {
+  padding: 2rem;
+}
+
+.song-title {
+  font-size: 3rem;
+  font-weight: 600;
+  margin-bottom: 3rem;
+  color: #34d399;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+}
+
+.song-lyrics {
+  font-size: 2.8rem;
+  line-height: 1.6;
+}
+
+.song-line {
+  margin-bottom: 1rem;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+}
+
+.announcement-content {
+  padding: 2rem;
+}
+
+.announcement-title {
+  font-size: 3.5rem;
+  font-weight: 600;
+  margin-bottom: 2rem;
+  color: #fbbf24;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+}
+
+.announcement-text {
+  font-size: 2.5rem;
+  line-height: 1.5;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+}
+
+.default-screen {
+  text-align: center;
+  opacity: 0.6;
+}
+
+.ready-message h1 {
+  font-size: 4rem;
+  font-weight: 300;
+  margin-bottom: 1rem;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+}
+
+.ready-message p {
+  font-size: 2rem;
+  opacity: 0.7;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
