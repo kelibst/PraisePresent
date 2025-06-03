@@ -198,10 +198,26 @@ const LiveDisplayRenderer: React.FC = () => {
     console.log("  - New content from Redux:", newContent);
     console.log("  - Redux liveItem:", liveItem);
 
-    setContent(newContent);
-    setShowBlack(false);
-    setShowLogo(false);
-    setIsVisible(true);
+    // Only update if the content has actually changed to prevent unnecessary re-renders
+    const contentChanged =
+      !content ||
+      content.type !== newContent?.type ||
+      content.title !== newContent?.title ||
+      content.content !== newContent?.content;
+
+    if (contentChanged) {
+      console.log(
+        "🔴 LIVE DISPLAY RENDERER: Content changed, updating local state"
+      );
+      setContent(newContent);
+      setShowBlack(false);
+      setShowLogo(false);
+      setIsVisible(true);
+    } else {
+      console.log(
+        "🔴 LIVE DISPLAY RENDERER: Content unchanged, skipping update"
+      );
+    }
   }, [liveItem]);
 
   useEffect(() => {
@@ -277,38 +293,11 @@ const LiveDisplayRenderer: React.FC = () => {
       setShowLogo(false);
       setIsVisible(true);
 
-      // Also update Redux store to keep everything in sync
-      if (
-        newContent.type === "scripture" &&
-        newContent.reference &&
-        newContent.content
-      ) {
-        const presentationItem = {
-          id: `live-${Date.now()}`,
-          type: "scripture" as const,
-          title: newContent.reference || newContent.title || "Scripture",
-          content: newContent.content,
-          reference: newContent.reference,
-          translation: newContent.subtitle,
-        };
-        console.log(
-          "🔴 LIVE DISPLAY RENDERER: Dispatching setLiveItem to Redux:",
-          presentationItem
-        );
-        dispatch(setLiveItem(presentationItem));
-      } else if (newContent.type === "placeholder") {
-        const presentationItem = {
-          id: `live-placeholder-${Date.now()}`,
-          type: "placeholder" as const,
-          title: newContent.title || "PraisePresent",
-          content: newContent.content,
-        };
-        console.log(
-          "🔴 LIVE DISPLAY RENDERER: Dispatching placeholder setLiveItem to Redux:",
-          presentationItem
-        );
-        dispatch(setLiveItem(presentationItem));
-      }
+      // DO NOT dispatch to Redux here - it would create a circular loop
+      // The Redux state should already be updated by the action that triggered this IPC message
+      console.log(
+        "🔴 LIVE DISPLAY RENDERER: Local state updated, NOT dispatching to Redux to avoid loop"
+      );
     };
 
     const handleContentClear = () => {
@@ -419,19 +408,7 @@ const LiveDisplayRenderer: React.FC = () => {
         "🔴 LIVE DISPLAY RENDERER: All IPC listeners setup complete!"
       );
 
-      // Add a manual test to see if we can trigger the handler
-      console.log("🔴 LIVE DISPLAY RENDERER: Testing manual handler call...");
-      setTimeout(() => {
-        console.log(
-          "🔴 LIVE DISPLAY RENDERER: Calling handleContentUpdate manually for testing..."
-        );
-        handleContentUpdate({
-          type: "scripture",
-          title: "Test Scripture",
-          content: "This is a test scripture content",
-          reference: "Test 1:1",
-        });
-      }, 2000);
+      // Manual test removed to prevent unnecessary updates
 
       // Cleanup function
       return () => {
