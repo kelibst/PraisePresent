@@ -1,5 +1,5 @@
 import GeneralSettings from "@/components/settings/GeneralSettings";
-import DisplaySettings from "@/components/settings/GeneralSettings";
+import DisplaySettings from "@/components/settings/DisplaySettings";
 import React, { useState } from "react";
 import { FiMonitor, FiSpeaker, FiUser, FiDatabase } from "react-icons/fi";
 
@@ -70,7 +70,7 @@ const Settings: React.FC = () => {
               onClick={() => setActiveTab(tab.id)}
               className={`w-full flex items-center gap-3 px-3 py-2 rounded-md text-left transition-colors ${
                 activeTab === tab.id
-                  ? "bg-accent text-accent-foreground"
+                  ? "bg-primary text-primary-foreground"
                   : "text-foreground hover:bg-accent/50"
               }`}
             >

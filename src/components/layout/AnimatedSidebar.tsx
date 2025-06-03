@@ -15,9 +15,15 @@ import {
 } from "react-icons/fi";
 /* @ts-ignore */
 import logoLight from "../../assets/logo-white.png";
-import { useTheme } from "@/lib/useTheme";
+import { useTheme } from "@/lib/theme";
 import VersionSelector from "../bible/VersionSelector";
 import ScriptureList from "../bible/ScriptureList";
+import { Badge } from "../ui/badge";
+import { useDispatch } from "react-redux";
+import { AppDispatch } from "@/lib/store";
+import { selectSettings, setTheme } from "@/lib/settingSlice";
+import { useSelector } from "react-redux";
+import AsideThemeToggler from "../settings/AsideThemeToggler";
 
 const menu = [
   {
@@ -44,8 +50,15 @@ const AnimatedSidebar: React.FC<{ open: boolean; onToggle: () => void }> = ({
   open,
   onToggle,
 }) => {
-  const [theme, setTheme] = useTheme();
+  const { setTheme: applyTheme } = useTheme();
+  const dispatch = useDispatch<AppDispatch>();
+  const settings = useSelector(selectSettings);
   const location = useLocation();
+
+  const handleThemeChange = (newTheme: "light" | "dark" | "system") => {
+    dispatch(setTheme(newTheme));
+    applyTheme(newTheme);
+  };
 
   // Show scripture list on scripture and live pages
   const showScriptureList =
@@ -106,7 +119,7 @@ const AnimatedSidebar: React.FC<{ open: boolean; onToggle: () => void }> = ({
       {!showScriptureList && <div className="flex-1" />}
 
       {/* Theme toggle at bottom */}
-      <div className="flex items-center justify-center gap-4 mb-8">
+      {/* <div className="flex items-center justify-center gap-4 mb-8">
         <button
           className={`p-2 rounded-full transition-colors ${
             theme === "light" ? "bg-accent text-yellow-500" : "text-foreground"
@@ -125,7 +138,9 @@ const AnimatedSidebar: React.FC<{ open: boolean; onToggle: () => void }> = ({
         >
           <FiMoon size={22} />
         </button>
-      </div>
+      </div> */}
+
+      <AsideThemeToggler />
     </aside>
   );
 };
