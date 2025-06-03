@@ -3,6 +3,13 @@ declare global {
   interface Window {
     electronAPI: {
       invoke: (channel: string, ...args: any[]) => Promise<any>;
+
+      // Live display event listeners
+      onLiveContentUpdate?: (callback: (content: any) => void) => () => void;
+      onLiveContentClear?: (callback: () => void) => () => void;
+      onLiveShowBlack?: (callback: () => void) => () => void;
+      onLiveShowLogo?: (callback: () => void) => () => void;
+      onLiveThemeUpdate?: (callback: (theme: any) => void) => () => void;
     };
   }
 }
@@ -10,69 +17,111 @@ declare global {
 export class DatabaseIPC {
   // Translation operations
   async loadTranslations() {
-    return await window.electronAPI.invoke('db:loadTranslations');
+    return await window.electronAPI.invoke("db:loadTranslations");
   }
 
   // Version operations
   async loadVersions(translationId?: string) {
-    return await window.electronAPI.invoke('db:loadVersions', translationId);
+    return await window.electronAPI.invoke("db:loadVersions", translationId);
   }
 
   // Book operations
   async loadBooks() {
-    return await window.electronAPI.invoke('db:loadBooks');
+    return await window.electronAPI.invoke("db:loadBooks");
   }
 
   // Verse operations
-  async loadVerses({ versionId, bookId, chapter }: { versionId: string; bookId: number; chapter: number }) {
-    return await window.electronAPI.invoke('db:loadVerses', { versionId, bookId, chapter });
+  async loadVerses({
+    versionId,
+    bookId,
+    chapter,
+  }: {
+    versionId: string;
+    bookId: number;
+    chapter: number;
+  }) {
+    return await window.electronAPI.invoke("db:loadVerses", {
+      versionId,
+      bookId,
+      chapter,
+    });
   }
 
   // Search operations
-  async searchVerses({ query, versionId }: { query: string; versionId?: string }) {
-    return await window.electronAPI.invoke('db:searchVerses', { query, versionId });
+  async searchVerses({
+    query,
+    versionId,
+  }: {
+    query: string;
+    versionId?: string;
+  }) {
+    return await window.electronAPI.invoke("db:searchVerses", {
+      query,
+      versionId,
+    });
   }
 
   // Database setup operations
   async seedDatabase() {
-    return await window.electronAPI.invoke('db:seed');
+    return await window.electronAPI.invoke("db:seed");
   }
 
   async importBibles() {
-    return await window.electronAPI.invoke('db:importBibles');
+    return await window.electronAPI.invoke("db:importBibles");
   }
 
   async importBiblesSQLite() {
-    return await window.electronAPI.invoke('db:importBiblesSQLite');
+    return await window.electronAPI.invoke("db:importBiblesSQLite");
   }
 
   async importSingleBibleSQLite(versionName: string) {
-    return await window.electronAPI.invoke('db:importSingleBibleSQLite', versionName);
+    return await window.electronAPI.invoke(
+      "db:importSingleBibleSQLite",
+      versionName
+    );
   }
 
   async getImportStats() {
-    return await window.electronAPI.invoke('db:getImportStats');
+    return await window.electronAPI.invoke("db:getImportStats");
   }
 
   // Song operations (for future use)
-  async loadSongs({ search, limit = 50 }: { search?: string; limit?: number } = {}) {
-    return await window.electronAPI.invoke('db:loadSongs', { search, limit });
+  async loadSongs({
+    search,
+    limit = 50,
+  }: { search?: string; limit?: number } = {}) {
+    return await window.electronAPI.invoke("db:loadSongs", { search, limit });
   }
 
   // Service operations (for future use)
   async loadServices(limit = 20) {
-    return await window.electronAPI.invoke('db:loadServices', limit);
+    return await window.electronAPI.invoke("db:loadServices", limit);
   }
 
   // Settings operations
   async getSetting(key: string) {
-    return await window.electronAPI.invoke('db:getSetting', key);
+    return await window.electronAPI.invoke("db:getSetting", key);
   }
 
-  async setSetting({ key, value, type = 'string', category }: { key: string; value: string; type?: string; category?: string }) {
-    return await window.electronAPI.invoke('db:setSetting', { key, value, type, category });
+  async setSetting({
+    key,
+    value,
+    type = "string",
+    category,
+  }: {
+    key: string;
+    value: string;
+    type?: string;
+    category?: string;
+  }) {
+    return await window.electronAPI.invoke("db:setSetting", {
+      key,
+      value,
+      type,
+      category,
+    });
   }
 }
 
 // Export singleton instance
-export const databaseIPC = new DatabaseIPC(); 
+export const databaseIPC = new DatabaseIPC();

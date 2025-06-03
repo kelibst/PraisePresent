@@ -9,18 +9,17 @@ import Homepage from "@/pages/Homepage";
 import Scripture from "@/pages/Scripture";
 import LivePresentation from "@/pages/LivePresentation";
 import Settings from "@/pages/Settings";
-import LiveDisplayWindow from "./components/LiveDisplay/LiveDispllayWindow";
 
 const AppRoutes = () => {
   return (
     <Routes>
+      {/* Main application routes with layout */}
       <Route path="/" element={<Homepage />} />
       <Route element={<AppLayout />}>
         <Route path="/scripture" element={<Scripture />} />
         <Route path="/live" element={<LivePresentation />} />
         <Route path="/settings" element={<Settings />} />
       </Route>
-      <Route path="/live-display" element={<LiveDisplayWindow />} />
     </Routes>
   );
 };

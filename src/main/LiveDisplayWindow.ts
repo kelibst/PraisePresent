@@ -1,6 +1,10 @@
 import { BrowserWindow, screen } from "electron";
 import { displayManager } from "../services/DisplayManager";
 
+// These constants are injected by Electron Forge and Vite
+declare const MAIN_WINDOW_VITE_DEV_SERVER_URL: string | undefined;
+declare const MAIN_WINDOW_VITE_NAME: string;
+
 export interface LiveWindowConfig {
   displayId: number;
   fullscreen?: boolean;
@@ -86,7 +90,7 @@ export class LiveDisplayWindow {
           nodeIntegration: false,
           contextIsolation: true,
           webSecurity: false,
-          preload: require("path").join(__dirname, "../preload.js"),
+          preload: require("path").join(__dirname, "preload.js"),
         },
         // Additional configuration for better positioning
         skipTaskbar: true,
@@ -114,14 +118,25 @@ export class LiveDisplayWindow {
       }
 
       // Load the live display renderer
-      if (process.env.VITE_DEV_SERVER_URL) {
+      if (MAIN_WINDOW_VITE_DEV_SERVER_URL) {
         await this.liveWindow.loadURL(
-          `${process.env.VITE_DEV_SERVER_URL}#/live-display`
+          `${MAIN_WINDOW_VITE_DEV_SERVER_URL}?mode=live-display`
         );
       } else {
-        await this.liveWindow.loadFile("dist/renderer/index.html", {
-          hash: "live-display",
+        // Production mode - use the same pattern as main window
+        const path = require("path");
+        const indexPath = path.join(
+          __dirname,
+          `../renderer/${MAIN_WINDOW_VITE_NAME}/index.html`
+        );
+        await this.liveWindow.loadFile(indexPath, {
+          search: "mode=live-display",
         });
+      }
+
+      // Open developer tools for debugging (remove in production)
+      if (MAIN_WINDOW_VITE_DEV_SERVER_URL) {
+        this.liveWindow.webContents.openDevTools();
       }
 
       // Set up window event handlers

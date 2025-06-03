@@ -1,7 +1,14 @@
 import GeneralSettings from "@/components/settings/GeneralSettings";
 import DisplaySettings from "@/components/settings/DisplaySettings";
+import LiveDisplayThemeSettings from "@/components/Settings/LiveDisplayThemeSettings";
 import React, { useState } from "react";
-import { FiMonitor, FiSpeaker, FiUser, FiDatabase } from "react-icons/fi";
+import {
+  FiMonitor,
+  FiSpeaker,
+  FiUser,
+  FiDatabase,
+  FiPlay,
+} from "react-icons/fi";
 
 interface Tab {
   id: string;
@@ -25,6 +32,12 @@ const Settings: React.FC = () => {
       label: "Display",
       icon: <FiMonitor className="w-4 h-4" />,
       component: <DisplaySettings />,
+    },
+    {
+      id: "live-display",
+      label: "Live Display",
+      icon: <FiPlay className="w-4 h-4" />,
+      component: <LiveDisplayThemeSettings />,
     },
     {
       id: "audio",

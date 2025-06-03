@@ -9,6 +9,7 @@ let displaySettings = {
   liveDisplayFullscreen: true,
   liveDisplayAlwaysOnTop: true,
   testMode: false,
+  savedTheme: null as any,
 };
 
 export function initializeDisplayMain(): void {
@@ -240,6 +241,11 @@ export function initializeDisplayMain(): void {
     try {
       console.log("IPC: Saving display settings:", settings);
 
+      // Save the selected live display ID
+      if (settings.selectedLiveDisplayId !== undefined) {
+        displaySettings.selectedLiveDisplayId = settings.selectedLiveDisplayId;
+      }
+
       // For now, we'll just return the settings back
       // In a real implementation, you might save these to a config file or database
       console.log("IPC: Display settings saved successfully");
@@ -247,6 +253,266 @@ export function initializeDisplayMain(): void {
       return settings;
     } catch (error) {
       console.error("Error saving display settings:", error);
+      throw error;
+    }
+  });
+
+  // Live Display IPC Handlers
+  ipcMain.handle(
+    "live-display:create",
+    async (event, { displayId }: { displayId?: number }) => {
+      try {
+        console.log("IPC: Creating live display on display:", displayId);
+
+        // If no display specified, use selected live display or secondary display
+        let targetDisplayId: number | undefined = displayId;
+        if (!targetDisplayId) {
+          if (displaySettings.selectedLiveDisplayId) {
+            targetDisplayId = displaySettings.selectedLiveDisplayId;
+          } else {
+            const secondaryDisplay = displayManager.getSecondaryDisplay();
+            if (secondaryDisplay) {
+              targetDisplayId = secondaryDisplay.id;
+            } else {
+              const primaryDisplay = displayManager.getPrimaryDisplay();
+              if (primaryDisplay) {
+                targetDisplayId = primaryDisplay.id;
+              }
+            }
+          }
+        }
+
+        if (!targetDisplayId) {
+          throw new Error("No suitable display found for live output");
+        }
+
+        const success = await liveDisplayWindow.createLiveWindow({
+          displayId: targetDisplayId,
+          fullscreen: displaySettings.liveDisplayFullscreen,
+          alwaysOnTop: displaySettings.liveDisplayAlwaysOnTop,
+          frame: false,
+        });
+
+        if (success) {
+          displaySettings.isLiveDisplayActive = true;
+          displaySettings.selectedLiveDisplayId = targetDisplayId;
+        }
+
+        console.log("IPC: Live display creation result:", {
+          success,
+          displayId: targetDisplayId,
+        });
+
+        return { success, displayId: targetDisplayId };
+      } catch (error) {
+        console.error("Error creating live display:", error);
+        throw error;
+      }
+    }
+  );
+
+  ipcMain.handle("live-display:show", async () => {
+    try {
+      console.log("IPC: Showing live display");
+      liveDisplayWindow.showLiveWindow();
+      return { success: true };
+    } catch (error) {
+      console.error("Error showing live display:", error);
+      throw error;
+    }
+  });
+
+  ipcMain.handle("live-display:hide", async () => {
+    try {
+      console.log("IPC: Hiding live display");
+      liveDisplayWindow.hideLiveWindow();
+      return { success: true };
+    } catch (error) {
+      console.error("Error hiding live display:", error);
+      throw error;
+    }
+  });
+
+  ipcMain.handle("live-display:close", async () => {
+    try {
+      console.log("IPC: Closing live display");
+      liveDisplayWindow.closeLiveWindow();
+      displaySettings.isLiveDisplayActive = false;
+      return { success: true };
+    } catch (error) {
+      console.error("Error closing live display:", error);
+      throw error;
+    }
+  });
+
+  ipcMain.handle("live-display:getStatus", async () => {
+    try {
+      const status = liveDisplayWindow.getStatus();
+      console.log("IPC: Live display status:", status);
+      return status;
+    } catch (error) {
+      console.error("Error getting live display status:", error);
+      throw error;
+    }
+  });
+
+  // Handler to send content to live display
+  ipcMain.handle("live-display:sendContent", async (event, content: any) => {
+    try {
+      console.log("IPC: Sending content to live display:", content);
+      liveDisplayWindow.sendContentToLive(content);
+      return { success: true };
+    } catch (error) {
+      console.error("Error sending content to live display:", error);
+      throw error;
+    }
+  });
+
+  // Handler to clear live display content
+  ipcMain.handle("live-display:clearContent", async () => {
+    try {
+      console.log("IPC: Clearing live display content");
+      liveDisplayWindow.clearLiveContent();
+      return { success: true };
+    } catch (error) {
+      console.error("Error clearing live display content:", error);
+      throw error;
+    }
+  });
+
+  // Handler to show black screen
+  ipcMain.handle("live-display:showBlack", async () => {
+    try {
+      console.log("IPC: Showing black screen");
+      liveDisplayWindow.showBlackScreen();
+      return { success: true };
+    } catch (error) {
+      console.error("Error showing black screen:", error);
+      throw error;
+    }
+  });
+
+  // Handler to show logo screen
+  ipcMain.handle("live-display:showLogo", async () => {
+    try {
+      console.log("IPC: Showing logo screen");
+      liveDisplayWindow.showLogoScreen();
+      return { success: true };
+    } catch (error) {
+      console.error("Error showing logo screen:", error);
+      throw error;
+    }
+  });
+
+  // Theme management handlers
+  ipcMain.handle("live-display:updateTheme", async (event, theme: any) => {
+    try {
+      console.log("IPC: Updating live display theme:", theme);
+      const liveWindow = liveDisplayWindow.getLiveWindow();
+      if (liveWindow && !liveWindow.isDestroyed()) {
+        liveWindow.webContents.send("live-theme-update", theme);
+      }
+      return { success: true };
+    } catch (error) {
+      console.error("Error updating live display theme:", error);
+      throw error;
+    }
+  });
+
+  ipcMain.handle("live-display:saveTheme", async (event, theme: any) => {
+    try {
+      console.log("IPC: Saving live display theme:", theme);
+      // Here you would typically save to a config file or database
+      // For now, we'll just store in memory
+      displaySettings.savedTheme = theme;
+      return { success: true };
+    } catch (error) {
+      console.error("Error saving live display theme:", error);
+      throw error;
+    }
+  });
+
+  ipcMain.handle("live-display:getTheme", async () => {
+    try {
+      console.log("IPC: Getting saved live display theme");
+      return displaySettings.savedTheme || null;
+    } catch (error) {
+      console.error("Error getting live display theme:", error);
+      throw error;
+    }
+  });
+
+  ipcMain.handle("live-display:startPreview", async (event, theme: any) => {
+    try {
+      console.log("IPC: Starting live display preview with theme:", theme);
+
+      // Create live display if it doesn't exist
+      const status = liveDisplayWindow.getStatus() as any;
+      if (!status.hasWindow) {
+        let targetDisplayId = displaySettings.selectedLiveDisplayId;
+        if (!targetDisplayId) {
+          const secondaryDisplay = displayManager.getSecondaryDisplay();
+          if (secondaryDisplay) {
+            targetDisplayId = secondaryDisplay.id;
+          } else {
+            const primaryDisplay = displayManager.getPrimaryDisplay();
+            if (primaryDisplay) {
+              targetDisplayId = primaryDisplay.id;
+            }
+          }
+        }
+
+        if (targetDisplayId) {
+          const created = await liveDisplayWindow.createLiveWindow({
+            displayId: targetDisplayId,
+            fullscreen: displaySettings.liveDisplayFullscreen,
+            alwaysOnTop: displaySettings.liveDisplayAlwaysOnTop,
+            frame: false,
+          });
+
+          if (!created) {
+            throw new Error("Failed to create live display for preview");
+          }
+        }
+      }
+
+      // Show the window and apply theme
+      liveDisplayWindow.showLiveWindow();
+
+      // Send preview content with theme
+      const previewContent = {
+        type: "placeholder",
+        title: "Theme Preview",
+        content: {
+          mainText: "Theme Preview Mode",
+          subText: "Customizing live display appearance",
+          timestamp: new Date().toLocaleTimeString(),
+        },
+      };
+
+      liveDisplayWindow.sendContentToLive(previewContent);
+
+      // Apply theme
+      const liveWindow = liveDisplayWindow.getLiveWindow();
+      if (liveWindow && !liveWindow.isDestroyed()) {
+        liveWindow.webContents.send("live-theme-update", theme);
+      }
+
+      return { success: true };
+    } catch (error) {
+      console.error("Error starting live display preview:", error);
+      throw error;
+    }
+  });
+
+  ipcMain.handle("live-display:endPreview", async () => {
+    try {
+      console.log("IPC: Ending live display preview");
+      // Optionally hide or close the preview window
+      // For now, we'll just leave it open but reset to default content
+      return { success: true };
+    } catch (error) {
+      console.error("Error ending live display preview:", error);
       throw error;
     }
   });
@@ -260,11 +526,27 @@ export function initializeDisplayMain(): void {
 export function cleanupDisplayMain(): void {
   console.log("Cleaning up display resources...");
 
-  // Remove IPC handlers
+  // Remove display IPC handlers
   ipcMain.removeHandler("display:getDisplays");
   ipcMain.removeHandler("display:captureDisplay");
   ipcMain.removeHandler("display:testDisplay");
   ipcMain.removeHandler("display:saveSettings");
+
+  // Remove live display IPC handlers
+  ipcMain.removeHandler("live-display:create");
+  ipcMain.removeHandler("live-display:show");
+  ipcMain.removeHandler("live-display:hide");
+  ipcMain.removeHandler("live-display:close");
+  ipcMain.removeHandler("live-display:getStatus");
+  ipcMain.removeHandler("live-display:sendContent");
+  ipcMain.removeHandler("live-display:clearContent");
+  ipcMain.removeHandler("live-display:showBlack");
+  ipcMain.removeHandler("live-display:showLogo");
+  ipcMain.removeHandler("live-display:updateTheme");
+  ipcMain.removeHandler("live-display:saveTheme");
+  ipcMain.removeHandler("live-display:getTheme");
+  ipcMain.removeHandler("live-display:startPreview");
+  ipcMain.removeHandler("live-display:endPreview");
 
   console.log("Display cleanup completed");
 }

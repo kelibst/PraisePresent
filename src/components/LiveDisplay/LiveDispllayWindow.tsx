@@ -2,16 +2,31 @@ import React, { useEffect, useState } from "react";
 import "./LiveDisplayWindow.css";
 
 interface LiveContent {
-  type: "scripture" | "song" | "announcement" | "black" | "logo";
+  type:
+    | "scripture"
+    | "song"
+    | "announcement"
+    | "black"
+    | "logo"
+    | "placeholder";
   title?: string;
-  content?: string;
+  content?: string | any;
   verse?: string;
   reference?: string;
   lines?: string[];
 }
 
 const LiveDisplayWindow: React.FC = () => {
-  const [content, setContent] = useState<LiveContent | null>(null);
+  // Initialize with placeholder content
+  const [content, setContent] = useState<LiveContent | null>({
+    type: "placeholder",
+    title: "PraisePresent",
+    content: {
+      mainText: "Welcome to PraisePresent",
+      subText: "Live Display Ready",
+      timestamp: new Date().toLocaleTimeString(),
+    },
+  });
   const [showBlack, setShowBlack] = useState(false);
   const [showLogo, setShowLogo] = useState(false);
 
@@ -132,6 +147,21 @@ const LiveDisplayWindow: React.FC = () => {
                 <div className="announcement-title">{content.title}</div>
               )}
               <div className="announcement-text">{content.content}</div>
+            </div>
+          )}
+
+          {content.type === "placeholder" && (
+            <div className="placeholder-content">
+              <div className="placeholder-icon">🎵</div>
+              <div className="placeholder-title">
+                {content.content.mainText}
+              </div>
+              <div className="placeholder-subtitle">
+                {content.content.subText}
+              </div>
+              <div className="placeholder-time">
+                Ready since {content.content.timestamp}
+              </div>
             </div>
           )}
         </div>

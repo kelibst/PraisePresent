@@ -376,9 +376,9 @@ export class DisplayManager {
 
     // If we have only as many native displays as Electron displays, match by order
     const nativeDisplaysArray = Array.from(this.nativeDisplays.values());
-    console.log(
-      `Available native displays: ${nativeDisplaysArray.length}, electron displays: need index ${index}`
-    );
+    // console.log(
+    //   `Available native displays: ${nativeDisplaysArray.length}, electron displays: need index ${index}`
+    // );
 
     if (nativeDisplaysArray.length > 0 && index < nativeDisplaysArray.length) {
       // Filter out 'Unknown' entries and prefer those with real manufacturer info
@@ -628,7 +628,6 @@ export class DisplayManager {
     try {
       const electronDisplays = screen.getAllDisplays();
       const primaryElectronDisplay = screen.getPrimaryDisplay();
-      console.log("Raw Electron displays:", electronDisplays);
 
       this.displays = electronDisplays.map((display, index) => {
         const nativeInfo = this.matchNativeDisplay(display, index);
