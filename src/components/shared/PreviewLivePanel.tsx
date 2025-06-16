@@ -13,7 +13,10 @@ import {
   FiSkipForward,
   FiPlay,
   FiSquare,
+  FiSmartphone,
+  FiChevronDown,
 } from "react-icons/fi";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@radix-ui/react-accordion";
 
 interface PreviewLivePanelProps {
   leftPanelWidth: number;
@@ -110,7 +113,7 @@ const PreviewLivePanel: React.FC<PreviewLivePanelProps> = ({
         </div>
       )}
 
-      <div className="flex-1 flex flex-col lg:flex-row max-h-[50vh]">
+      <div className="flex-1 flex flex-col overflow-y-auto">
         {/* Preview Panel */}
         <div className="flex-1 p-6 border-r border-gray-200 dark:border-gray-700">
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 h-full">
@@ -298,62 +301,61 @@ const PreviewLivePanel: React.FC<PreviewLivePanelProps> = ({
             </div>
           </div>
         </div>
-      </div>
-
-      <div className="flex-1 flex flex-col lg:flex-row lg:max-h-[50vh] overflow-y-auto lg:overflow-y-hidden">
-        <div className="flex-1 p-6 border-r border-gray-200 dark:border-gray-700">
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 h-full">
-            <div className="p-4 border-b border-gray-200 dark:border-gray-700">
-              <div className="p-4 border-t border-gray-200 dark:border-gray-700">
-                <div className="flex items-center justify-center mb-2">
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    className="h-6 w-6 text-gray-500 dark:text-gray-400"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"
-                    />
-                  </svg>
-                  <span className="ml-2 text-gray-700 dark:text-gray-300">
+        <div className="border-t border-gray-200 dark:border-gray-700">
+          <Accordion type="single" collapsible className="w-full">
+            <AccordionItem value="mobile-remote" className="border-0">
+              <AccordionTrigger className="flex items-center justify-between w-full px-6 py-4 text-left hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors duration-200 [&[data-state=open]>svg]:rotate-180">
+                <div className="flex items-center gap-2">
+                  <FiSmartphone size={18} className="text-gray-600 dark:text-gray-400" />
+                  <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
                     Mobile Remote Control
                   </span>
                 </div>
+                <FiChevronDown className="h-4 w-4 text-gray-500 dark:text-gray-400 transition-transform duration-200" />
+              </AccordionTrigger>
+              <AccordionContent className="overflow-hidden data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down">
+                <div className="p-6 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
+                  <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-4">
+                    <div className="text-center mb-4">
+                      <div className="text-sm text-gray-600 dark:text-gray-400 mb-2">
+                        Current Slide:
+                      </div>
+                      <div className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                        {liveItem ? liveItem.title || "Untitled Content" : "Nothing live"}
+                      </div>
+                    </div>
 
-                <div className="border border-gray-200 dark:border-gray-700 rounded-md p-4 bg-white dark:bg-gray-800">
-                  <div className="text-center mb-2 text-gray-700 dark:text-gray-300">
-                    Current Slide:
-                  </div>
-                  <div className="text-center mb-4 text-sm text-gray-700 dark:text-gray-300 truncate">
-                    {liveItem ? liveItem.title : "Nothing live"}
-                  </div>
+                    <div className="flex justify-center gap-4 mb-4">
+                      <button
+                        className="p-3 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors duration-200 text-gray-700 dark:text-gray-300"
+                        onClick={onPrevious}
+                        disabled={!onPrevious}
+                        title="Previous"
+                      >
+                        <FiSkipBack size={18} />
+                      </button>
+                      <button
+                        className="p-3 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors duration-200 text-gray-700 dark:text-gray-300"
+                        onClick={onNext}
+                        disabled={!onNext}
+                        title="Next"
+                      >
+                        <FiSkipForward size={18} />
+                      </button>
+                    </div>
 
-                  <div className="flex justify-between">
-                    <button className="w-12 h-10 bg-gray-200 dark:bg-gray-700 rounded flex items-center justify-center text-gray-700 dark:text-gray-300">
-                      <FiSkipBack />
-                    </button>
-                    <button className="w-12 h-10 bg-gray-200 dark:bg-gray-700 rounded flex items-center justify-center text-gray-700 dark:text-gray-300">
-                      <FiSkipForward />
-                    </button>
-                  </div>
-
-                  <div className="mt-3 text-center">
                     <button
                       onClick={blankToBlack}
-                      className="w-full py-2 bg-gray-200 dark:bg-gray-700 rounded text-sm text-gray-700 dark:text-gray-300"
+                      className="w-full py-2 px-4 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors duration-200 font-medium text-sm flex items-center justify-center gap-2"
                     >
+                      <FiSquare size={14} />
                       Blank to Black
                     </button>
                   </div>
                 </div>
-              </div>
-            </div>
-          </div>
+              </AccordionContent>
+            </AccordionItem>
+          </Accordion>
         </div>
       </div>
     </div>

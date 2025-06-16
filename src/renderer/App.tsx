@@ -2,6 +2,7 @@ import React from "react";
 import AppRoutes from "../routes";
 import { usePresentationInit } from "../hooks/usePresentationInit";
 import LiveDisplayRenderer from "../components/LiveDisplay/LiveDisplayRenderer";
+import TitleBar from "../components/shared/TitleBar";
 
 const App: React.FC = () => {
   // Check if we're in live display mode via query parameter
@@ -24,9 +25,15 @@ const App: React.FC = () => {
     usePresentationInit();
 
     return (
-      <div className="flex flex-col h-screen w-screen overflow-hidden">
+      <div className="app-window">
         <div className="app-content">
-          <AppRoutes />
+          {/* Custom Title Bar */}
+          <TitleBar title="PraisePresent - Church Presentation System" />
+
+          {/* Main Application Content */}
+          <div className="flex-1 overflow-hidden">
+            <AppRoutes />
+          </div>
         </div>
       </div>
     );

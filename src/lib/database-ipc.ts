@@ -10,6 +10,27 @@ declare global {
       onLiveShowBlack?: (callback: () => void) => () => void;
       onLiveShowLogo?: (callback: () => void) => () => void;
       onLiveThemeUpdate?: (callback: (theme: any) => void) => () => void;
+
+      // Window control methods (for custom title bar)
+      window?: {
+        minimize: () => Promise<void>;
+        maximize: () => Promise<void>;
+        unmaximize: () => Promise<void>;
+        close: () => Promise<void>;
+        isMaximized: () => Promise<boolean>;
+        isFullScreen: () => Promise<boolean>;
+        setFullScreen: (flag: boolean) => Promise<boolean>;
+        toggleFullScreen: () => Promise<boolean>;
+        isAlwaysOnTop: () => Promise<boolean>;
+        setAlwaysOnTop: (flag: boolean) => Promise<boolean>;
+        on: (event: string, callback: () => void) => Promise<void>;
+        removeListener: (event: string, callback: () => void) => Promise<void>;
+        getBounds: () => Promise<{ x: number; y: number; width: number; height: number } | null>;
+        setBounds: (bounds: { x?: number; y?: number; width?: number; height?: number }) => Promise<{ x: number; y: number; width: number; height: number } | null>;
+        toggleVisibility: () => Promise<boolean>;
+        center: () => Promise<{ x: number; y: number; width: number; height: number } | null>;
+        reset: () => Promise<{ x: number; y: number; width: number; height: number } | null>;
+      };
     };
   }
 }
