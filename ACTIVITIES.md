@@ -329,6 +329,138 @@ The custom title bar implementation elevates the PraisePresent application to a 
 
 The enhanced sidebar focus states provide a professional, accessible navigation experience that meets modern UI standards and ensures all users can effectively navigate the PraisePresent application.
 
+### Enhanced Live Presentation Bible Version Integration ✅ COMPLETED
+
+**Date:** January 2025  
+**Author:** Assistant & User Collaboration
+
+#### Major Enhancement Made
+
+##### 1. Created Enhanced Version Selector for Live Presentation ✅
+
+- **New Component**: `src/components/bible/EnhancedVersionSelector.tsx`
+- **Location**: Integrated directly into Live Presentation Scripture tab
+- **Purpose**: Provides comprehensive version management with automatic book/chapter/verse loading
+
+**Key Features:**
+- **Dual State Management**: Updates both Bible slice and Presentation slice simultaneously
+- **Automatic Book Loading**: When version changes, automatically loads books and Genesis 1:1 as default
+- **Smart Version Selection**: Prioritizes KJV, then default marked versions, then first available
+- **Professional UI**: Blue-themed design that integrates seamlessly with Live Presentation interface
+- **Version Information Display**: Shows full name, year, publisher, and description when available
+- **Loading States**: Professional loading indicators during version switching
+
+##### 2. Enhanced Bible Slice with Version-Based Book Loading ✅
+
+- **New Thunk**: `loadBooksForVersion()` - Automatically loads books when version changes
+- **Smart Defaults**: Automatically selects Genesis 1:1 when switching versions
+- **State Synchronization**: Ensures all related states (book, chapter, verse) update consistently
+- **Reference Updates**: Automatically updates `currentReference` to reflect new selections
+
+**Technical Implementation:**
+```typescript
+// New thunk for loading books when version changes
+export const loadBooksForVersion = createAsyncThunk(
+  'bible/loadBooksForVersion',
+  async (versionId: string, { dispatch, getState }) => {
+    // Load books for this version
+    await dispatch(loadBooks());
+    
+    // Get updated state and find Genesis
+    const state = getState() as { bible: BibleState };
+    const defaultBook = state.bible.books.find(b => 
+      b.name.toLowerCase() === 'genesis' || b.order === 1
+    ) || state.bible.books[0];
+    
+    if (defaultBook) {
+      // Load Genesis 1 verses for the new version
+      await dispatch(loadVerses({
+        versionId: versionId,
+        bookId: defaultBook.id,
+        chapter: 1
+      }));
+      
+      return { versionId, book: defaultBook, chapter: 1, verse: 1 };
+    }
+    
+    return { versionId };
+  }
+);
+```
+
+##### 3. Live Presentation Integration ✅
+
+- **Scripture Tab Enhancement**: Version selector now prominently displayed at top of Scripture tab
+- **Seamless Integration**: Works harmoniously with existing QuickScriptureSearch component
+- **Responsive Layout**: Properly integrated with Live Presentation's resizable panel system
+- **Professional Styling**: Matches Live Presentation's blue theme and professional appearance
+
+##### 4. Enhanced Scripture Search Responsiveness ✅
+
+- **Version Change Detection**: QuickScriptureSearch now automatically updates search results when version changes
+- **Smart Re-searching**: If user has active search query, results refresh with new version
+- **Consistent Experience**: Navigation and search tabs both respond to version changes appropriately
+
+#### User Experience Improvements ✅
+
+**Before Enhancement:**
+- Version selector was only in sidebar (and commented out)
+- No automatic book loading when version changed
+- Manual navigation required to see new version content
+- Disconnected user experience between version selection and content browsing
+
+**After Enhancement:**
+- ✅ **Prominent Version Control**: Version selector front and center in Live Presentation Scripture tab
+- ✅ **Automatic Content Loading**: Switching versions immediately loads Genesis 1:1 for preview
+- ✅ **Smart Search Updates**: Search results automatically refresh with new version
+- ✅ **Professional Interface**: Blue-themed design that matches Live Presentation aesthetics
+- ✅ **Detailed Version Info**: Full version details displayed for informed selection
+- ✅ **Seamless Workflow**: Version changes flow smoothly through entire scripture browsing experience
+
+#### Technical Benefits ✅
+
+**State Management:**
+- Dual slice updates ensure consistency between Bible and Presentation states
+- Automatic cascade of related state updates (book → chapter → verse → reference)
+- Error handling prevents state corruption during version switching
+
+**Performance:**
+- Efficient loading with proper async state management
+- Smart defaulting reduces user interaction needed
+- Optimized re-rendering with targeted useEffect dependencies
+
+**Extensibility:**
+- Enhanced Version Selector can be easily reused in other contexts
+- `loadBooksForVersion` thunk provides reusable version switching logic
+- Architecture supports future version-specific features (different book sets, etc.)
+
+#### Integration Results ✅
+
+**Live Presentation Workflow:**
+- ✅ Users open Live Presentation → Scripture tab
+- ✅ Version selector immediately visible and functional
+- ✅ Changing version loads appropriate content automatically
+- ✅ Scripture search and navigation work seamlessly with version selection
+- ✅ Preview/Live functionality preserved with new version content
+
+**Technical Integration:**
+- ✅ No breaking changes to existing functionality
+- ✅ Enhanced components work alongside existing Bible components
+- ✅ State synchronization maintains consistency across all features
+- ✅ Error handling ensures robust operation during version switching
+
+#### Current System Status
+
+✅ **Enhanced Version Selector**: Fully integrated into Live Presentation Scripture tab
+✅ **Automatic Book Loading**: Version changes trigger complete content refresh
+✅ **State Synchronization**: Both Bible and Presentation slices properly synchronized
+✅ **Professional UI**: Blue-themed design matching Live Presentation aesthetics
+✅ **Search Integration**: Scripture search automatically responds to version changes
+✅ **Performance Optimized**: Efficient loading and state management
+✅ **User Experience**: Seamless workflow from version selection to scripture browsing
+
+The Enhanced Live Presentation Bible Version Integration provides a professional, streamlined experience for pastors and worship leaders to quickly select Bible versions and access scripture content during live services, with automatic content loading and smart defaults that minimize setup time and maximize ministry effectiveness.
+
 ### Custom Title Bar Frameless Window Fixes ✅ COMPLETED
 
 **Date:** January 2025  

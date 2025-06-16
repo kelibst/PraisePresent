@@ -6,7 +6,7 @@ import { sendPreviewToLive, clearLive } from '../lib/presentationSlice';
 import { FiPlay, FiSkipBack, FiSkipForward, FiMonitor, FiEdit, FiTrash2, FiBook, FiMusic, FiList, FiSearch } from 'react-icons/fi';
 import PreviewLivePanel from '../components/shared/PreviewLivePanel';
 import QuickScriptureSearch from '../components/shared/QuickScriptureSearch';
-import VersionSelector from '../components/bible/VersionSelector';
+import EnhancedVersionSelector from '../components/bible/EnhancedVersionSelector';
 import { Verse } from '../lib/bibleSlice';
 import ScriptureList from '@/components/bible/ScriptureList';
 import ScriptureLiveList from '@/components/bible/ScriptureLiveList';
@@ -200,7 +200,15 @@ const LivePresentation = () => {
 			case 'scripture':
 				return (
 					<div className="h-full flex flex-col">
-						<QuickScriptureSearch />
+						{/* Enhanced Version Selector */}
+						<div className="border-b border-gray-200 dark:border-gray-700 pb-4 mb-4">
+							<EnhancedVersionSelector />
+						</div>
+
+						{/* Scripture Search */}
+						<div className="flex-1 min-h-0">
+							<QuickScriptureSearch />
+						</div>
 					</div>
 				);
 

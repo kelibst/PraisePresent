@@ -266,6 +266,41 @@ export const navigateToReference = createAsyncThunk(
   }
 );
 
+// New thunk for loading books when version changes
+export const loadBooksForVersion = createAsyncThunk(
+  'bible/loadBooksForVersion',
+  async (versionId: string, { dispatch, getState }) => {
+    // Load books for this version
+    await dispatch(loadBooks());
+    
+    // Get updated state
+    const state = getState() as { bible: BibleState };
+    
+    // Find default book (Genesis) and load its first chapter
+    const defaultBook = state.bible.books.find(b => 
+      b.name.toLowerCase() === 'genesis' || b.order === 1
+    ) || state.bible.books[0];
+    
+    if (defaultBook) {
+      // Load Genesis 1 verses for the new version
+      await dispatch(loadVerses({
+        versionId: versionId,
+        bookId: defaultBook.id,
+        chapter: 1
+      }));
+      
+      return {
+        versionId,
+        book: defaultBook,
+        chapter: 1,
+        verse: 1
+      };
+    }
+    
+    return { versionId };
+  }
+);
+
 // Initial state
 const initialState: BibleState = {
   translations: [],
@@ -482,6 +517,26 @@ const bibleSlice = createSlice({
       .addCase(searchVerses.rejected, (state, action) => {
         state.loading = false;
         state.error = action.error.message || 'Failed to search verses';
+      });
+
+    // Load books for version
+    builder
+      .addCase(loadBooksForVersion.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(loadBooksForVersion.fulfilled, (state, action) => {
+        state.loading = false;
+        if (action.payload.book) {
+          state.selectedBook = action.payload.book.id;
+          state.selectedChapter = action.payload.chapter;
+          state.selectedVerse = action.payload.verse;
+          state.currentReference = `${action.payload.book.name} ${action.payload.chapter}:${action.payload.verse}`;
+        }
+      })
+      .addCase(loadBooksForVersion.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.error.message || 'Failed to load books for version';
       });
   },
 });

@@ -195,6 +195,13 @@ const QuickScriptureSearch: React.FC<QuickScriptureSearchProps> = ({
 		}
 	}, [searchQuery, activeTab, selectedVersion]);
 
+	// Re-run search when version changes (to update results with new version)
+	useEffect(() => {
+		if (activeTab === 'search' && searchQuery.trim() && selectedVersion) {
+			searchVerses(searchQuery);
+		}
+	}, [selectedVersion]);
+
 	const handleVerseSelect = (verse: Verse) => {
 		// Add to recent verses
 		setRecentVerses(prev => {
