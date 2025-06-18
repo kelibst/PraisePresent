@@ -38,10 +38,13 @@ const PreviewLivePanel: React.FC<PreviewLivePanelProps> = ({
 
   const sendToLive = async () => {
     if (previewItem) {
-      // Update the local state first
-      dispatch(sendPreviewToLive());
-      // Then send to the actual live display
-      dispatch(sendContentToLiveDisplay(previewItem));
+      try {
+        // Use the proper thunk that actually sends content to live display
+        await dispatch(sendContentToLiveDisplay(previewItem)).unwrap();
+        console.log("Content sent to live display successfully");
+      } catch (error) {
+        console.error("Failed to send content to live display:", error);
+      }
     }
   };
 

@@ -9,6 +9,7 @@ import Homepage from "@/pages/Homepage";
 import Scripture from "@/pages/Scripture";
 import LivePresentation from "@/pages/LivePresentation";
 import Settings from "@/pages/Settings";
+import Songs from "./pages/Songs";
 
 const AppRoutes = () => {
   return (
@@ -19,6 +20,7 @@ const AppRoutes = () => {
         <Route path="/scripture" element={<Scripture />} />
         <Route path="/live" element={<LivePresentation />} />
         <Route path="/settings" element={<Settings />} />
+        <Route path="/songs" element={<Songs />} />
       </Route>
     </Routes>
   );

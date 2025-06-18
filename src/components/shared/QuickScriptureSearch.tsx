@@ -295,7 +295,7 @@ const QuickScriptureSearch: React.FC<QuickScriptureSearchProps> = ({
 
 			{/* Navigate Tab */}
 			{activeTab === 'navigate' && (
-				<div className="space-y-4">
+				<div className="space-y-4 overflow-y-auto">
 					{/* Scripture Reference Input */}
 					<div className="relative">
 						<div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">

@@ -25,14 +25,14 @@ interface LiveDisplayTheme {
 
 interface LiveContent {
   type:
-    | "scripture"
-    | "song"
-    | "announcement"
-    | "media"
-    | "slide"
-    | "black"
-    | "logo"
-    | "placeholder";
+  | "scripture"
+  | "song"
+  | "announcement"
+  | "media"
+  | "slide"
+  | "black"
+  | "logo"
+  | "placeholder";
   title?: string;
   content?: string | any;
   verse?: string;
@@ -48,11 +48,11 @@ const defaultTheme: LiveDisplayTheme = {
   textColor: "#ffffff",
   subtitleColor: "#cccccc",
   referenceColor: "#60a5fa",
-  fontSize: 3.5,
+  fontSize: 5,
   fontFamily:
     "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
-  lineHeight: 1.4,
-  padding: 4,
+  lineHeight: 1.3,
+  padding: 2,
   textShadow: true,
   alignment: "center",
   animation: "fade",
@@ -62,67 +62,7 @@ const defaultTheme: LiveDisplayTheme = {
 };
 
 const LiveDisplayRenderer: React.FC = () => {
-  console.log("🔴 LIVE DISPLAY RENDERER: Component is loading/mounting!");
-  console.log("🔴 LIVE DISPLAY RENDERER: Current URL:", window.location.href);
-  console.log(
-    "🔴 LIVE DISPLAY RENDERER: Query params:",
-    window.location.search
-  );
-
-  // Add DOM verification
-  console.log("🔴 LIVE DISPLAY RENDERER: DOM body element:", document.body);
-  console.log(
-    "🔴 LIVE DISPLAY RENDERER: Document ready state:",
-    document.readyState
-  );
-
-  // Enhanced electronAPI debugging
-  console.log(
-    "🔴 LIVE DISPLAY RENDERER: window object keys:",
-    Object.keys(window)
-  );
-  console.log(
-    "🔴 LIVE DISPLAY RENDERER: window.electronAPI:",
-    window.electronAPI
-  );
-  console.log(
-    "🔴 LIVE DISPLAY RENDERER: typeof window.electronAPI:",
-    typeof window.electronAPI
-  );
-
-  if (window.electronAPI) {
-    console.log(
-      "🔴 LIVE DISPLAY RENDERER: electronAPI methods:",
-      Object.keys(window.electronAPI)
-    );
-    console.log(
-      "🔴 LIVE DISPLAY RENDERER: onLiveContentUpdate function:",
-      window.electronAPI.onLiveContentUpdate
-    );
-    console.log(
-      "🔴 LIVE DISPLAY RENDERER: invoke function:",
-      window.electronAPI.invoke
-    );
-  } else {
-    console.error("🔴 LIVE DISPLAY RENDERER: ❌ electronAPI is NOT AVAILABLE!");
-    console.log(
-      "🔴 LIVE DISPLAY RENDERER: This suggests preload script didn't load properly"
-    );
-  }
-
-  // Test if we can access other window properties that might indicate preload issues
-  console.log(
-    "🔴 LIVE DISPLAY RENDERER: window.__dirname:",
-    (window as any).__dirname
-  );
-  console.log(
-    "🔴 LIVE DISPLAY RENDERER: window.require:",
-    (window as any).require
-  );
-  console.log(
-    "🔴 LIVE DISPLAY RENDERER: window.process:",
-    (window as any).process
-  );
+  console.log("🔴 LIVE DISPLAY RENDERER: Component mounting");
 
   // Get live content from Redux store
   const liveItem = useSelector(
@@ -130,22 +70,11 @@ const LiveDisplayRenderer: React.FC = () => {
   );
   const dispatch = useDispatch();
 
-  console.log(
-    "🔴 LIVE DISPLAY RENDERER: Component rendered with liveItem:",
-    liveItem
-  );
+  console.log("🔴 LIVE DISPLAY RENDERER: Redux liveItem:", liveItem);
 
   // Convert Redux live item to LiveContent format
   const getContentFromRedux = (): LiveContent | null => {
-    console.log(
-      "🔴 LIVE DISPLAY RENDERER: getContentFromRedux called with liveItem:",
-      liveItem
-    );
-
     if (!liveItem) {
-      console.log(
-        "🔴 LIVE DISPLAY RENDERER: No liveItem, returning placeholder"
-      );
       return {
         type: "placeholder",
         title: "PraisePresent",
@@ -158,9 +87,6 @@ const LiveDisplayRenderer: React.FC = () => {
     }
 
     if (liveItem.type === "scripture") {
-      console.log(
-        "🔴 LIVE DISPLAY RENDERER: Converting scripture liveItem to LiveContent"
-      );
       return {
         type: "scripture",
         title: liveItem.title,
@@ -170,16 +96,39 @@ const LiveDisplayRenderer: React.FC = () => {
       };
     }
 
-    console.log(
-      "🔴 LIVE DISPLAY RENDERER: Converting other liveItem type:",
-      liveItem.type
-    );
+    if (liveItem.type === "song") {
+      return {
+        type: "song",
+        title: liveItem.title,
+        content: liveItem.content?.lyrics || liveItem.content,
+        subtitle: liveItem.content?.artist || "",
+        lines: liveItem.content?.lyrics ? liveItem.content.lyrics.split('\n') : [],
+      };
+    }
+
     // Handle other content types
     return {
       type: liveItem.type as any,
       title: liveItem.title,
       content: liveItem.content,
     };
+  };
+
+  // Calculate adaptive text size class based on content length
+  const getScriptureTextSizeClass = (text: string): string => {
+    const textLength = text?.length || 0;
+
+    if (textLength < 100) {
+      return 'short';
+    } else if (textLength < 200) {
+      return 'medium';
+    } else if (textLength < 350) {
+      return 'long';
+    } else if (textLength < 500) {
+      return 'very-long';
+    } else {
+      return 'ultra-long';
+    }
   };
 
   const [content, setContent] = useState<LiveContent | null>(
@@ -196,10 +145,10 @@ const LiveDisplayRenderer: React.FC = () => {
   // Update content when Redux state changes
   useEffect(() => {
     const newContent = getContentFromRedux();
-    console.log("🔴 LIVE DISPLAY RENDERER: Redux state changed");
-    console.log("  - Previous content:", content);
-    console.log("  - New content from Redux:", newContent);
-    console.log("  - Redux liveItem:", liveItem);
+    // console.log("🔴 LIVE DISPLAY: Redux state changed");
+    // console.log("  - liveItem type:", liveItem?.type);
+    // console.log("  - liveItem title:", liveItem?.title);
+    // console.log("  - New content type:", newContent?.type);
 
     // Only update if the content has actually changed to prevent unnecessary re-renders
     const contentChanged =
@@ -209,17 +158,13 @@ const LiveDisplayRenderer: React.FC = () => {
       content.content !== newContent?.content;
 
     if (contentChanged) {
-      console.log(
-        "🔴 LIVE DISPLAY RENDERER: Content changed, updating local state"
-      );
+      // console.log("🔴 LIVE DISPLAY: Content changed, updating local state");
       setContent(newContent);
       setShowBlack(false);
       setShowLogo(false);
       setIsVisible(true);
     } else {
-      console.log(
-        "🔴 LIVE DISPLAY RENDERER: Content unchanged, skipping update"
-      );
+      console.log("🔴 LIVE DISPLAY: Content unchanged, skipping update");
     }
   }, [liveItem]);
 
@@ -493,9 +438,8 @@ const LiveDisplayRenderer: React.FC = () => {
 
     return {
       color,
-      fontSize: `${
-        theme.fontSize * (isSubtitle ? 0.7 : isReference ? 0.8 : 1)
-      }rem`,
+      fontSize: `${theme.fontSize * (isSubtitle ? 0.7 : isReference ? 0.8 : 1)
+        }rem`,
       lineHeight: theme.lineHeight,
       textShadow: theme.textShadow ? "0 2px 4px rgba(0, 0, 0, 0.7)" : "none",
       fontWeight: isReference ? 600 : isSubtitle ? 300 : 400,
@@ -506,12 +450,18 @@ const LiveDisplayRenderer: React.FC = () => {
 
   const getContentContainerStyle = (): React.CSSProperties => {
     const style: React.CSSProperties = {
-      maxWidth: "90%",
+      maxWidth: content?.type === "scripture" ? "100%" : "90%",
       width: "100%",
+      height: content?.type === "scripture" ? "100%" : "auto",
       textAlign: theme.alignment,
+      display: content?.type === "scripture" ? "flex" : "block",
+      flexDirection: "column",
+      justifyContent: "center",
+      alignItems: "center",
+      padding: content?.type === "scripture" ? "1rem" : "2rem",
     };
 
-    if (theme.borderWidth && theme.borderWidth > 0) {
+    if (theme.borderWidth && theme.borderWidth > 0 && content?.type !== "scripture") {
       style.border = `${theme.borderWidth}px solid ${theme.borderColor}`;
       style.borderRadius = `${theme.borderRadius}px`;
       style.padding = "2rem";
@@ -567,9 +517,8 @@ const LiveDisplayRenderer: React.FC = () => {
   return (
     <div
       style={getContainerStyle()}
-      className={`live-display-animation ${theme.animation} ${
-        isVisible ? "visible" : ""
-      }`}
+      className={`live-display-animation ${theme.animation} ${isVisible ? "visible" : ""
+        }`}
     >
       {/* Debug info overlay - remove in production */}
       <div
@@ -587,37 +536,29 @@ const LiveDisplayRenderer: React.FC = () => {
           opacity: 0.7,
         }}
       >
-        <div>🔴 LIVE DISPLAY RENDERER DEBUG</div>
+        <div>🔴 LIVE DISPLAY DEBUG</div>
+        <div>Redux liveItem Type: {liveItem?.type || "none"}</div>
+        <div>Redux liveItem Title: {liveItem?.title || "none"}</div>
+        <div>Local Content Type: {content?.type || "none"}</div>
         <div>IPC Connected: {ipcConnected ? "✅" : "❌"}</div>
-        <div>Content Type: {content?.type || "none"}</div>
-        <div>Content Title: {content?.title || "none"}</div>
         <div>Show Black: {showBlack ? "✅" : "❌"}</div>
         <div>Show Logo: {showLogo ? "✅" : "❌"}</div>
-        <div>Is Visible: {isVisible ? "✅" : "❌"}</div>
-        <div>Redux Item: {liveItem?.type || "none"}</div>
-        <div>URL: {window.location.href}</div>
       </div>
 
       {content && isVisible ? (
         <div style={getContentContainerStyle()}>
           {content.type === "scripture" && (
-            <div className="scripture-content">
+            <div className="scripture-content scripture-display">
               {content.reference && (
-                <div style={getTextStyle(false, true)}>{content.reference}</div>
+                <div className="scripture-reference">
+                  {content.reference}
+                </div>
               )}
-              <div style={getTextStyle()}>
+              <div className={`scripture-text ${getScriptureTextSizeClass(content.content || content.verse || '')}`}>
                 {content.content || content.verse}
               </div>
               {(content.subtitle || content.translation) && (
-                <div
-                  style={{
-                    ...getTextStyle(true),
-                    fontSize: "1.8rem",
-                    opacity: 0.8,
-                    marginTop: "1.5rem",
-                    fontStyle: "italic",
-                  }}
-                >
+                <div className="scripture-translation">
                   — {content.translation || content.subtitle}
                 </div>
               )}
@@ -708,10 +649,10 @@ const LiveDisplayRenderer: React.FC = () => {
               <div style={getTextStyle()}>
                 {typeof content.content === "string"
                   ? content.content.split("\n").map((line, index) => (
-                      <div key={index} style={{ marginBottom: "1rem" }}>
-                        {line}
-                      </div>
-                    ))
+                    <div key={index} style={{ marginBottom: "1rem" }}>
+                      {line}
+                    </div>
+                  ))
                   : content.content}
               </div>
               {content.subtitle && (
@@ -786,10 +727,10 @@ const LiveDisplayRenderer: React.FC = () => {
               <div style={getTextStyle()}>
                 {typeof content.content === "string"
                   ? content.content.split("\n").map((line, index) => (
-                      <div key={index} style={{ marginBottom: "1rem" }}>
-                        {line}
-                      </div>
-                    ))
+                    <div key={index} style={{ marginBottom: "1rem" }}>
+                      {line}
+                    </div>
+                  ))
                   : content.content}
               </div>
               {content.subtitle && (

@@ -106,12 +106,82 @@ export class DatabaseIPC {
     return await window.electronAPI.invoke("db:getImportStats");
   }
 
-  // Song operations (for future use)
-  async loadSongs({
-    search,
-    limit = 50,
-  }: { search?: string; limit?: number } = {}) {
-    return await window.electronAPI.invoke("db:loadSongs", { search, limit });
+  // ===== SONG OPERATIONS =====
+  
+  // Load songs with search and filtering
+  async loadSongs(params: {
+    query?: string;
+    filters?: {
+      category?: string;
+      key?: string;
+      tempo?: string;
+      artist?: string;
+      ccliNumber?: string;
+      tags?: string[];
+      usage?: 'recent' | 'frequent' | 'favorites';
+    };
+    limit?: number;
+    offset?: number;
+  } = {}) {
+    return await window.electronAPI.invoke("db:loadSongs", params);
+  }
+  
+  // Search songs
+  async searchSongs(searchParams: {
+    query: string;
+    filters?: any;
+    limit?: number;
+    offset?: number;
+  }) {
+    return await window.electronAPI.invoke("db:searchSongs", searchParams);
+  }
+  
+  // Get single song with full details
+  async getSong(songId: string) {
+    return await window.electronAPI.invoke("db:getSong", songId);
+  }
+  
+  // Create new song
+  async createSong(songData: any) {
+    return await window.electronAPI.invoke("db:createSong", songData);
+  }
+  
+  // Update existing song
+  async updateSong(song: any) {
+    return await window.electronAPI.invoke("db:updateSong", song);
+  }
+  
+  // Delete song
+  async deleteSong(songId: string) {
+    return await window.electronAPI.invoke("db:deleteSong", songId);
+  }
+  
+  // Update song usage (track when song is used)
+  async updateSongUsage(songId: string) {
+    return await window.electronAPI.invoke("db:updateSongUsage", songId);
+  }
+  
+  // Get recent songs
+  async getRecentSongs({ limit = 10 } = {}) {
+    return await window.electronAPI.invoke("db:getRecentSongs", { limit });
+  }
+  
+  // Get favorite songs
+  async getFavoriteSongs({ limit = 20 } = {}) {
+    return await window.electronAPI.invoke("db:getFavoriteSongs", { limit });
+  }
+  
+  // Get song categories
+  async getSongCategories() {
+    return await window.electronAPI.invoke("db:getSongCategories");
+  }
+  
+  // Import songs in batch
+  async importSongs(importData: {
+    songs: any[];
+    format: string;
+  }) {
+    return await window.electronAPI.invoke("db:importSongs", importData);
   }
 
   // Service operations (for future use)

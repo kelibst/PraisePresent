@@ -22,7 +22,7 @@ const createWindow = () => {
     minWidth: 800,
     minHeight: 600,
     frame: true,
-    titleBarStyle: 'hidden',
+    // titleBarStyle: 'hidden',
     trafficLightPosition: { x: -100, y: -100 }, // Hide macOS traffic lights
     transparent: false,
     hasShadow: true,

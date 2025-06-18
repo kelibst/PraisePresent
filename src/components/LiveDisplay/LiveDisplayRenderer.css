@@ -12,6 +12,156 @@ body {
   overflow: hidden;
 }
 
+/* Scripture-specific styles for maximum readability from distance */
+.scripture-display {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  padding: 2rem;
+}
+
+.scripture-reference {
+  font-size: clamp(2rem, 3.5vw, 3.5rem) !important;
+  font-weight: 600;
+  margin-bottom: 1.5rem;
+  color: #60a5fa;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.8);
+  line-height: 1.2;
+}
+
+/* Adaptive text sizing based on content length */
+.scripture-text {
+  font-weight: 400;
+  line-height: 1.3 !important;
+  color: #ffffff;
+  text-shadow: 0 3px 12px rgba(0, 0, 0, 0.9);
+  max-width: 95%;
+  word-wrap: break-word;
+  hyphens: auto;
+  margin-bottom: 1.5rem;
+}
+
+/* Short verses (under 100 characters) - Maximum readability */
+.scripture-text.short {
+  font-size: clamp(4rem, 8vw, 9rem) !important;
+}
+
+/* Medium verses (100-200 characters) - Balanced readability */
+.scripture-text.medium {
+  font-size: clamp(3rem, 6vw, 6.5rem) !important;
+}
+
+/* Long verses (200-350 characters) - Prioritize fitting */
+.scripture-text.long {
+  font-size: clamp(2.2rem, 4.5vw, 4.8rem) !important;
+  line-height: 1.25 !important;
+}
+
+/* Very long verses (350+ characters) - Ensure complete visibility */
+.scripture-text.very-long {
+  font-size: clamp(1.8rem, 3.5vw, 3.8rem) !important;
+  line-height: 1.2 !important;
+  max-height: 75vh;
+  overflow-y: hidden;
+}
+
+/* Ultra-long verses (500+ characters) - Multi-line optimization */
+.scripture-text.ultra-long {
+  font-size: clamp(1.5rem, 3vw, 3.2rem) !important;
+  line-height: 1.15 !important;
+  max-height: 80vh;
+  overflow-y: auto;
+  padding: 0 1rem;
+}
+
+.scripture-translation {
+  font-size: clamp(1.4rem, 2.5vw, 2.5rem) !important;
+  font-weight: 300;
+  font-style: italic;
+  color: #cccccc;
+  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.7);
+  margin-top: 1rem;
+  opacity: 0.9;
+}
+
+/* Responsive adjustments for different screen sizes */
+@media (max-width: 1920px) and (min-width: 1366px) {
+  .scripture-text.short {
+    font-size: clamp(3.5rem, 7vw, 7.5rem) !important;
+  }
+  .scripture-text.medium {
+    font-size: clamp(2.8rem, 5.5vw, 5.8rem) !important;
+  }
+  .scripture-text.long {
+    font-size: clamp(2rem, 4vw, 4.2rem) !important;
+  }
+  .scripture-text.very-long {
+    font-size: clamp(1.6rem, 3.2vw, 3.4rem) !important;
+  }
+  .scripture-text.ultra-long {
+    font-size: clamp(1.4rem, 2.8vw, 2.9rem) !important;
+  }
+}
+
+@media (max-width: 1366px) and (min-width: 1024px) {
+  .scripture-text.short {
+    font-size: clamp(3rem, 6vw, 6.5rem) !important;
+  }
+  .scripture-text.medium {
+    font-size: clamp(2.4rem, 5vw, 5.2rem) !important;
+  }
+  .scripture-text.long {
+    font-size: clamp(1.8rem, 3.8vw, 3.9rem) !important;
+  }
+  .scripture-text.very-long {
+    font-size: clamp(1.5rem, 3vw, 3.1rem) !important;
+  }
+  .scripture-text.ultra-long {
+    font-size: clamp(1.3rem, 2.6vw, 2.7rem) !important;
+  }
+}
+
+@media (max-width: 1024px) {
+  .scripture-text.short {
+    font-size: clamp(2.5rem, 5.5vw, 5.8rem) !important;
+  }
+  .scripture-text.medium {
+    font-size: clamp(2rem, 4.5vw, 4.7rem) !important;
+  }
+  .scripture-text.long {
+    font-size: clamp(1.6rem, 3.5vw, 3.6rem) !important;
+  }
+  .scripture-text.very-long {
+    font-size: clamp(1.4rem, 2.8vw, 2.9rem) !important;
+  }
+  .scripture-text.ultra-long {
+    font-size: clamp(1.2rem, 2.4vw, 2.5rem) !important;
+  }
+}
+
+/* Ultra-wide screen optimizations */
+@media (min-width: 2560px) {
+  .scripture-text.short {
+    font-size: clamp(5rem, 9vw, 11rem) !important;
+  }
+  .scripture-text.medium {
+    font-size: clamp(3.8rem, 7vw, 8rem) !important;
+  }
+  .scripture-text.long {
+    font-size: clamp(2.8rem, 5.5vw, 6rem) !important;
+  }
+  .scripture-text.very-long {
+    font-size: clamp(2.2rem, 4.2vw, 4.8rem) !important;
+  }
+  .scripture-text.ultra-long {
+    font-size: clamp(1.9rem, 3.8vw, 4.2rem) !important;
+  }
+}
+
 /* Animation Classes */
 .live-display-animation {
   transition: all 0.5s ease-in-out;
@@ -112,7 +262,7 @@ body {
   box-shadow: 0 0 20px rgba(251, 191, 36, 0.3);
 }
 
-/* Responsive text scaling */
+/* Responsive text scaling for other content */
 @media (max-width: 1920px) {
   .responsive-text {
     font-size: calc(2rem + 1vw);

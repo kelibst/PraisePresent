@@ -13,6 +13,8 @@
     "db:setup": "node scripts/setup-database.js",
     "db:setup-sqlite": "node scripts/sqlite-seed.js",
     "db:setup-fast": "node scripts/setup-database-sqlite.js",
+    "db:seed-songs": "node scripts/song-seed.js",
+    "db:seed-hymnals": "node scripts/hymnal-seed.js",
     "db:generate": "prisma generate",
     "db:push": "prisma db push",
     "db:studio": "prisma studio"

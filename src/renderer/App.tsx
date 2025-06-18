@@ -31,7 +31,7 @@ const App: React.FC = () => {
           <TitleBar title="PraisePresent - Church Presentation System" />
 
           {/* Main Application Content */}
-          <div className="flex-1 overflow-hidden">
+          <div className="flex-1 overflow-y-auto">
             <AppRoutes />
           </div>
         </div>
@@ -40,7 +40,6 @@ const App: React.FC = () => {
   };
 
   // Regular main application mode
-  console.log("App.tsx: Rendering main application");
   return <MainApp />;
 };
 

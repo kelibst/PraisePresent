@@ -9,11 +9,11 @@ const AppLayout: React.FC = () => {
 	useBibleInit();
 
 	return (
-		<div className="min-h-screen flex flex-col overflow-hidden min-w-screen">
+		<div className="min-h-screen flex flex-col overflow-y-auto min-w-screen">
 			{/* Animated Sidebar */}
 			<AnimatedSidebar open={sidebarOpen} onToggle={() => setSidebarOpen((v) => !v)} />
 			{/* Main content shifts right when aside is open */}
-			<main className={`flex-1 p-0 md:p-8 transition-all duration-500 ${sidebarOpen ? 'md:ml-64' : ''}`}>
+			<main className={`flex-1 p-0 md:p-8 transition-all overflow-y-auto duration-500 ${sidebarOpen ? 'md:ml-64' : ''}`}>
 				<Outlet />
 			</main>
 		</div>

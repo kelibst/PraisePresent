@@ -6,6 +6,71 @@ import { sqliteBibleImporter } from "../lib/sqlite-bible-importer";
 // Initialize database in main process
 let db: any = null;
 
+// Utility function to parse song structure from lyrics
+function parseSongStructure(lyrics: string): { slides: any[], order: string[] } {
+  if (!lyrics) {
+    return { slides: [], order: [] };
+  }
+  
+  const lines = lyrics.split('\n');
+  const slides: any[] = [];
+  const order: string[] = [];
+  let currentSlide: any = null;
+  let slideCounter = 1;
+  
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i].trim();
+    
+    // Check if this line is a section header (e.g., "Verse 1:", "Chorus:", etc.)
+    const sectionMatch = line.match(/^(Verse|Chorus|Bridge|Intro|Outro|Tag)(\s+(\d+))?:?\s*$/i);
+    
+    if (sectionMatch) {
+      // Save previous slide if exists
+      if (currentSlide) {
+        slides.push(currentSlide);
+        order.push(currentSlide.id);
+      }
+      
+      // Create new slide
+      const type = sectionMatch[1].toLowerCase();
+      const number = sectionMatch[3] ? parseInt(sectionMatch[3]) : undefined;
+      const slideId = `${type}${number || ''}`;
+      const title = number ? `${sectionMatch[1]} ${number}` : sectionMatch[1];
+      
+      currentSlide = {
+        id: slideId,
+        type: type,
+        number: number,
+        title: title,
+        content: '',
+        chords: undefined,
+      };
+    } else if (line.length > 0 && currentSlide) {
+      // Add content to current slide
+      currentSlide.content += (currentSlide.content ? '\n' : '') + line;
+    } else if (line.length > 0 && !currentSlide) {
+      // No section header found, create a generic slide
+      currentSlide = {
+        id: `slide${slideCounter}`,
+        type: 'verse',
+        number: slideCounter,
+        title: `Slide ${slideCounter}`,
+        content: line,
+        chords: undefined,
+      };
+      slideCounter++;
+    }
+  }
+  
+  // Save last slide if exists
+  if (currentSlide) {
+    slides.push(currentSlide);
+    order.push(currentSlide.id);
+  }
+  
+  return { slides, order };
+}
+
 export async function initializeDatabaseMain() {
   try {
     db = initializeDatabase();
@@ -274,36 +339,369 @@ function setupDatabaseIPC() {
     }
   });
 
-  // Song operations (for future use)
+  // ===== SONG OPERATIONS =====
+  
+  // Load songs with search and filtering
   ipcMain.handle(
     "db:loadSongs",
     async (
       event,
-      { search, limit = 50 }: { search?: string; limit?: number }
+      params: {
+        query?: string;
+        filters?: {
+          category?: string;
+          key?: string;
+          tempo?: string;
+          artist?: string;
+          ccliNumber?: string;
+          tags?: string[];
+          usage?: 'recent' | 'frequent' | 'favorites';
+        };
+        limit?: number;
+        offset?: number;
+      } = {}
     ) => {
       try {
-        const where = search
-          ? {
-              OR: [
-                { title: { contains: search, mode: "insensitive" } },
-                { artist: { contains: search, mode: "insensitive" } },
-                { lyrics: { contains: search, mode: "insensitive" } },
-              ],
-            }
-          : {};
-
+        const { query, filters = {}, limit = 50, offset = 0 } = params;
+        
+        // Build where clause
+        const whereConditions: any[] = [];
+        
+        // Text search across multiple fields
+        if (query) {
+          whereConditions.push({
+            OR: [
+              { title: { contains: query, mode: "insensitive" } },
+              { artist: { contains: query, mode: "insensitive" } },
+              { author: { contains: query, mode: "insensitive" } },
+              { lyrics: { contains: query, mode: "insensitive" } },
+              { category: { contains: query, mode: "insensitive" } },
+            ],
+          });
+        }
+        
+        // Apply filters
+        if (filters.category) {
+          whereConditions.push({ category: filters.category });
+        }
+        
+        if (filters.key) {
+          whereConditions.push({ key: filters.key });
+        }
+        
+        if (filters.tempo) {
+          whereConditions.push({ tempo: filters.tempo });
+        }
+        
+        if (filters.artist) {
+          whereConditions.push({ 
+            artist: { contains: filters.artist, mode: "insensitive" } 
+          });
+        }
+        
+        if (filters.ccliNumber) {
+          whereConditions.push({ ccliNumber: filters.ccliNumber });
+        }
+        
+        if (filters.tags && filters.tags.length > 0) {
+          // Handle JSON array search for tags
+          whereConditions.push({
+            OR: filters.tags.map(tag => ({
+              tags: { contains: tag, mode: "insensitive" }
+            }))
+          });
+        }
+        
+        const where = whereConditions.length > 0 ? { AND: whereConditions } : {};
+        
+        // Determine ordering
+        let orderBy: any[] = [];
+        if (filters.usage === 'recent') {
+          orderBy = [{ lastUsed: "desc" }, { updatedAt: "desc" }];
+        } else if (filters.usage === 'frequent') {
+          orderBy = [{ usageCount: "desc" }, { lastUsed: "desc" }];
+        } else {
+          orderBy = [{ title: "asc" }];
+        }
+        
         const songs = await db.song.findMany({
           where,
-          orderBy: [{ lastUsed: "desc" }, { title: "asc" }],
+          orderBy,
           take: limit,
+          skip: offset,
         });
-        return songs;
+        
+        // Serialize dates and parse JSON fields
+        return songs.map((song: any) => ({
+          ...song,
+          tags: song.tags ? JSON.parse(song.tags) : [],
+          createdAt: song.createdAt?.toISOString(),
+          updatedAt: song.updatedAt?.toISOString(),
+          lastUsed: song.lastUsed?.toISOString(),
+        }));
       } catch (error) {
         console.error("Error loading songs:", error);
         throw error;
       }
     }
   );
+  
+  // Search songs (dedicated search with advanced options)
+  ipcMain.handle(
+    "db:searchSongs",
+    async (event, searchParams: {
+      query: string;
+      filters?: any;
+      limit?: number;
+      offset?: number;
+    }) => {
+      try {
+        // Use the same logic as loadSongs but optimized for search
+        return await ipcMain.emit("db:loadSongs", event, searchParams);
+      } catch (error) {
+        console.error("Error searching songs:", error);
+        throw error;
+      }
+    }
+  );
+  
+  // Get single song with full details
+  ipcMain.handle("db:getSong", async (event, songId: string) => {
+    try {
+      const song = await db.song.findUnique({
+        where: { id: songId },
+      });
+      
+      if (!song) {
+        throw new Error(`Song with ID ${songId} not found`);
+      }
+      
+      // Parse structure and tags
+      const songData = {
+        ...song,
+        tags: song.tags ? JSON.parse(song.tags) : [],
+        structure: song.lyrics ? parseSongStructure(song.lyrics) : { slides: [], order: [] },
+        createdAt: song.createdAt?.toISOString(),
+        updatedAt: song.updatedAt?.toISOString(),
+        lastUsed: song.lastUsed?.toISOString(),
+      };
+      
+      return songData;
+    } catch (error) {
+      console.error("Error getting song:", error);
+      throw error;
+    }
+  });
+  
+  // Create new song
+  ipcMain.handle("db:createSong", async (event, songData: any) => {
+    try {
+      const newSong = await db.song.create({
+        data: {
+          ...songData,
+          tags: songData.tags ? JSON.stringify(songData.tags) : null,
+          usageCount: 0,
+        },
+      });
+      
+      return {
+        ...newSong,
+        tags: newSong.tags ? JSON.parse(newSong.tags) : [],
+        structure: newSong.lyrics ? parseSongStructure(newSong.lyrics) : { slides: [], order: [] },
+        createdAt: newSong.createdAt?.toISOString(),
+        updatedAt: newSong.updatedAt?.toISOString(),
+        lastUsed: newSong.lastUsed?.toISOString(),
+      };
+    } catch (error) {
+      console.error("Error creating song:", error);
+      throw error;
+    }
+  });
+  
+  // Update existing song
+  ipcMain.handle("db:updateSong", async (event, song: any) => {
+    try {
+      const updatedSong = await db.song.update({
+        where: { id: song.id },
+        data: {
+          ...song,
+          tags: song.tags ? JSON.stringify(song.tags) : null,
+          updatedAt: new Date(),
+        },
+      });
+      
+      return {
+        ...updatedSong,
+        tags: updatedSong.tags ? JSON.parse(updatedSong.tags) : [],
+        structure: updatedSong.lyrics ? parseSongStructure(updatedSong.lyrics) : { slides: [], order: [] },
+        createdAt: updatedSong.createdAt?.toISOString(),
+        updatedAt: updatedSong.updatedAt?.toISOString(),
+        lastUsed: updatedSong.lastUsed?.toISOString(),
+      };
+    } catch (error) {
+      console.error("Error updating song:", error);
+      throw error;
+    }
+  });
+  
+  // Delete song
+  ipcMain.handle("db:deleteSong", async (event, songId: string) => {
+    try {
+      // Check if song is used in any services
+      const serviceItems = await db.serviceItem.findMany({
+        where: { songId: songId },
+      });
+      
+      if (serviceItems.length > 0) {
+        throw new Error(`Cannot delete song: it is used in ${serviceItems.length} service(s)`);
+      }
+      
+      await db.song.delete({
+        where: { id: songId },
+      });
+      
+      return { success: true };
+    } catch (error) {
+      console.error("Error deleting song:", error);
+      throw error;
+    }
+  });
+  
+  // Update song usage (track when song is used)
+  ipcMain.handle("db:updateSongUsage", async (event, songId: string) => {
+    try {
+      const updatedSong = await db.song.update({
+        where: { id: songId },
+        data: {
+          lastUsed: new Date(),
+          usageCount: {
+            increment: 1,
+          },
+        },
+      });
+      
+      return {
+        ...updatedSong,
+        tags: updatedSong.tags ? JSON.parse(updatedSong.tags) : [],
+        structure: updatedSong.lyrics ? parseSongStructure(updatedSong.lyrics) : { slides: [], order: [] },
+        createdAt: updatedSong.createdAt?.toISOString(),
+        updatedAt: updatedSong.updatedAt?.toISOString(),
+        lastUsed: updatedSong.lastUsed?.toISOString(),
+      };
+    } catch (error) {
+      console.error("Error updating song usage:", error);
+      throw error;
+    }
+  });
+  
+  // Get recent songs
+  ipcMain.handle("db:getRecentSongs", async (event, { limit = 10 } = {}) => {
+    try {
+      const songs = await db.song.findMany({
+        where: {
+          lastUsed: { not: null },
+        },
+        orderBy: { lastUsed: "desc" },
+        take: limit,
+      });
+      
+      return songs.map((song: any) => ({
+        ...song,
+        tags: song.tags ? JSON.parse(song.tags) : [],
+        structure: song.lyrics ? parseSongStructure(song.lyrics) : { slides: [], order: [] },
+        createdAt: song.createdAt?.toISOString(),
+        updatedAt: song.updatedAt?.toISOString(),
+        lastUsed: song.lastUsed?.toISOString(),
+      }));
+    } catch (error) {
+      console.error("Error getting recent songs:", error);
+      throw error;
+    }
+  });
+  
+  // Get favorite songs (placeholder - would need to implement favorites system)
+  ipcMain.handle("db:getFavoriteSongs", async (event, { limit = 20 } = {}) => {
+    try {
+      // For now, return most used songs as "favorites"
+      const songs = await db.song.findMany({
+        orderBy: { usageCount: "desc" },
+        take: limit,
+      });
+      
+      return songs.map((song: any) => ({
+        ...song,
+        tags: song.tags ? JSON.parse(song.tags) : [],
+        structure: song.lyrics ? parseSongStructure(song.lyrics) : { slides: [], order: [] },
+        createdAt: song.createdAt?.toISOString(),
+        updatedAt: song.updatedAt?.toISOString(),
+        lastUsed: song.lastUsed?.toISOString(),
+      }));
+    } catch (error) {
+      console.error("Error getting favorite songs:", error);
+      throw error;
+    }
+  });
+  
+  // Get song categories
+  ipcMain.handle("db:getSongCategories", async () => {
+    try {
+      const categories = await db.song.findMany({
+        select: { category: true },
+        where: { category: { not: null } },
+        distinct: ['category'],
+      });
+      
+             return categories.map((c: any) => c.category).filter(Boolean);
+    } catch (error) {
+      console.error("Error getting song categories:", error);
+      throw error;
+    }
+  });
+  
+  // Import songs in batch
+  ipcMain.handle("db:importSongs", async (event, importData: {
+    songs: any[];
+    format: string;
+  }) => {
+    try {
+      const { songs, format } = importData;
+      const importedSongs = [];
+      
+      for (const songData of songs) {
+        try {
+          const newSong = await db.song.create({
+            data: {
+              ...songData,
+              tags: songData.tags ? JSON.stringify(songData.tags) : null,
+              usageCount: 0,
+            },
+          });
+          
+          importedSongs.push({
+            ...newSong,
+            tags: newSong.tags ? JSON.parse(newSong.tags) : [],
+            structure: newSong.lyrics ? parseSongStructure(newSong.lyrics) : { slides: [], order: [] },
+            createdAt: newSong.createdAt?.toISOString(),
+            updatedAt: newSong.updatedAt?.toISOString(),
+            lastUsed: newSong.lastUsed?.toISOString(),
+          });
+        } catch (error) {
+          console.error(`Error importing song "${songData.title}":`, error);
+          // Continue with other songs
+        }
+      }
+      
+      return {
+        success: true,
+        imported: importedSongs.length,
+        total: songs.length,
+        songs: importedSongs,
+      };
+    } catch (error) {
+      console.error("Error importing songs:", error);
+      throw error;
+    }
+  });
 
   // Service operations (for future use)
   ipcMain.handle("db:loadServices", async (event, limit = 20) => {

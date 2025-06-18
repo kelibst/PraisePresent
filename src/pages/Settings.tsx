@@ -1,6 +1,7 @@
 import GeneralSettings from "@/components/settings/GeneralSettings";
 import DisplaySettings from "@/components/settings/DisplaySettings";
 import LiveDisplayThemeSettings from "@/components/Settings/LiveDisplayThemeSettings";
+import SongTest from "@/components/songs/SongTest";
 import React, { useState } from "react";
 import {
   FiMonitor,
@@ -8,6 +9,7 @@ import {
   FiUser,
   FiDatabase,
   FiPlay,
+  FiMusic,
 } from "react-icons/fi";
 
 interface Tab {
@@ -61,6 +63,12 @@ const Settings: React.FC = () => {
         </div>
       ),
     },
+    {
+      id: "song-test",
+      label: "Song Test",
+      icon: <FiMusic className="w-4 h-4" />,
+      component: <SongTest />,
+    },
   ];
 
   const activeTabData = tabs.find((tab) => tab.id === activeTab);
@@ -81,11 +89,10 @@ const Settings: React.FC = () => {
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`w-full flex items-center gap-3 px-3 py-2 rounded-md text-left transition-colors ${
-                activeTab === tab.id
-                  ? "bg-primary text-primary-foreground"
-                  : "text-foreground hover:bg-accent/50"
-              }`}
+              className={`w-full flex items-center gap-3 px-3 py-2 rounded-md text-left transition-colors ${activeTab === tab.id
+                ? "bg-primary text-primary-foreground"
+                : "text-foreground hover:bg-accent/50"
+                }`}
             >
               {tab.icon}
               <span className="font-medium">{tab.label}</span>
