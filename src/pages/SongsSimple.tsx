@@ -4,15 +4,12 @@ import { RootState, AppDispatch } from '../lib/store';
 import {
 	loadSongs,
 	searchSongs,
-	createSong,
-	updateSong,
 	deleteSong,
 	getSong,
-	Song
 } from '../lib/songSlice';
 import {
 	setPreviewItem,
-	sendPreviewToLive
+	sendPreviewToLive,
 } from '../lib/presentationSlice';
 import {
 	FiPlus,
@@ -20,384 +17,13 @@ import {
 	FiEdit3,
 	FiTrash2,
 	FiMusic,
-	FiPlay,
 	FiEye,
 	FiMonitor,
-	FiFilter,
 	FiGrid,
 	FiList,
-	FiMoreVertical,
-	FiHeart,
-	FiShare2,
-	FiCopy,
-	FiDownload
 } from 'react-icons/fi';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../components/ui/dialog';
-import { Alert, AlertDescription } from '../components/ui/alert';
-import PreviewLivePanel from '../components/shared/PreviewLivePanel';
-import SlideEditor from '../components/songs/SlideEditor';
 import SimpleSongEditor from '../components/songs/SimpleSongEditor';
-import EasySongEditor from '../components/songs/EasySongEditor';
-
-// Song Editor Modal Component
-const SongEditor: React.FC<{
-	isOpen: boolean;
-	onClose: () => void;
-	song?: any;
-	mode: 'create' | 'edit';
-}> = ({ isOpen, onClose, song, mode }) => {
-	const dispatch = useDispatch<AppDispatch>();
-	const [formData, setFormData] = useState({
-		title: '',
-		artist: '',
-		author: '',
-		lyrics: '',
-		key: '',
-		tempo: 'Medium',
-		category: 'Contemporary',
-		tags: [] as string[],
-		ccliNumber: '',
-		copyright: '',
-		notes: '',
-	});
-	const [loading, setLoading] = useState(false);
-	const [error, setError] = useState('');
-	const [tagInput, setTagInput] = useState('');
-
-	useEffect(() => {
-		if (song && mode === 'edit') {
-			setFormData({
-				title: song.title || '',
-				artist: song.artist || '',
-				author: song.author || '',
-				lyrics: song.lyrics || '',
-				key: song.key || '',
-				tempo: song.tempo || 'Medium',
-				category: song.category || 'Contemporary',
-				tags: song.tags || [],
-				ccliNumber: song.ccliNumber || '',
-				copyright: song.copyright || '',
-				notes: song.notes || '',
-			});
-		} else if (mode === 'create') {
-			setFormData({
-				title: '',
-				artist: '',
-				author: '',
-				lyrics: '',
-				key: '',
-				tempo: 'Medium',
-				category: 'Contemporary',
-				tags: [],
-				ccliNumber: '',
-				copyright: '',
-				notes: '',
-			});
-		}
-		setError('');
-	}, [song, mode, isOpen]);
-
-	const handleSubmit = async (e: React.FormEvent) => {
-		e.preventDefault();
-		if (!formData.title.trim()) {
-			setError('Song title is required');
-			return;
-		}
-
-		setLoading(true);
-		setError('');
-
-		try {
-			const songData = {
-				...formData,
-				tags: formData.tags.length > 0 ? formData.tags : undefined,
-			};
-
-			if (mode === 'create') {
-				await dispatch(createSong(songData)).unwrap();
-			} else {
-				await dispatch(updateSong({ ...songData, id: song.id })).unwrap();
-			}
-
-			// Reload songs to reflect changes
-			dispatch(loadSongs({ limit: 50, offset: 0 }));
-			onClose();
-		} catch (err: any) {
-			setError(err.message || 'Failed to save song');
-		} finally {
-			setLoading(false);
-		}
-	};
-
-	const addTag = () => {
-		if (tagInput.trim() && !formData.tags.includes(tagInput.trim())) {
-			setFormData(prev => ({
-				...prev,
-				tags: [...prev.tags, tagInput.trim()]
-			}));
-			setTagInput('');
-		}
-	};
-
-	const removeTag = (tagToRemove: string) => {
-		setFormData(prev => ({
-			...prev,
-			tags: prev.tags.filter(tag => tag !== tagToRemove)
-		}));
-	};
-
-	return (
-		<Dialog open={isOpen} onOpenChange={onClose}>
-			<DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-				<DialogHeader>
-					<DialogTitle className="flex items-center gap-2">
-						<FiMusic className="text-blue-600" />
-						{mode === 'create' ? 'Add New Song' : 'Edit Song'}
-					</DialogTitle>
-				</DialogHeader>
-
-				{error && (
-					<Alert className="border-red-200 bg-red-50">
-						<AlertDescription className="text-red-700">{error}</AlertDescription>
-					</Alert>
-				)}
-
-				<form onSubmit={handleSubmit} className="space-y-6">
-					<div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-						{/* Basic Information */}
-						<div className="space-y-4">
-							<h3 className="text-lg font-semibold text-gray-900 dark:text-white">Song Information</h3>
-
-							<div>
-								<label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-									Title *
-								</label>
-								<input
-									type="text"
-									value={formData.title}
-									onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
-									className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
-									placeholder="Enter song title"
-									required
-								/>
-							</div>
-
-							<div>
-								<label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-									Artist
-								</label>
-								<input
-									type="text"
-									value={formData.artist}
-									onChange={(e) => setFormData(prev => ({ ...prev, artist: e.target.value }))}
-									className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
-									placeholder="Artist or performer"
-								/>
-							</div>
-
-							<div>
-								<label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-									Author/Composer
-								</label>
-								<input
-									type="text"
-									value={formData.author}
-									onChange={(e) => setFormData(prev => ({ ...prev, author: e.target.value }))}
-									className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
-									placeholder="Song writer or composer"
-								/>
-							</div>
-
-							<div className="grid grid-cols-2 gap-4">
-								<div>
-									<label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-										Key
-									</label>
-									<select
-										value={formData.key}
-										onChange={(e) => setFormData(prev => ({ ...prev, key: e.target.value }))}
-										className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
-									>
-										<option value="">Select Key</option>
-										{['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B', 'Bb', 'Eb', 'Ab', 'Db'].map(key => (
-											<option key={key} value={key}>{key}</option>
-										))}
-									</select>
-								</div>
-
-								<div>
-									<label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-										Tempo
-									</label>
-									<select
-										value={formData.tempo}
-										onChange={(e) => setFormData(prev => ({ ...prev, tempo: e.target.value }))}
-										className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
-									>
-										<option value="Slow">Slow</option>
-										<option value="Medium">Medium</option>
-										<option value="Fast">Fast</option>
-									</select>
-								</div>
-							</div>
-
-							<div>
-								<label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-									Category
-								</label>
-								<select
-									value={formData.category}
-									onChange={(e) => setFormData(prev => ({ ...prev, category: e.target.value }))}
-									className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
-								>
-									<option value="Contemporary">Contemporary</option>
-									<option value="Traditional Hymn">Traditional Hymn</option>
-									<option value="Christmas Hymn">Christmas Hymn</option>
-									<option value="Easter Hymn">Easter Hymn</option>
-									<option value="Communion Hymn">Communion Hymn</option>
-									<option value="Praise Hymn">Praise Hymn</option>
-									<option value="Worship">Worship</option>
-									<option value="Gospel">Gospel</option>
-								</select>
-							</div>
-
-							{/* Tags */}
-							<div>
-								<label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-									Tags
-								</label>
-								<div className="flex gap-2 mb-2">
-									<input
-										type="text"
-										value={tagInput}
-										onChange={(e) => setTagInput(e.target.value)}
-										onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addTag())}
-										className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
-										placeholder="Add a tag and press Enter"
-									/>
-									<button
-										type="button"
-										onClick={addTag}
-										className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
-									>
-										Add
-									</button>
-								</div>
-								<div className="flex flex-wrap gap-2">
-									{formData.tags.map((tag, index) => (
-										<span
-											key={index}
-											className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded-full dark:bg-blue-900/30 dark:text-blue-300"
-										>
-											{tag}
-											<button
-												type="button"
-												onClick={() => removeTag(tag)}
-												className="ml-1 text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-200"
-											>
-												×
-											</button>
-										</span>
-									))}
-								</div>
-							</div>
-						</div>
-
-						{/* Lyrics and Copyright */}
-						<div className="space-y-4">
-							<h3 className="text-lg font-semibold text-gray-900 dark:text-white">Lyrics & Copyright</h3>
-
-							<div>
-								<label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-									Lyrics
-								</label>
-								<textarea
-									value={formData.lyrics}
-									onChange={(e) => setFormData(prev => ({ ...prev, lyrics: e.target.value }))}
-									rows={12}
-									className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-white font-mono text-sm"
-									placeholder="Enter song lyrics here...
-
-Use format:
-Verse 1:
-[verse lyrics]
-
-Chorus:
-[chorus lyrics]
-
-Verse 2:
-[verse lyrics]
-
-etc."
-								/>
-							</div>
-
-							<div>
-								<label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-									CCLI Number
-								</label>
-								<input
-									type="text"
-									value={formData.ccliNumber}
-									onChange={(e) => setFormData(prev => ({ ...prev, ccliNumber: e.target.value }))}
-									className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
-									placeholder="CCLI license number"
-								/>
-							</div>
-
-							<div>
-								<label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-									Copyright
-								</label>
-								<input
-									type="text"
-									value={formData.copyright}
-									onChange={(e) => setFormData(prev => ({ ...prev, copyright: e.target.value }))}
-									className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
-									placeholder="Copyright information"
-								/>
-							</div>
-
-
-
-							<div>
-								<label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-									Notes
-								</label>
-								<textarea
-									value={formData.notes}
-									onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
-									rows={3}
-									className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
-									placeholder="Additional notes about this song"
-								/>
-							</div>
-						</div>
-					</div>
-
-					{/* Form Actions */}
-					<div className="flex justify-end gap-4 pt-6 border-t border-gray-200 dark:border-gray-700">
-						<button
-							type="button"
-							onClick={onClose}
-							className="px-6 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-md hover:bg-gray-50 dark:hover:bg-gray-800"
-							disabled={loading}
-						>
-							Cancel
-						</button>
-						<button
-							type="submit"
-							disabled={loading}
-							className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-400 flex items-center gap-2"
-						>
-							{loading ? 'Saving...' : (mode === 'create' ? 'Create Song' : 'Update Song')}
-						</button>
-					</div>
-				</form>
-			</DialogContent>
-		</Dialog>
-	);
-};
 
 // Delete Confirmation Modal
 const DeleteConfirmation: React.FC<{
@@ -441,7 +67,7 @@ const DeleteConfirmation: React.FC<{
 	);
 };
 
-const Songs = () => {
+const SongsSimple: React.FC = () => {
 	const dispatch = useDispatch<AppDispatch>();
 	const { songs, loading, searchResults, error } = useSelector((state: RootState) => state.songs);
 
@@ -453,8 +79,6 @@ const Songs = () => {
 	const [selectedSong, setSelectedSong] = useState<any>(null);
 	const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 	const [songToDelete, setSongToDelete] = useState<any>(null);
-	const [showSlideEditor, setShowSlideEditor] = useState(false);
-	const [slideEditorSong, setSlideEditorSong] = useState<any>(null);
 
 	// Load songs on component mount
 	useEffect(() => {
@@ -570,29 +194,10 @@ const Songs = () => {
 		dispatch(sendPreviewToLive());
 	};
 
-	const handleManageSlides = async (song: any) => {
-		try {
-			// Load full song details including structure
-			const fullSong = await dispatch(getSong(song.id)).unwrap();
-			setSlideEditorSong(fullSong);
-			setShowSlideEditor(true);
-		} catch (error) {
-			console.error('Failed to load song details:', error);
-			// Fallback to basic song data
-			setSlideEditorSong(song);
-			setShowSlideEditor(true);
-		}
-	};
-
-	const handleSlideEditorClose = () => {
-		setShowSlideEditor(false);
-		setSlideEditorSong(null);
+	const handleEditorClose = () => {
+		setShowEditor(false);
+		setSelectedSong(null);
 		// Reload songs to reflect any changes
-		dispatch(loadSongs({ limit: 50, offset: 0 }));
-	};
-
-	const handleSongUpdate = (updatedSong: any) => {
-		// Update the songs list if needed
 		dispatch(loadSongs({ limit: 50, offset: 0 }));
 	};
 
@@ -607,7 +212,7 @@ const Songs = () => {
 							Song Library
 						</h1>
 						<p className="text-gray-600 dark:text-gray-400 mt-1">
-							Manage your worship songs and hymns
+							Manage your worship songs with slide-based editing
 						</p>
 					</div>
 
@@ -616,7 +221,7 @@ const Songs = () => {
 						className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
 					>
 						<FiPlus size={20} />
-						Add New Song
+						Create New Song
 					</button>
 				</div>
 
@@ -681,7 +286,7 @@ const Songs = () => {
 							</h3>
 							<p className="text-gray-600 dark:text-gray-400 mb-4">
 								{songs.length === 0
-									? 'Get started by adding your first song'
+									? 'Get started by creating your first song with slide-based editing'
 									: 'Try adjusting your search criteria'
 								}
 							</p>
@@ -691,7 +296,7 @@ const Songs = () => {
 									className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
 								>
 									<FiPlus size={16} />
-									Add Your First Song
+									Create Your First Song
 								</button>
 							)}
 						</div>
@@ -729,13 +334,6 @@ const Songs = () => {
 											title="Send to Live"
 										>
 											<FiMonitor size={16} />
-										</button>
-										<button
-											onClick={() => handleManageSlides(song)}
-											className="p-1.5 text-gray-400 hover:text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-900/30 rounded-md transition-colors"
-											title="Manage Slides"
-										>
-											<FiList size={16} />
 										</button>
 										<button
 											onClick={() => handleEditSong(song)}
@@ -857,13 +455,6 @@ const Songs = () => {
 														<FiMonitor size={16} />
 													</button>
 													<button
-														onClick={() => handleManageSlides(song)}
-														className="p-1.5 text-gray-400 hover:text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-900/30 rounded-md transition-colors"
-														title="Manage Slides"
-													>
-														<FiList size={16} />
-													</button>
-													<button
 														onClick={() => handleEditSong(song)}
 														className="p-1.5 text-gray-400 hover:text-orange-600 hover:bg-orange-50 dark:hover:bg-orange-900/30 rounded-md transition-colors"
 														title="Edit"
@@ -889,9 +480,9 @@ const Songs = () => {
 			</div>
 
 			{/* Modals */}
-			<EasySongEditor
+			<SimpleSongEditor
 				isOpen={showEditor}
-				onClose={() => setShowEditor(false)}
+				onClose={handleEditorClose}
 				song={selectedSong}
 				mode={editorMode}
 			/>
@@ -902,15 +493,8 @@ const Songs = () => {
 				onConfirm={confirmDelete}
 				songTitle={songToDelete?.title || ''}
 			/>
-
-			<SlideEditor
-				isOpen={showSlideEditor}
-				onClose={handleSlideEditorClose}
-				song={slideEditorSong}
-				onSongUpdate={handleSongUpdate}
-			/>
 		</div>
 	);
 };
 
-export default Songs; 
+export default SongsSimple; 
