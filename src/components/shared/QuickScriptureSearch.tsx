@@ -428,8 +428,8 @@ const QuickScriptureSearch: React.FC<QuickScriptureSearchProps> = ({
 								{searchResults.map((verse, index) => (
 									<div
 										key={verse.id}
-										className={`p-4 cursor-pointer transition-colors ${index === selectedIndex
-											? 'bg-blue-50 dark:bg-blue-900/30 border-l-4 border-blue-500'
+										className={`p-4 cursor-pointer transition-colors ${index == selectedIndex
+											? 'bg-blue-50 dark:bg-blue-900/30 border-l-4  border-blue-900'
 											: 'hover:bg-gray-50 dark:hover:bg-gray-700'
 											}`}
 										onClick={() => handleVerseSelect(verse)}

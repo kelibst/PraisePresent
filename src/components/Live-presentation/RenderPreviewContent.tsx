@@ -7,7 +7,7 @@ const RenderPreviewContent = ({ previewItem }: { previewItem: any }) => {
 			<div className="bg-gray-100 dark:bg-gray-800 rounded-lg p-6 mb-4 relative min-h-[140px] flex items-center justify-center">
 				<div className="text-center text-gray-500 dark:text-gray-400">
 					<FiMonitor size={48} className="mx-auto mb-2 opacity-50" />
-					<p>No content in preview</p>
+					<p>No content in preview!!</p>
 					<p className="text-sm mt-1">Select scripture from the sidebar to preview</p>
 				</div>
 			</div>

@@ -521,10 +521,17 @@ function setupDatabaseIPC() {
   // Update existing song
   ipcMain.handle("db:updateSong", async (event, song: any) => {
     try {
+      // Extract only the database fields, excluding computed fields like 'structure'
+      const {
+        structure, // Remove computed field
+        createdAt, // Remove readonly field
+        ...songData
+      } = song;
+      
       const updatedSong = await db.song.update({
         where: { id: song.id },
         data: {
-          ...song,
+          ...songData,
           tags: song.tags ? JSON.stringify(song.tags) : null,
           updatedAt: new Date(),
         },
