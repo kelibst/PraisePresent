@@ -710,6 +710,510 @@ function setupDatabaseIPC() {
     }
   });
 
+  // ===== PRESENTATIONS & SLIDES OPERATIONS =====
+  
+  // Load presentations with search and filtering
+  ipcMain.handle(
+    "db:loadPresentations",
+    async (
+      event,
+      params: {
+        query?: string;
+        filters?: {
+          category?: string;
+          tags?: string[];
+          template?: string;
+          dateRange?: { start: string; end: string };
+          usage?: 'recent' | 'frequent' | 'favorites';
+        };
+        limit?: number;
+        offset?: number;
+      } = {}
+    ) => {
+      try {
+        const { query, filters = {}, limit = 50, offset = 0 } = params;
+        
+        // Build where clause
+        const whereConditions: any[] = [];
+        
+        // Text search across available fields only
+        if (query) {
+          whereConditions.push({
+            OR: [
+              { title: { contains: query, mode: "insensitive" } },
+              { description: { contains: query, mode: "insensitive" } },
+            ],
+          });
+        }
+        
+        // Apply filters (category filter through template relationship)
+        if (filters.category) {
+          whereConditions.push({ 
+            template: { 
+              category: filters.category 
+            } 
+          });
+        }
+        
+        if (filters.dateRange) {
+          whereConditions.push({
+            createdAt: {
+              gte: new Date(filters.dateRange.start),
+              lte: new Date(filters.dateRange.end),
+            },
+          });
+        }
+        
+        const where = whereConditions.length > 0 ? { AND: whereConditions } : {};
+        
+        // Determine ordering
+        let orderBy: any[] = [];
+        if (filters.usage === 'recent') {
+          orderBy = [{ lastUsed: "desc" }, { updatedAt: "desc" }];
+        } else if (filters.usage === 'frequent') {
+          orderBy = [{ lastUsed: "desc" }];
+        } else {
+          orderBy = [{ title: "asc" }];
+        }
+        
+        const presentations = await db.presentation.findMany({
+          where,
+          include: {
+            slides: {
+              orderBy: { order: "asc" },
+            },
+            template: true,
+          },
+          orderBy,
+          take: limit,
+          skip: offset,
+        });
+        
+        // Serialize dates and add computed fields
+        return presentations.map((presentation: any) => ({
+          ...presentation,
+          tags: [], // Default empty tags since field doesn't exist
+          usageCount: 0, // Default usage count since field doesn't exist
+          category: presentation.template?.category || null, // Get category from template
+          slides: presentation.slides.map((slide: any) => ({
+            ...slide,
+            createdAt: slide.createdAt?.toISOString(),
+            updatedAt: slide.updatedAt?.toISOString(),
+          })),
+          createdAt: presentation.createdAt?.toISOString(),
+          updatedAt: presentation.updatedAt?.toISOString(),
+          lastUsed: presentation.lastUsed?.toISOString(),
+          totalSlides: presentation.slides.length,
+        }));
+      } catch (error) {
+        console.error("Error loading presentations:", error);
+        throw error;
+      }
+    }
+  );
+  
+  // Search presentations (dedicated search with advanced options)
+  ipcMain.handle(
+    "db:searchPresentations",
+    async (event, searchParams: {
+      query: string;
+      filters?: any;
+      limit?: number;
+      offset?: number;
+    }) => {
+      try {
+        // Use the same logic as loadPresentations but optimized for search
+        return await ipcMain.emit("db:loadPresentations", event, searchParams);
+      } catch (error) {
+        console.error("Error searching presentations:", error);
+        throw error;
+      }
+    }
+  );
+  
+  // Get single presentation with full details
+  ipcMain.handle("db:getPresentation", async (event, presentationId: string) => {
+    try {
+      const presentation = await db.presentation.findUnique({
+        where: { id: presentationId },
+        include: {
+          slides: {
+            orderBy: { order: "asc" },
+          },
+          template: true,
+        },
+      });
+      
+      if (!presentation) {
+        throw new Error(`Presentation with ID ${presentationId} not found`);
+      }
+      
+      return {
+        ...presentation,
+        tags: [], // Default empty tags since field doesn't exist
+        usageCount: 0, // Default usage count since field doesn't exist
+        category: presentation.template?.category || null, // Get category from template
+        slides: presentation.slides.map((slide: any) => ({
+          ...slide,
+          createdAt: slide.createdAt?.toISOString(),
+          updatedAt: slide.updatedAt?.toISOString(),
+        })),
+        createdAt: presentation.createdAt?.toISOString(),
+        updatedAt: presentation.updatedAt?.toISOString(),
+        lastUsed: presentation.lastUsed?.toISOString(),
+        totalSlides: presentation.slides.length,
+      };
+    } catch (error) {
+      console.error("Error getting presentation:", error);
+      throw error;
+    }
+  });
+  
+  // Create new presentation
+  ipcMain.handle("db:createPresentation", async (event, presentationData: any) => {
+    try {
+      const newPresentation = await db.presentation.create({
+        data: {
+          title: presentationData.title,
+          description: presentationData.description,
+          templateId: presentationData.templateId,
+        },
+        include: {
+          slides: {
+            orderBy: { order: "asc" },
+          },
+          template: true,
+        },
+      });
+      
+      return {
+        ...newPresentation,
+        tags: [], // Default empty tags since field doesn't exist
+        usageCount: 0, // Default usage count since field doesn't exist
+        category: newPresentation.template?.category || null, // Get category from template
+        slides: newPresentation.slides.map((slide: any) => ({
+          ...slide,
+          createdAt: slide.createdAt?.toISOString(),
+          updatedAt: slide.updatedAt?.toISOString(),
+        })),
+        createdAt: newPresentation.createdAt?.toISOString(),
+        updatedAt: newPresentation.updatedAt?.toISOString(),
+        lastUsed: newPresentation.lastUsed?.toISOString(),
+        totalSlides: newPresentation.slides.length,
+      };
+    } catch (error) {
+      console.error("Error creating presentation:", error);
+      throw error;
+    }
+  });
+  
+  // Update existing presentation
+  ipcMain.handle("db:updatePresentation", async (event, presentation: any) => {
+    try {
+      // Extract only the database fields
+      const {
+        slides, // Remove computed field
+        totalSlides, // Remove computed field
+        template, // Remove computed field
+        createdAt, // Remove readonly field
+        ...presentationData
+      } = presentation;
+      
+      const updatedPresentation = await db.presentation.update({
+        where: { id: presentation.id },
+        data: {
+          title: presentation.title,
+          description: presentation.description,
+          templateId: presentation.templateId,
+          lastUsed: presentation.lastUsed ? new Date(presentation.lastUsed) : undefined,
+        },
+        include: {
+          slides: {
+            orderBy: { order: "asc" },
+          },
+          template: true,
+        },
+      });
+      
+      return {
+        ...updatedPresentation,
+        tags: updatedPresentation.tags ? JSON.parse(updatedPresentation.tags) : [],
+        slides: updatedPresentation.slides.map((slide: any) => ({
+          ...slide,
+          createdAt: slide.createdAt?.toISOString(),
+          updatedAt: slide.updatedAt?.toISOString(),
+        })),
+        createdAt: updatedPresentation.createdAt?.toISOString(),
+        updatedAt: updatedPresentation.updatedAt?.toISOString(),
+        lastUsed: updatedPresentation.lastUsed?.toISOString(),
+        totalSlides: updatedPresentation.slides.length,
+      };
+    } catch (error) {
+      console.error("Error updating presentation:", error);
+      throw error;
+    }
+  });
+  
+  // Delete presentation
+  ipcMain.handle("db:deletePresentation", async (event, presentationId: string) => {
+    try {
+      // Delete all slides first (cascade delete)
+      await db.slide.deleteMany({
+        where: { presentationId: presentationId },
+      });
+      
+      // Delete the presentation
+      await db.presentation.delete({
+        where: { id: presentationId },
+      });
+      
+      return { success: true };
+    } catch (error) {
+      console.error("Error deleting presentation:", error);
+      throw error;
+    }
+  });
+  
+  // Create new slide
+  ipcMain.handle("db:createSlide", async (event, slideData: any) => {
+    try {
+      const newSlide = await db.slide.create({
+        data: {
+          ...slideData,
+          content: typeof slideData.content === 'string' ? slideData.content : JSON.stringify(slideData.content),
+        },
+      });
+      
+      return {
+        ...newSlide,
+        createdAt: newSlide.createdAt?.toISOString(),
+        updatedAt: newSlide.updatedAt?.toISOString(),
+      };
+    } catch (error) {
+      console.error("Error creating slide:", error);
+      throw error;
+    }
+  });
+  
+  // Update existing slide
+  ipcMain.handle("db:updateSlide", async (event, slide: any) => {
+    try {
+      const {
+        createdAt, // Remove readonly field
+        ...slideData
+      } = slide;
+      
+      const updatedSlide = await db.slide.update({
+        where: { id: slide.id },
+        data: {
+          ...slideData,
+          content: typeof slide.content === 'string' ? slide.content : JSON.stringify(slide.content),
+          updatedAt: new Date(),
+        },
+      });
+      
+      return {
+        ...updatedSlide,
+        createdAt: updatedSlide.createdAt?.toISOString(),
+        updatedAt: updatedSlide.updatedAt?.toISOString(),
+      };
+    } catch (error) {
+      console.error("Error updating slide:", error);
+      throw error;
+    }
+  });
+  
+  // Delete slide
+  ipcMain.handle("db:deleteSlide", async (event, slideId: string) => {
+    try {
+      await db.slide.delete({
+        where: { id: slideId },
+      });
+      
+      return { success: true };
+    } catch (error) {
+      console.error("Error deleting slide:", error);
+      throw error;
+    }
+  });
+  
+  // Reorder slides in presentation
+  ipcMain.handle("db:reorderSlides", async (event, params: {
+    presentationId: string;
+    slideOrders: { id: string; order: number }[];
+  }) => {
+    try {
+      const { presentationId, slideOrders } = params;
+      
+      // Update each slide's order
+      const updatePromises = slideOrders.map(({ id, order }) =>
+        db.slide.update({
+          where: { id },
+          data: { order },
+        })
+      );
+      
+      await Promise.all(updatePromises);
+      
+      // Return updated slides in order
+      const updatedSlides = await db.slide.findMany({
+        where: { presentationId },
+        orderBy: { order: "asc" },
+      });
+      
+      return updatedSlides.map((slide: any) => ({
+        ...slide,
+        createdAt: slide.createdAt?.toISOString(),
+        updatedAt: slide.updatedAt?.toISOString(),
+      }));
+    } catch (error) {
+      console.error("Error reordering slides:", error);
+      throw error;
+    }
+  });
+  
+  // Update presentation usage (track when presentation is used)
+  ipcMain.handle("db:updatePresentationUsage", async (event, presentationId: string) => {
+    try {
+      const updatedPresentation = await db.presentation.update({
+        where: { id: presentationId },
+        data: {
+          lastUsed: new Date(),
+        },
+        include: {
+          slides: {
+            orderBy: { order: "asc" },
+          },
+          template: true,
+        },
+      });
+      
+      return {
+        ...updatedPresentation,
+        tags: updatedPresentation.tags ? JSON.parse(updatedPresentation.tags) : [],
+        slides: updatedPresentation.slides.map((slide: any) => ({
+          ...slide,
+          createdAt: slide.createdAt?.toISOString(),
+          updatedAt: slide.updatedAt?.toISOString(),
+        })),
+        createdAt: updatedPresentation.createdAt?.toISOString(),
+        updatedAt: updatedPresentation.updatedAt?.toISOString(),
+        lastUsed: updatedPresentation.lastUsed?.toISOString(),
+        totalSlides: updatedPresentation.slides.length,
+      };
+    } catch (error) {
+      console.error("Error updating presentation usage:", error);
+      throw error;
+    }
+  });
+  
+  // Get recent presentations
+  ipcMain.handle("db:getRecentPresentations", async (event, { limit = 10 } = {}) => {
+    try {
+      const presentations = await db.presentation.findMany({
+        where: {
+          lastUsed: { not: null },
+        },
+        include: {
+          slides: {
+            orderBy: { order: "asc" },
+          },
+          template: true,
+        },
+        orderBy: { lastUsed: "desc" },
+        take: limit,
+      });
+      
+      return presentations.map((presentation: any) => ({
+        ...presentation,
+        tags: presentation.tags ? JSON.parse(presentation.tags) : [],
+        slides: presentation.slides.map((slide: any) => ({
+          ...slide,
+          createdAt: slide.createdAt?.toISOString(),
+          updatedAt: slide.updatedAt?.toISOString(),
+        })),
+        createdAt: presentation.createdAt?.toISOString(),
+        updatedAt: presentation.updatedAt?.toISOString(),
+        lastUsed: presentation.lastUsed?.toISOString(),
+        totalSlides: presentation.slides.length,
+      }));
+    } catch (error) {
+      console.error("Error getting recent presentations:", error);
+      throw error;
+    }
+  });
+  
+  // Get templates
+  ipcMain.handle("db:getTemplates", async () => {
+    try {
+      const templates = await db.template.findMany({
+        orderBy: [
+          { isDefault: "desc" },
+          { name: "asc" },
+        ],
+      });
+      
+      return templates.map((template: any) => ({
+        ...template,
+        createdAt: template.createdAt?.toISOString(),
+        updatedAt: template.updatedAt?.toISOString(),
+      }));
+    } catch (error) {
+      console.error("Error getting templates:", error);
+      throw error;
+    }
+  });
+  
+  // Get backgrounds
+  ipcMain.handle("db:getBackgrounds", async () => {
+    try {
+      const backgrounds = await db.background.findMany({
+        orderBy: [
+          { isDefault: "desc" },
+          { name: "asc" },
+        ],
+        include: {
+          mediaItem: true,
+        },
+      });
+      
+      return backgrounds.map((background: any) => ({
+        ...background,
+        createdAt: background.createdAt?.toISOString(),
+        updatedAt: background.updatedAt?.toISOString(),
+      }));
+    } catch (error) {
+      console.error("Error getting backgrounds:", error);
+      throw error;
+    }
+  });
+  
+  // Get presentation categories (using templates for categorization)
+  ipcMain.handle("db:getPresentationCategories", async () => {
+    try {
+      // Since Presentation doesn't have category field, get categories from templates
+      const templates = await db.template.findMany({
+        select: { category: true },
+        where: { category: { not: null } },
+        distinct: ['category'],
+      });
+      
+      // Return template categories as presentation categories
+      const categories = templates.map((t: any) => t.category).filter(Boolean);
+      
+      // Add some default categories if none exist
+      if (categories.length === 0) {
+        return ['Sermon', 'Teaching', 'Worship', 'Announcement'];
+      }
+      
+      return categories;
+    } catch (error) {
+      console.error("Error getting presentation categories:", error);
+      // Return default categories on error
+      return ['Sermon', 'Teaching', 'Worship', 'Announcement'];
+    }
+  });
+
   // Service operations (for future use)
   ipcMain.handle("db:loadServices", async (event, limit = 20) => {
     try {

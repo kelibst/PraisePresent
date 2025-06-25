@@ -10,6 +10,7 @@ import presentationReducer, {
 import displayReducer from "./displaySlice";
 import settingsReducer from "./settingSlice";
 import songsReducer from "./songSlice";
+import slidesReducer from "./slidesSlice";
 
 // Create listener middleware for live display synchronization
 const liveDisplayMiddleware = createListenerMiddleware();
@@ -166,6 +167,7 @@ export const store = configureStore({
     display: displayReducer,
     settings: settingsReducer,
     songs: songsReducer,
+    slides: slidesReducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware().concat(liveDisplayMiddleware.middleware),

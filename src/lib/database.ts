@@ -102,6 +102,9 @@ export async function seedDatabase(): Promise<void> {
       },
     });
 
+    // Create sample presentations and slides
+    await createSamplePresentations(db);
+
     console.log('Database seeded successfully');
   } catch (error) {
     console.error('Database seeding failed:', error);
@@ -219,6 +222,272 @@ async function createDefaultSettings(db: PrismaClient) {
     // Settings might already exist, which is fine
     console.log('Settings already exist in database');
   }
+}
+
+// Helper function to create sample presentations with slides
+async function createSamplePresentations(db: PrismaClient) {
+  console.log('Creating sample presentations...');
+  
+  // Create default templates first
+  const titleTemplate = await db.template.create({
+    data: {
+      name: 'Title Slide',
+      description: 'Simple title slide with centered text',
+      category: 'basic',
+      isDefault: true,
+      settings: JSON.stringify({
+        textAlign: 'center',
+        fontSize: 'x-large',
+        fontWeight: 'bold',
+        textColor: '#ffffff',
+        backgroundColor: '#1f2937',
+        padding: { top: '20%', bottom: '20%', left: '10%', right: '10%' }
+      })
+    }
+  });
+
+  const contentTemplate = await db.template.create({
+    data: {
+      name: 'Content Slide',
+      description: 'Standard content slide with title and body',
+      category: 'basic',
+      isDefault: true,
+      settings: JSON.stringify({
+        titleAlign: 'center',
+        contentAlign: 'left',
+        titleSize: 'large',
+        contentSize: 'medium',
+        titleColor: '#ffffff',
+        contentColor: '#e5e7eb',
+        backgroundColor: '#374151'
+      })
+    }
+  });
+
+  // Create default backgrounds
+  const darkBackground = await db.background.create({
+    data: {
+      name: 'Dark Blue',
+      type: 'gradient',
+      category: 'solid',
+      isDefault: true,
+      settings: JSON.stringify({
+        type: 'linear',
+        direction: '45deg',
+        stops: [
+          { color: '#1e3a8a', position: 0 },
+          { color: '#1e40af', position: 100 }
+        ]
+      })
+    }
+  });
+
+  const lightBackground = await db.background.create({
+    data: {
+      name: 'Light Gray',
+      type: 'color',
+      category: 'solid',
+      isDefault: false,
+      settings: JSON.stringify({
+        color: '#f3f4f6'
+      })
+    }
+  });
+
+  // Sample presentations
+  const presentations = [
+    {
+      title: 'Sunday Morning Service',
+      description: 'Welcome slides and announcements for Sunday morning worship',
+      category: 'worship',
+      tags: JSON.stringify(['sunday', 'worship', 'announcements']),
+      templateId: titleTemplate.id,
+      slides: [
+        {
+          title: 'Welcome',
+          content: JSON.stringify({
+            type: 'title',
+            title: 'Welcome to Grace Community Church',
+            subtitle: 'Sunday Morning Worship',
+            textAlign: 'center',
+            fontSize: 'x-large',
+            fontWeight: 'bold',
+            textColor: '#ffffff'
+          }),
+          backgroundId: darkBackground.id,
+          templateId: titleTemplate.id,
+          order: 0
+        },
+        {
+          title: 'Announcements',
+          content: JSON.stringify({
+            type: 'bullet',
+            title: 'Church Announcements',
+            bullets: [
+              'Bible Study - Wednesday 7:00 PM',
+              'Youth Group - Friday 6:00 PM',
+              'Church Picnic - Saturday 12:00 PM',
+              'Prayer Meeting - Sunday 6:00 PM'
+            ],
+            textAlign: 'left',
+            fontSize: 'medium',
+            fontWeight: 'normal',
+            textColor: '#ffffff'
+          }),
+          backgroundId: darkBackground.id,
+          templateId: contentTemplate.id,
+          order: 1
+        },
+        {
+          title: 'Offering',
+          content: JSON.stringify({
+            type: 'title',
+            title: 'Giving & Offerings',
+            subtitle: '"Each of you should give what you have decided in your heart to give." - 2 Corinthians 9:7',
+            textAlign: 'center',
+            fontSize: 'large',
+            fontWeight: 'normal',
+            textColor: '#ffffff'
+          }),
+          backgroundId: darkBackground.id,
+          templateId: titleTemplate.id,
+          order: 2
+        }
+      ]
+    },
+    {
+      title: 'The Gospel Message',
+      description: 'Salvation presentation slides',
+      category: 'evangelism',
+      tags: JSON.stringify(['gospel', 'salvation', 'evangelism']),
+      templateId: contentTemplate.id,
+      slides: [
+        {
+          title: 'God Loves You',
+          content: JSON.stringify({
+            type: 'text',
+            title: 'God Loves You',
+            body: 'For God so loved the world that he gave his one and only Son, that whoever believes in him shall not perish but have eternal life.\n\nJohn 3:16',
+            textAlign: 'center',
+            fontSize: 'large',
+            fontWeight: 'normal',
+            textColor: '#ffffff'
+          }),
+          backgroundId: darkBackground.id,
+          templateId: contentTemplate.id,
+          order: 0
+        },
+        {
+          title: 'We Are Sinners',
+          content: JSON.stringify({
+            type: 'text',
+            title: 'We Are All Sinners',
+            body: 'All have sinned and fall short of the glory of God.\n\nRomans 3:23\n\nFor the wages of sin is death, but the gift of God is eternal life in Christ Jesus our Lord.\n\nRomans 6:23',
+            textAlign: 'center',
+            fontSize: 'medium',
+            fontWeight: 'normal',
+            textColor: '#ffffff'
+          }),
+          backgroundId: darkBackground.id,
+          templateId: contentTemplate.id,
+          order: 1
+        },
+        {
+          title: 'Jesus Died For Us',
+          content: JSON.stringify({
+            type: 'text',
+            title: 'Jesus Died For Our Sins',
+            body: 'But God demonstrates his own love for us in this: While we were still sinners, Christ died for us.\n\nRomans 5:8',
+            textAlign: 'center',
+            fontSize: 'large',
+            fontWeight: 'normal',
+            textColor: '#ffffff'
+          }),
+          backgroundId: darkBackground.id,
+          templateId: contentTemplate.id,
+          order: 2
+        },
+        {
+          title: 'Believe and Be Saved',
+          content: JSON.stringify({
+            type: 'text',
+            title: 'Believe and Be Saved',
+            body: 'If you declare with your mouth, "Jesus is Lord," and believe in your heart that God raised him from the dead, you will be saved.\n\nRomans 10:9',
+            textAlign: 'center',
+            fontSize: 'large',
+            fontWeight: 'normal',
+            textColor: '#ffffff'
+          }),
+          backgroundId: darkBackground.id,
+          templateId: contentTemplate.id,
+          order: 3
+        }
+      ]
+    },
+    {
+      title: 'Christmas Service 2024',
+      description: 'Special Christmas worship service slides',
+      category: 'holiday',
+      tags: JSON.stringify(['christmas', 'holiday', 'celebration']),
+      templateId: titleTemplate.id,
+      slides: [
+        {
+          title: 'Christmas Welcome',
+          content: JSON.stringify({
+            type: 'title',
+            title: 'Merry Christmas!',
+            subtitle: 'Celebrating the Birth of Our Savior',
+            textAlign: 'center',
+            fontSize: 'x-large',
+            fontWeight: 'bold',
+            textColor: '#ffffff'
+          }),
+          backgroundId: darkBackground.id,
+          templateId: titleTemplate.id,
+          order: 0
+        },
+        {
+          title: 'The Christmas Story',
+          content: JSON.stringify({
+            type: 'text',
+            title: 'The Birth of Jesus',
+            body: 'And she gave birth to her firstborn, a son. She wrapped him in cloths and placed him in a manger, because there was no guest room available for them.\n\nLuke 2:7',
+            textAlign: 'center',
+            fontSize: 'large',
+            fontWeight: 'normal',
+            textColor: '#ffffff'
+          }),
+          backgroundId: darkBackground.id,
+          templateId: contentTemplate.id,
+          order: 1
+        }
+      ]
+    }
+  ];
+
+  // Create presentations and slides
+  for (const presentationData of presentations) {
+    const { slides, ...presentation } = presentationData;
+    
+    const createdPresentation = await db.presentation.create({
+      data: {
+        ...presentation,
+        lastUsed: new Date(Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000).toISOString() // Random date within last 30 days
+      }
+    });
+
+    // Create slides for this presentation
+    for (const slideData of slides) {
+      await db.slide.create({
+        data: {
+          ...slideData,
+          presentationId: createdPresentation.id
+        }
+      });
+    }
+  }
+
+  console.log('Sample presentations created successfully');
 }
 
 // Export the Prisma client type for use in other files

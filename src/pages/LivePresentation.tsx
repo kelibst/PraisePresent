@@ -2,15 +2,16 @@ import { BellIcon } from 'lucide-react';
 import React, { useState, useRef, useEffect } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { RootState, AppDispatch } from '../lib/store';
-import { FiPlay, FiSkipBack, FiSkipForward, FiMonitor, FiEdit, FiTrash2, FiBook, FiMusic, FiList, FiSearch } from 'react-icons/fi';
+import { FiPlay, FiSkipBack, FiSkipForward, FiMonitor, FiEdit, FiTrash2, FiBook, FiMusic, FiList, FiSearch, FiSliders } from 'react-icons/fi';
 import PreviewLivePanel from '../components/shared/PreviewLivePanel';
 
 import { Verse } from '../lib/bibleSlice';
 
-import SongsTab from '@/components/Live-presentation/SongsTab';
-import ScriptureTab from '@/components/Live-presentation/ScriptureTab';
-import { service } from '@/database/mock/mockData';
-import PlanTab from '@/components/Live-presentation/PlanTab';
+import SongsTab from '../components/Live-presentation/SongsTab';
+import ScriptureTab from '../components/Live-presentation/ScriptureTab';
+import SlidesTab from '../components/Live-presentation/SlidesTab';
+import { service } from '../database/mock/mockData';
+import PlanTab from '../components/Live-presentation/PlanTab';
 
 const LivePresentation = () => {
 	const { previewItem, liveItem } = useSelector((state: RootState) => state.presentation);
@@ -91,6 +92,7 @@ const LivePresentation = () => {
 			case 'plan': return <FiList size={16} />;
 			case 'scripture': return <FiBook size={16} />;
 			case 'songs': return <FiMusic size={16} />;
+			case 'slides': return <FiSliders size={16} />;
 			default: return <FiList size={16} />;
 		}
 	};
@@ -105,6 +107,9 @@ const LivePresentation = () => {
 
 			case 'songs':
 				return <SongsTab />;
+
+			case 'slides':
+				return <SlidesTab />;
 
 			default:
 				return <div>No content You got to a wrong route. 404! </div>
@@ -152,7 +157,8 @@ const LivePresentation = () => {
 						{[
 							{ key: 'plan', label: 'Service Plan' },
 							{ key: 'scripture', label: 'Scripture' },
-							{ key: 'songs', label: 'Songs' }
+							{ key: 'songs', label: 'Songs' },
+							{ key: 'slides', label: 'Slides' }
 						].map((tab) => (
 							<button
 								key={tab.key}
