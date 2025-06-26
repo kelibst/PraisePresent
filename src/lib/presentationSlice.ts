@@ -3,12 +3,13 @@ import { Verse } from "./bibleSlice";
 
 export interface PresentationItem {
   id: string;
-  type: "scripture" | "song" | "media" | "slide" | "placeholder";
+  type: "scripture" | "song" | "media" | "slide" | "placeholder" | "universal-slide";
   title: string;
   content: any; // Flexible content based on type
   reference?: string; // For scripture
   translation?: string; // For scripture
   verse?: Verse; // For scripture items
+  universalSlide?: any; // For universal slide items
 }
 
 export interface PresentationState {
@@ -94,6 +95,14 @@ export const sendContentToLiveDisplay = createAsyncThunk(
           title: content.title,
           content: content.content,
           subtitle: content.content?.notes,
+        };
+      } else if (content.type === "universal-slide") {
+        liveContent = {
+          type: "universal-slide",
+          title: content.title,
+          content: content.content,
+          subtitle: content.reference,
+          universalSlide: content.universalSlide,
         };
       } else {
         // Handle other content types (announcement, etc.)

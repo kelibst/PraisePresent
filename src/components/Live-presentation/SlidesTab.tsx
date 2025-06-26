@@ -19,6 +19,7 @@ import {
 	selectSlidesInitialized
 } from '../../lib/slidesSlice';
 import { setPreviewItem, sendContentToLiveDisplay, PresentationItem } from '../../lib/presentationSlice';
+import { UniversalSlide } from '../../lib/universalSlideSlice';
 import SlideEditor from '../slides/SlideEditor';
 
 // Constants for better maintainability
@@ -253,6 +254,18 @@ const SlidesTab = () => {
 		};
 	}, []);
 
+	// Universal slide presentation item creator
+	const createUniversalSlideItem = useCallback((universalSlide: UniversalSlide): PresentationItem => {
+		return {
+			id: `universal-slide-${universalSlide.id}`,
+			type: "universal-slide",
+			title: universalSlide.title,
+			content: universalSlide.content,
+			reference: universalSlide.subtitle,
+			universalSlide: universalSlide,
+		};
+	}, []);
+
 	// Usage tracking
 	const updatePresentationUsageTracking = useCallback(async (presentation: Presentation) => {
 		if (!presentation.id) return;
@@ -366,7 +379,100 @@ const SlidesTab = () => {
 		// For Phase 1B, this will create a new presentation
 		console.log('Create new presentation');
 		// TODO: Implement new presentation creation
-	}, []);
+
+		// TEST: Create a sample Universal Slide
+		const testUniversalSlide: UniversalSlide = {
+			id: `test-${Date.now()}`,
+			title: "Test Universal Slide",
+			subtitle: "Testing the integration",
+			type: "note",
+			content: {
+				text: "This is a test Universal Slide to verify the preview/live integration is working correctly.",
+				bulletPoints: ["Point 1: Preview should work", "Point 2: Live display should work", "Point 3: Background should render"]
+			},
+			background: {
+				type: "gradient",
+				colors: ["#3b82f6", "#1e40af"],
+				opacity: 1
+			},
+			textFormatting: {
+				titleFont: {
+					family: "Arial, sans-serif",
+					size: 48,
+					weight: "bold",
+					color: "#ffffff",
+					shadow: {
+						x: 2,
+						y: 2,
+						blur: 4,
+						color: "rgba(0,0,0,0.5)"
+					}
+				},
+				contentFont: {
+					family: "Arial, sans-serif",
+					size: 24,
+					weight: "normal",
+					color: "#ffffff",
+					lineHeight: 1.5,
+					shadow: {
+						x: 1,
+						y: 1,
+						blur: 2,
+						color: "rgba(0,0,0,0.3)"
+					}
+				}
+			},
+			template: {
+				id: "test-template-id",
+				name: "test-template",
+				category: "content",
+				layout: {
+					titlePosition: "top",
+					contentAlignment: "center",
+					backgroundOpacity: 1,
+					padding: 40,
+					margins: { top: 20, right: 20, bottom: 20, left: 20 }
+				},
+				defaultStyling: {
+					titleFont: {
+						family: "Arial, sans-serif",
+						size: 48,
+						weight: "bold",
+						color: "#ffffff"
+					},
+					contentFont: {
+						family: "Arial, sans-serif",
+						size: 24,
+						weight: "normal",
+						color: "#ffffff",
+						lineHeight: 1.5
+					}
+				}
+			},
+			transitions: {
+				enter: "fade",
+				exit: "fade",
+				duration: 500
+			},
+			timing: {
+				autoAdvance: false,
+				duration: 0,
+				pauseOnInteraction: true
+			},
+			metadata: {
+				usageCount: 0,
+				tags: ["test"]
+			},
+			notes: "This is a test slide for integration testing",
+			createdAt: new Date().toISOString(),
+			updatedAt: new Date().toISOString()
+		};
+
+		// Send test slide to preview
+		const testPresentationItem = createUniversalSlideItem(testUniversalSlide);
+		dispatch(setPreviewItem(testPresentationItem));
+		console.log('Test Universal Slide sent to preview:', testPresentationItem);
+	}, [dispatch, createUniversalSlideItem]);
 
 	// Debounced search handler
 	const handleSearchChange = useCallback((query: string) => {

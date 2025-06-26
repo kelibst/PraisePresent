@@ -1,6 +1,7 @@
 import React from 'react';
 import { FiMonitor } from "react-icons/fi";
 import { ContentItem, ContentDisplayProps } from './types';
+import UniversalSlideRenderer from '../UniversalSlideRenderer';
 
 // Empty content component
 export const EmptyContent: React.FC<{ isPreview: boolean }> = ({ isPreview }) => (
@@ -59,6 +60,29 @@ export const GenericContent: React.FC<{ item: ContentItem }> = ({ item }) => (
 	</>
 );
 
+// Universal Slide content component
+export const UniversalSlideContent: React.FC<{ item: ContentItem }> = ({ item }) => {
+	if (!item.universalSlide) {
+		return (
+			<div className="text-center text-red-300">
+				<p>Universal slide data missing</p>
+			</div>
+		);
+	}
+
+	return (
+		<div className="w-full h-full min-h-[200px] rounded-lg overflow-hidden">
+			<UniversalSlideRenderer
+				slide={item.universalSlide}
+				width={400}
+				height={225}
+				isPreview={true}
+				onSlideComplete={() => { /* No action needed for preview */ }}
+			/>
+		</div>
+	);
+};
+
 // Main content display component
 export const ContentDisplay: React.FC<ContentDisplayProps> = ({ item, isPreview }) => {
 
@@ -81,6 +105,7 @@ export const ContentDisplay: React.FC<ContentDisplayProps> = ({ item, isPreview 
 			<div className="text-center flex flex-col items-center justify-center">
 				{item.type === 'song' && <SongContent item={item} />}
 				{item.type === 'scripture' && <ScriptureContent item={item} />}
+				{item.type === 'universal-slide' && <UniversalSlideContent item={item} />}
 				{['announcement', 'media', 'slide'].includes(item.type) && <GenericContent item={item} />}
 			</div>
 		</div>

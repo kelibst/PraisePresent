@@ -1,12 +1,15 @@
 // Shared types for Live Presentation components
+import { UniversalSlide } from '../../lib/universalSlideSlice';
 
 export interface ContentItem {
 	id: string;
-	type: 'scripture' | 'song' | 'announcement' | 'media' | 'slide' | 'placeholder';
+	type: 'scripture' | 'song' | 'announcement' | 'media' | 'slide' | 'placeholder' | 'universal-slide';
 	title: string;
 	content: any;
 	reference?: string;
 	translation?: string;
+	// Universal slide data
+	universalSlide?: UniversalSlide;
 }
 
 export interface RightPanelProps {

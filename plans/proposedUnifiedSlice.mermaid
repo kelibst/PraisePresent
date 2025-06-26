@@ -1,0 +1,55 @@
+graph TD
+    A["Current Architecture"] --> B["Scripture Slice"]
+    A --> C["Song Slice"]
+    A --> D["Slides Slice"]
+    A --> E["Presentation Slice"]
+    A --> F["Display Slice"]
+    
+    B --> G["Bible Component"]
+    C --> H["Song Component"]  
+    D --> I["Slides Component"]
+    
+    G --> J["Live Display"]
+    H --> J
+    I --> J
+    
+    K["Proposed Unified Architecture"] --> L["Universal Slide Slice"]
+    L --> M["Scripture Slides"]
+    L --> N["Song Slides"]
+    L --> O["Media Slides"]
+    L --> P["Note Slides"]
+    L --> Q["Custom Slides"]
+    L --> R["Service Plan Slides"]
+    
+    M --> S["Universal Slide Renderer"]
+    N --> S
+    O --> S
+    P --> S
+    Q --> S
+    R --> S
+    
+    S --> T["RightPanel Preview"]
+    S --> U["RightPanel Live"]
+    
+    T --> V["User Action: Send to Live"]
+    U --> W["LiveDisplayRenderer.tsx"]
+    
+    W --> X["Final Live Display"]
+    
+    Y["User Content Selection"] --> Z["Preview Panel"]
+    Z --> AA["Double-click or Send to Live"]
+    AA --> BB["Live Panel"]
+    BB --> CC["LiveDisplayRenderer"]
+    CC --> DD["Projected Display"]
+    
+    EE["Service Planning"] --> FF["Organized Slide Collection"]
+    FF --> GG["Sequential Slide Presentation"]
+    GG --> S
+    
+    style K fill:#e1f5fe
+    style L fill:#f3e5f5
+    style S fill:#e8f5e8
+    style T fill:#fff3e0
+    style U fill:#ffebee
+    style W fill:#e8f5e8
+    style X fill:#f3e5f5
