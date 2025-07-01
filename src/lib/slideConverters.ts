@@ -130,7 +130,7 @@ export const convertVerseToSlide = (verse: Verse, version?: string): UniversalSl
     }],
     reference,
     version: version || verse.version?.name || 'Unknown',
-    translation: verse.version?.name || 'Unknown'
+    translation: version || verse.version?.name || 'Unknown'
   };
 
   return {
@@ -168,7 +168,7 @@ export const convertVersesToSlide = (verses: Verse[], reference: string, version
     })),
     reference,
     version: version || verses[0]?.version?.name || 'Unknown',
-    translation: verses[0]?.version?.name || 'Unknown'
+    translation: version || verses[0]?.version?.name || 'Unknown'
   };
 
   return {
@@ -201,7 +201,7 @@ export const convertSongSlideToSlide = (song: Song, songSlide: SongSlide): Unive
     songId: song.id,
     slideId: songSlide.id,
     slideType: songSlide.type,
-          slideNumber: songSlide.number,
+    slideNumber: songSlide.number,
     lyrics: songSlide.content,
     chords: songSlide.chords,
     key: song.key,

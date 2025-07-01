@@ -15,7 +15,7 @@ body {
   height: 100vh;
   margin: 0;
   padding: 0;
-  background: #000000;
+  background: #f40000;
   color: #ffffff;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   display: flex;
@@ -81,6 +81,7 @@ body {
 
 .song-content {
   padding: 2rem;
+  background-color: #00631c;
 }
 
 .song-title {

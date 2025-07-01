@@ -261,7 +261,7 @@ const SongsTab = () => {
 				</div>
 
 				{/* Tab Content */}
-				<div className="flex-1 overflow-hidden">
+				<div className="flex-1 ">
 					{activeTab === 'songs' ? (
 						<div
 							id="songs-panel"

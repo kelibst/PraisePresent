@@ -54,7 +54,7 @@ const SongDetailsTab: React.FC<SongDetailsTabProps> = ({
 	}
 
 	return (
-		<div className="h-full flex flex-col">
+		<div className="h-full flex flex-col overflow-y-auto">
 			{/* Song Header */}
 			<div className="p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
 				<h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
@@ -81,13 +81,13 @@ const SongDetailsTab: React.FC<SongDetailsTabProps> = ({
 						<p className="text-xs mt-1">This song doesn't have structured sections</p>
 					</div>
 				) : (
-					<div className="space-y-3" role="list" aria-label="Song sections">
+					<div className="space-y-3 overflow-y-auto" role="list" aria-label="Song sections">
 						{slides.map((slide: SongSlide, index: number) => (
 							<div
 								key={slide.id}
 								className={`p-4 rounded-lg border cursor-pointer transition-all group focus-within:ring-2 focus-within:ring-blue-500 ${clickedSlide === slide.id
-										? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
-										: 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 hover:shadow-sm'
+									? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
+									: 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 hover:shadow-sm'
 									}`}
 								onClick={() => handleSlideClick(slide)}
 								onKeyDown={(e) => {
