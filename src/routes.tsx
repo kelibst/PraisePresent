@@ -1,0 +1,25 @@
+import { Routes, Route } from "react-router-dom";
+
+// Layout components
+import AppLayout from "@/components/layout/AppLayout";
+
+// Page components from pages folder
+import Homepage from "@/pages/HomePage";
+import Service from "@/pages/Serivce";
+
+const AppRoutes = () => {
+  return (
+    <Routes>
+      {/* Main application routes with layout */}
+      <Route path="/" element={<Homepage />} />
+      <Route element={<AppLayout />}>
+        <Route path="/scripture" element={<Service />} />
+        {/* <Route path="/live" element={<LivePresentation />} />
+        <Route path="/settings" element={<Settings />} />
+        <Route path="/songs" element={<Songs />} /> */}
+      </Route>
+    </Routes>
+  );
+};
+
+export default AppRoutes;

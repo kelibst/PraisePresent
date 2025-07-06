@@ -1,23 +1,42 @@
-import React from 'react';
-import { Routes, Route } from 'react-router-dom';
-import Homepage from '@/dashboard/Homepage';
-import ServicesPage from '@/dashboard/ServicesPage';
-import ServiceDetail from '@/dashboard/ServiceDetail';
-import AppLayout from '@/dashboard/AppLayout';
+import React from "react";
+import AppRoutes from "@/routes";
 
 const App: React.FC = () => {
-  return (
-    <Routes>
-      <Route path="/" element={<Homepage />} />
-      <Route element={<AppLayout />}>
-        <Route path="/services" element={<ServicesPage />}>
-          <Route index element={null} />
-          <Route path=":id" element={<ServiceDetail />} />
-        </Route>
-        {/* Add other routes here, e.g. Scripture, Songs, Media, Presentations */}
-      </Route>
-    </Routes>
-  );
+  // Check if we're in live display mode via query parameter
+  const urlParams = new URLSearchParams(window.location.search);
+  const isLiveDisplayMode = urlParams.get("mode") === "live-display";
+
+  console.log("App.tsx: Current URL:", window.location.href);
+  console.log("App.tsx: Query params:", window.location.search);
+  console.log("App.tsx: Live display mode:", isLiveDisplayMode);
+
+  // If this is the live display window, render only the LiveDisplayRenderer
+  // if (isLiveDisplayMode) {
+  //   console.log("App.tsx: Rendering LiveDisplayRenderer for live display mode");
+  //   return <LiveDisplayRenderer />;
+  // }
+
+  // Main application component with initialization
+  const MainApp: React.FC = () => {
+
+
+    return (
+      <div className="app-window">
+        <div className="app-content">
+          {/* Custom Title Bar */}
+          {/* <TitleBar title="PraisePresent - Church Presentation System" /> */}
+
+          {/* Main Application Content */}
+          <div className="flex-1 overflow-y-auto">
+            <AppRoutes />
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  // Regular main application mode
+  return <MainApp />;
 };
 
-export default App; 
+export default App;

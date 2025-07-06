@@ -1,0 +1,10 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+You can start the app with npm start
+Use modular mindset but not too modular components in this application.
+let me be the one to test run the applicaton, just leave logs out where you expect changes and instruct me on what to test and I will tell you what the outcome of the test is.
+Remember the project has redux-toolkit setup.
+As you make changes, if you notice dead code, components, or logic. remove them. and ensure it does not break the app.

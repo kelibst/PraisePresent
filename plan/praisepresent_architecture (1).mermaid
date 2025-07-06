@@ -1,0 +1,294 @@
+graph TB
+    %% Core Application
+    PA[PraisePresent App]
+    
+    %% Main Application Sections (Based on Hand Sketch)
+    subgraph "App Data"
+        AD[App Data Manager]
+        UserData[User Data]
+        ChurchData[Church Data]
+    end
+
+    subgraph "Settings"
+        AppSettings[App Settings]
+        BibleVersions[Bible Versions]
+        DisplaySettings[Display Settings]
+        AudioSettings[Audio Settings]
+    end
+
+    subgraph "Services"
+        ServiceManager[Service Manager]
+        LiveService[Live Service Control]
+        ServiceHistory[Service History]
+    end
+
+    subgraph "Service Plan"
+        ServicePlan[Service Plan Builder]
+        ServiceFlow[Service Flow]
+        ServiceItems[Service Items]
+    end
+
+    subgraph "Content Library"
+        Songs[Songs Database]
+        Scripture[Scripture Database]
+        Notes[Notes & Announcements]
+        Media[Media Library]
+    end
+
+    %% Data Layer
+    subgraph "Data Layer"
+        DB[(SQLite Database)]
+        Cache[Cache Layer]
+        Sync[Data Sync Engine]
+    end
+
+    %% AI Engine Layer
+    subgraph "AI Engine"
+        AICore[AI Core Engine]
+        NLP[Natural Language Processing]
+        CV[Computer Vision]
+        ML[Machine Learning Models]
+        AIOrch[AI Orchestrator]
+    end
+
+    %% Presentation Layer
+    subgraph "Presentation Engine"
+        PE[Presentation Engine]
+        Display[Display Manager]
+        Graphics[Graphics Renderer]
+        Effects[Visual Effects]
+        Transitions[Transition Engine]
+    end
+
+    %% Remote Control & Connectivity
+    subgraph "Remote Control"
+        RC[Remote Control Hub]
+        Mobile[Mobile App Control]
+        Web[Web Interface]
+        API[REST API]
+        WebSocket[WebSocket Server]
+    end
+
+    %% Worship Technology Features
+    subgraph "Worship Technology"
+        WT[Worship Tech Hub]
+        Lighting[Lighting Control]
+        Audio[Audio Integration]
+        Video[Video Streaming]
+        CCLI[CCLI Integration]
+    end
+
+    %% AI-Powered Features
+    subgraph "AI Features"
+        AutoGen[Auto Content Generation]
+        SmartSugg[Smart Suggestions]
+        VoiceCmd[Voice Commands]
+        AutoLyrics[Auto Lyrics Sync]
+        PredictiveFlow[Predictive Flow]
+        AIAnalytics[AI Analytics]
+    end
+
+    %% External Integrations
+    subgraph "External Services"
+        Cloud[Cloud Services]
+        Backup[Backup Services]
+        Updates[Auto Updates]
+        Analytics[Usage Analytics]
+        Support[Support System]
+    end
+
+    %% Hardware Integration
+    subgraph "Hardware"
+        Projectors[Projector Control]
+        Cameras[Camera Systems]
+        Microphones[Audio Input]
+        Controllers[Hardware Controllers]
+        Displays[Multiple Displays]
+    end
+
+    %% Network & Communication
+    subgraph "Network Layer"
+        Network[Network Manager]
+        Security[Security Layer]
+        Auth[Authentication]
+        Encryption[Data Encryption]
+    end
+
+    %% Primary Core Connections (Based on Hand Sketch)
+    PA --> AD
+    PA --> AppSettings
+    PA --> ServiceManager
+    PA --> ServicePlan
+    PA --> Songs
+    PA --> Scripture
+    PA --> Notes
+    PA --> Media
+
+    %% App Data Connections
+    AD --> UserData
+    AD --> ChurchData
+    AD --> DB
+
+    %% Settings Connections
+    AppSettings --> BibleVersions
+    AppSettings --> DisplaySettings
+    AppSettings --> AudioSettings
+    AppSettings --> DB
+
+    %% Services Connections
+    ServiceManager --> LiveService
+    ServiceManager --> ServiceHistory
+    ServiceManager --> DB
+    LiveService --> PE
+
+    %% Service Plan Connections
+    ServicePlan --> ServiceFlow
+    ServicePlan --> ServiceItems
+    ServicePlan --> Songs
+    ServicePlan --> Scripture
+    ServicePlan --> Notes
+    ServicePlan --> Media
+    ServiceFlow --> ServiceItems
+
+    %% Content Library Connections
+    Songs --> DB
+    Scripture --> DB
+    Notes --> DB
+    Media --> DB
+    BibleVersions --> Scripture
+
+    %% Data Layer Connections
+    DB --> Cache
+    DB --> Sync
+    Cache --> Sync
+
+    %% AI Engine Connections
+    AICore --> NLP
+    AICore --> CV
+    AICore --> ML
+    AIOrch --> AICore
+    AIOrch --> PA
+
+    %% Presentation Engine Connections
+    PE --> Display
+    PE --> Graphics
+    PE --> Effects
+    PE --> Transitions
+    LiveService --> PE
+    PE --> Projectors
+    PE --> Displays
+
+    %% Remote Control Connections
+    RC --> Mobile
+    RC --> Web
+    RC --> API
+    RC --> WebSocket
+    RC --> PA
+    Mobile --> WebSocket
+    Web --> API
+
+    %% Worship Technology Connections
+    WT --> Lighting
+    WT --> Audio
+    WT --> Video
+    WT --> CCLI
+    ServiceManager --> WT
+    WT --> Controllers
+
+    %% AI Features Connections
+    AutoGen --> AICore
+    SmartSugg --> AICore
+    VoiceCmd --> AICore
+    AutoLyrics --> AICore
+    PredictiveFlow --> AICore
+    AIAnalytics --> AICore
+    AIOrch --> AutoGen
+    AIOrch --> SmartSugg
+    AIOrch --> VoiceCmd
+    AIOrch --> AutoLyrics
+    AIOrch --> PredictiveFlow
+    AIOrch --> AIAnalytics
+
+    %% External Services Connections
+    Cloud --> Backup
+    Cloud --> Updates
+    Cloud --> Analytics
+    Cloud --> Support
+    PA --> Cloud
+    Sync --> Cloud
+
+    %% Hardware Integration Connections
+    Projectors --> PE
+    Cameras --> CV
+    Microphones --> VoiceCmd
+    Controllers --> RC
+    Displays --> PE
+    Audio --> Microphones
+    Video --> Cameras
+
+    %% Network & Security Connections
+    Network --> Security
+    Network --> Auth
+    Network --> Encryption
+    Security --> Auth
+    Security --> Encryption
+    RC --> Network
+    Cloud --> Network
+    API --> Auth
+
+    %% Advanced AI Integrations
+    NLP --> AutoGen
+    NLP --> SmartSugg
+    NLP --> VoiceCmd
+    CV --> AutoLyrics
+    CV --> PredictiveFlow
+    ML --> AIAnalytics
+    ML --> SmartSugg
+
+    %% Service Plan AI Integration
+    ServicePlan --> SmartSugg
+    ServicePlan --> PredictiveFlow
+    ServiceFlow --> AutoGen
+    Songs --> AutoLyrics
+    Scripture --> AutoGen
+    Notes --> NLP
+
+    %% Real-time Communication
+    WebSocket --> Display
+    WebSocket --> Effects
+    WebSocket --> Lighting
+    WebSocket --> Audio
+    WebSocket --> LiveService
+
+    %% Styling
+    classDef coreApp fill:#ff9999,stroke:#333,stroke-width:3px
+    classDef appData fill:#99ccff,stroke:#333,stroke-width:2px
+    classDef settings fill:#ffcc99,stroke:#333,stroke-width:2px
+    classDef services fill:#cc99ff,stroke:#333,stroke-width:2px
+    classDef servicePlan fill:#99ff99,stroke:#333,stroke-width:2px
+    classDef content fill:#ffff99,stroke:#333,stroke-width:2px
+    classDef dataLayer fill:#ccccff,stroke:#333,stroke-width:2px
+    classDef aiEngine fill:#99ffcc,stroke:#333,stroke-width:2px
+    classDef presentation fill:#ffccff,stroke:#333,stroke-width:2px
+    classDef remoteControl fill:#ccffcc,stroke:#333,stroke-width:2px
+    classDef worshipTech fill:#ffffcc,stroke:#333,stroke-width:2px
+    classDef aiFeatures fill:#ffcccc,stroke:#333,stroke-width:2px
+    classDef external fill:#cccccc,stroke:#333,stroke-width:2px
+    classDef hardware fill:#e6ccff,stroke:#333,stroke-width:2px
+    classDef network fill:#ccffe6,stroke:#333,stroke-width:2px
+
+    class PA coreApp
+    class AD,UserData,ChurchData appData
+    class AppSettings,BibleVersions,DisplaySettings,AudioSettings settings
+    class ServiceManager,LiveService,ServiceHistory services
+    class ServicePlan,ServiceFlow,ServiceItems servicePlan
+    class Songs,Scripture,Notes,Media content
+    class DB,Cache,Sync dataLayer
+    class AICore,NLP,CV,ML,AIOrch aiEngine
+    class PE,Display,Graphics,Effects,Transitions presentation
+    class RC,Mobile,Web,API,WebSocket remoteControl
+    class WT,Lighting,Audio,Video,CCLI worshipTech
+    class AutoGen,SmartSugg,VoiceCmd,AutoLyrics,PredictiveFlow,AIAnalytics aiFeatures
+    class Cloud,Backup,Updates,Analytics,Support external
+    class Projectors,Cameras,Microphones,Controllers,Displays hardware
+    class Network,Security,Auth,Encryption network
