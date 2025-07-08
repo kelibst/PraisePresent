@@ -1,4 +1,5 @@
 
+import DisplaySettings from "@/components/settings/display/DisplaySettings";
 import GeneralSettings from "@/components/settings/display/GeneralSettings";
 import React, { useState } from "react";
 import {
@@ -27,12 +28,12 @@ const Settings: React.FC = () => {
       icon: <FiUser className="w-4 h-4" />,
       component: <GeneralSettings />,
     },
-    // {
-    //   id: "display",
-    //   label: "Display",
-    //   icon: <FiMonitor className="w-4 h-4" />,
-    //   component: <DisplaySettings />,
-    // },
+    {
+      id: "display",
+      label: "Display",
+      icon: <FiMonitor className="w-4 h-4" />,
+      component: <DisplaySettings />,
+    },
     // {
     //   id: "live-display",
     //   label: "Live Display",
