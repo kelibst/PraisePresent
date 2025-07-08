@@ -1,0 +1,32 @@
+flowchart TD
+    A[Slide Request] --> B{Slide Type?}
+    
+    B -->|TEXT| C[Load TextContent]
+    B -->|MEDIA| D[Load MediaContent + MediaItem]
+    B -->|RICHTEXT| E[Load RichTextContent]
+    
+    C --> F[Apply Text Styling]
+    D --> G[Apply Media Positioning]
+    E --> H[Process Rich Text Blocks]
+    
+    F --> I[Apply Slide Styling]
+    G --> I
+    H --> I
+    
+    I --> J[Apply Animations]
+    J --> K[Apply Transitions]
+    K --> L[Render to Canvas/DOM]
+    
+    L --> M[Display Slide]
+    
+    subgraph "Content Processing"
+        N[Text Engine] --> O[Font Loading]
+        P[Media Engine] --> Q[Asset Loading]
+        R[RichText Engine] --> S[Block Rendering]
+    end
+    
+    subgraph "Styling Pipeline"
+        T[Theme Application] --> U[Custom Styling]
+        U --> V[Animation Preparation]
+        V --> W[Transition Setup]
+    end

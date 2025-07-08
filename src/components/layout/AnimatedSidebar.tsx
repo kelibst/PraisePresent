@@ -38,7 +38,7 @@ const menu = [
   // { label: 'Media', icon: <FiImage />, path: '/media' },
   // { label: 'Presentations', icon: <FiMonitor />, path: '/presentations' },
   // { label: 'Services', icon: <FiList />, path: '/services' },
-  { label: "Live Presentation", icon: <FiVideo />, path: "/live" },
+  { label: "Live Presentation", icon: <FiVideo />, path: "/service" },
   { label: "Settings", icon: <FiSettings />, path: "/settings" },
 ];
 

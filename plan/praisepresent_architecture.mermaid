@@ -150,12 +150,76 @@ graph TB
     ServicePlan --> Media
     ServiceFlow --> ServiceItems
 
+    %% Slide-Based Rendering System
+    subgraph "Slide Engine"
+        SlideEngine[Slide Engine Core]
+        SlideRenderer[Slide Renderer]
+        RichTextEditor[Rich Text Editor]
+        SlideTemplates[Slide Templates]
+        SlideBuilder[Slide Builder]
+    end
+
+    subgraph "Slide Types"
+        TextSlides[Text-Based Slides]
+        VideoSlides[Video Slides]
+        ImageSlides[Image Slides]
+        AnnouncementSlides[Announcement Slides]
+        LyricsSlides[Lyrics Slides]
+        ScriptureSlides[Scripture Slides]
+        NotesSlides[Notes Slides]
+    end
+
+    subgraph "Notification System"
+        NotificationManager[Notification Manager]
+        PushNotifications[Push Notifications]
+        InAppNotifications[In-App Notifications]
+        EmailNotifications[Email Notifications]
+        ServiceAlerts[Service Alerts]
+    end
+
     %% Content Library Connections
     Songs --> DB
     Scripture --> DB
     Notes --> DB
     Media --> DB
     BibleVersions --> Scripture
+
+    %% Slide Engine Connections
+    SlideEngine --> SlideRenderer
+    SlideEngine --> RichTextEditor
+    SlideEngine --> SlideTemplates
+    SlideEngine --> SlideBuilder
+    PE --> SlideEngine
+    SlideRenderer --> Display
+
+    %% Slide Types Connections
+    SlideBuilder --> TextSlides
+    SlideBuilder --> VideoSlides
+    SlideBuilder --> ImageSlides
+    SlideBuilder --> AnnouncementSlides
+    SlideBuilder --> LyricsSlides
+    SlideBuilder --> ScriptureSlides
+    SlideBuilder --> NotesSlides
+
+    %% Content to Slide Connections
+    Songs --> LyricsSlides
+    Scripture --> ScriptureSlides
+    Notes --> NotesSlides
+    Notes --> AnnouncementSlides
+    Media --> VideoSlides
+    Media --> ImageSlides
+    RichTextEditor --> TextSlides
+    RichTextEditor --> AnnouncementSlides
+    RichTextEditor --> NotesSlides
+
+    %% Notification System Connections
+    NotificationManager --> PushNotifications
+    NotificationManager --> InAppNotifications
+    NotificationManager --> EmailNotifications
+    NotificationManager --> ServiceAlerts
+    PA --> NotificationManager
+    ServiceManager --> ServiceAlerts
+    LiveService --> ServiceAlerts
 
     %% Data Layer Connections
     DB --> Cache
@@ -248,10 +312,21 @@ graph TB
     %% Service Plan AI Integration
     ServicePlan --> SmartSugg
     ServicePlan --> PredictiveFlow
+    ServicePlan --> SlideBuilder
     ServiceFlow --> AutoGen
+    ServiceFlow --> SlideEngine
     Songs --> AutoLyrics
     Scripture --> AutoGen
     Notes --> NLP
+    SlideEngine --> AIOrch
+
+    %% AI Integration with Slides
+    AIOrch --> SlideBuilder
+    AutoGen --> SlideTemplates
+    SmartSugg --> SlideBuilder
+    NLP --> RichTextEditor
+    CV --> VideoSlides
+    CV --> ImageSlides
 
     %% Real-time Communication
     WebSocket --> Display
@@ -275,7 +350,9 @@ graph TB
     classDef aiFeatures fill:#ffcccc,stroke:#333,stroke-width:2px
     classDef external fill:#cccccc,stroke:#333,stroke-width:2px
     classDef hardware fill:#e6ccff,stroke:#333,stroke-width:2px
-    classDef network fill:#ccffe6,stroke:#333,stroke-width:2px
+    classDef slideEngine fill:#e6f3ff,stroke:#333,stroke-width:2px
+    classDef slideTypes fill:#fff0e6,stroke:#333,stroke-width:2px
+    classDef notifications fill:#f0e6ff,stroke:#333,stroke-width:2px
 
     class PA coreApp
     class AD,UserData,ChurchData appData
@@ -292,3 +369,6 @@ graph TB
     class Cloud,Backup,Updates,Analytics,Support external
     class Projectors,Cameras,Microphones,Controllers,Displays hardware
     class Network,Security,Auth,Encryption network
+    class SlideEngine,SlideRenderer,RichTextEditor,SlideTemplates,SlideBuilder slideEngine
+    class TextSlides,VideoSlides,ImageSlides,AnnouncementSlides,LyricsSlides,ScriptureSlides,NotesSlides slideTypes
+    class NotificationManager,PushNotifications,InAppNotifications,EmailNotifications,ServiceAlerts notifications

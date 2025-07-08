@@ -13,7 +13,7 @@ const AppRoutes = () => {
       {/* Main application routes with layout */}
       <Route path="/" element={<Homepage />} />
       <Route element={<AppLayout />}>
-        <Route path="/scripture" element={<Service />} />
+        <Route path="/service" element={<Service />} />
         {/* <Route path="/live" element={<LivePresentation />} />
         <Route path="/settings" element={<Settings />} />
         <Route path="/songs" element={<Songs />} /> */}

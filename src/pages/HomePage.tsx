@@ -134,7 +134,7 @@ const Homepage = () => {
         <motion.div variants={buttonVariants} whileHover="hover">
           <button
             className="flex items-center gap-2 bg-white hover:scale-105 text-black font-semibold px-8 py-4 rounded-full shadow-lg hover:bg-blue-50 transition"
-            onClick={() => navigate("/live")}
+            onClick={() => navigate("/service")}
           >
             <FiPlus /> Start New Service
           </button>

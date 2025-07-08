@@ -1,0 +1,122 @@
+erDiagram
+    Presentation {
+        string id PK
+        string title
+        string description
+        datetime createdAt
+        datetime updatedAt
+        datetime lastUsed
+        string status
+        json metadata
+    }
+    
+    Slide {
+        string id PK
+        string presentationId FK
+        string type
+        json content
+        int order
+        json styling
+        json animations
+        json transitions
+        datetime createdAt
+        datetime updatedAt
+        boolean isActive
+    }
+    
+    MediaItem {
+        string id PK
+        string filename
+        string originalName
+        string path
+        string type
+        string mimeType
+        int size
+        int duration
+        int width
+        int height
+        string tags
+        string category
+        string description
+        datetime createdAt
+        datetime updatedAt
+        datetime lastUsed
+    }
+    
+    TextContent {
+        string id PK
+        string slideId FK
+        string text
+        string fontSize
+        string fontFamily
+        string fontWeight
+        string textAlign
+        string textColor
+        string backgroundColor
+        float lineHeight
+        json padding
+        json textEffects
+        json typography
+    }
+    
+    MediaContent {
+        string id PK
+        string slideId FK
+        string mediaItemId FK
+        string displayMode
+        json positioning
+        json scaling
+        json playbackSettings
+        json overlays
+        boolean autoPlay
+        boolean loop
+        float volume
+        int startTime
+        int endTime
+    }
+    
+    RichTextContent {
+        string id PK
+        string slideId FK
+        json blocks
+        json styling
+        json formatting
+        string version
+        json metadata
+    }
+    
+    SlideTemplate {
+        string id PK
+        string name
+        string type
+        json defaultContent
+        json defaultStyling
+        string category
+        string description
+        datetime createdAt
+        datetime updatedAt
+        boolean isPublic
+    }
+    
+    SlideTheme {
+        string id PK
+        string name
+        json colorPalette
+        json typography
+        json backgrounds
+        json animations
+        json transitions
+        datetime createdAt
+        datetime updatedAt
+        boolean isDefault
+    }
+    
+    %% Relationships
+    Presentation ||--o{ Slide : contains
+    Slide ||--o| TextContent : "type: text"
+    Slide ||--o| MediaContent : "type: media"
+    Slide ||--o| RichTextContent : "type: richtext"
+    MediaContent }o--|| MediaItem : references
+    Slide }o--o| SlideTemplate : "based on"
+    Slide }o--o| SlideTheme : "uses"
+    Presentation }o--o{ MediaItem : "can use"
