@@ -6,6 +6,7 @@ import AppLayout from "@/components/layout/AppLayout";
 // Page components from pages folder
 import Homepage from "@/pages/HomePage";
 import Service from "@/pages/Serivce";
+import Settings from "./pages/Settings";
 
 const AppRoutes = () => {
   return (
@@ -14,6 +15,7 @@ const AppRoutes = () => {
       <Route path="/" element={<Homepage />} />
       <Route element={<AppLayout />}>
         <Route path="/service" element={<Service />} />
+        <Route path="/settings" element={<Settings />} />
         {/* <Route path="/live" element={<LivePresentation />} />
         <Route path="/settings" element={<Settings />} />
         <Route path="/songs" element={<Songs />} /> */}
