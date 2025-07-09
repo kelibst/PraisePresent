@@ -30,102 +30,7 @@ async function main() {
     }
   });
 
-  // Create Bible translations and versions
-  console.log('📖 Creating Bible translations and versions...');
-  const englishTranslation = await prisma.translation.create({
-    data: {
-      name: 'English',
-      code: 'en',
-      isDefault: true,
-      versions: {
-        create: [
-          {
-            name: 'NIV',
-            fullName: 'New International Version',
-            isDefault: true,
-            year: 1978,
-            publisher: 'Biblica'
-          },
-          {
-            name: 'KJV',
-            fullName: 'King James Version',
-            year: 1611,
-            publisher: 'Church of England'
-          }
-        ]
-      }
-    }
-  });
-
-  // Create sample books
-  console.log('📚 Creating Bible books...');
-  const genesis = await prisma.book.create({
-    data: {
-      id: 1,
-      name: 'Genesis',
-      shortName: 'Gen',
-      testament: 'OT',
-      category: 'Law',
-      chapters: 50,
-      order: 1
-    }
-  });
-
-  const john = await prisma.book.create({
-    data: {
-      id: 43,
-      name: 'John',
-      shortName: 'John',
-      testament: 'NT',
-      category: 'Gospel',
-      chapters: 21,
-      order: 43
-    }
-  });
-
-  // Create sample verses
-  console.log('📜 Creating Bible verses...');
-  const john316 = await prisma.verse.create({
-    data: {
-      bookId: john.id,
-      chapter: 3,
-      verse: 16,
-      text: 'For God so loved the world that he gave his one and only Son, that whoever believes in him shall not perish but have eternal life.',
-      versionId: (await prisma.version.findFirst({ where: { name: 'NIV' } }))!.id
-    }
-  });
-
-  // Create sample topics
-  console.log('🏷️ Creating topics...');
-  const salvationTopic = await prisma.topic.create({
-    data: {
-      name: 'Salvation',
-      description: 'God\'s plan of salvation through Jesus Christ',
-      topicVerses: {
-        create: {
-          verseId: john316.id
-        }
-      }
-    }
-  });
-
-  // Create sample songs
-  console.log('🎵 Creating songs...');
-  const amazingGrace = await prisma.song.create({
-    data: {
-      title: 'Amazing Grace',
-      artist: 'John Newton',
-      lyrics: 'Amazing grace, how sweet the sound\nThat saved a wretch like me.\nI once was lost, but now am found,\nWas blind, but now I see.',
-      ccliNumber: '4755360',
-      key: 'G',
-      tempo: '70',
-      tags: JSON.stringify(['hymn', 'worship', 'grace']),
-      category: 'hymn',
-      copyright: '© Public Domain'
-    }
-  });
-
-  // Create sample media
+  // Create sample media items
   console.log('🖼️ Creating media items...');
   const backgroundImage = await prisma.mediaItem.create({
     data: {
@@ -142,117 +47,215 @@ async function main() {
     }
   });
 
-  // Create backgrounds
-  console.log('🎨 Creating backgrounds...');
-  const defaultBackground = await prisma.background.create({
+  // Create sample slide themes
+  console.log('🎨 Creating slide themes...');
+  const defaultTheme = await prisma.slideTheme.create({
     data: {
-      name: 'Default Gradient',
-      type: 'gradient',
-      settings: JSON.stringify({
-        colors: ['#2D3748', '#1A202C'],
-        angle: 135
+      name: 'Default Theme',
+      colorPalette: JSON.stringify({
+        primary: '#2D3748',
+        secondary: '#4A5568',
+        accent: '#3182CE',
+        text: '#FFFFFF',
+        background: '#1A202C'
+      }),
+      typography: JSON.stringify({
+        headingFont: 'Arial, sans-serif',
+        bodyFont: 'Arial, sans-serif',
+        headingSize: '48px',
+        bodySize: '24px'
+      }),
+      backgrounds: JSON.stringify({
+        default: {
+          type: 'gradient',
+          colors: ['#2D3748', '#1A202C'],
+          angle: 135
+        }
       }),
       isDefault: true
     }
   });
 
-  const imageBackground = await prisma.background.create({
+  // Create sample slide templates
+  console.log('📄 Creating slide templates...');
+  const textTemplate = await prisma.slideTemplate.create({
     data: {
-      name: 'Worship Background',
-      type: 'image',
-      settings: JSON.stringify({
-        fit: 'cover',
-        opacity: 0.8
+      name: 'Basic Text Slide',
+      type: 'text',
+      defaultContent: JSON.stringify({
+        text: 'Sample text content',
+        fontSize: '48px',
+        fontFamily: 'Arial, sans-serif',
+        textAlign: 'center',
+        textColor: '#FFFFFF'
       }),
-      mediaItemId: backgroundImage.id
+      defaultStyling: JSON.stringify({
+        background: {
+          type: 'color',
+          color: '#2D3748'
+        },
+        padding: 40
+      }),
+      category: 'text',
+      description: 'Basic text slide template',
+      isPublic: true
     }
   });
 
-  // Create sample service
-  console.log('⛪ Creating sample service...');
-  const sundayService = await prisma.service.create({
+  // Create sample notes
+  console.log('📝 Creating sample notes...');
+  const welcomeNote = await prisma.note.create({
     data: {
-      name: 'Sunday Morning Service',
-      date: new Date('2024-03-24T09:00:00Z'),
-      type: 'Sunday Morning',
-      description: 'Regular Sunday morning worship service',
-      duration: 90
+      title: 'Welcome Message',
+      content: 'Welcome to our worship service today! We are glad you are here.',
+      category: 'announcements',
+      tags: JSON.stringify(['welcome', 'announcement']),
+      userId: admin.id
     }
   });
 
-  // Create service items
-  console.log('📝 Creating service items...');
-  await prisma.serviceItem.create({
+  const sermonNote = await prisma.note.create({
     data: {
-      serviceId: sundayService.id,
-      type: 'song',
-      title: 'Opening Worship',
+      title: 'Sermon Notes - Faith',
+      content: 'Faith is the substance of things hoped for, the evidence of things not seen. (Hebrews 11:1)',
+      category: 'sermon',
+      tags: JSON.stringify(['sermon', 'faith', 'scripture']),
+      userId: admin.id
+    }
+  });
+
+  // Create presentations for the notes
+  console.log('📊 Creating presentations...');
+  const welcomePresentation = await prisma.presentation.create({
+    data: {
+      title: welcomeNote.title,
+      description: 'Welcome message presentation',
+      status: 'draft',
+      metadata: JSON.stringify({
+        type: 'note',
+        category: welcomeNote.category,
+        tags: JSON.parse(welcomeNote.tags || '[]')
+      }),
+      noteId: welcomeNote.id
+    }
+  });
+
+  const sermonPresentation = await prisma.presentation.create({
+    data: {
+      title: sermonNote.title,
+      description: 'Sermon notes presentation',
+      status: 'draft',
+      metadata: JSON.stringify({
+        type: 'note',
+        category: sermonNote.category,
+        tags: JSON.parse(sermonNote.tags || '[]')
+      }),
+      noteId: sermonNote.id
+    }
+  });
+
+  // Create slides for the presentations
+  console.log('🎯 Creating slides...');
+  const welcomeSlide = await prisma.slide.create({
+    data: {
+      presentationId: welcomePresentation.id,
+      type: 'text',
+      content: JSON.stringify({
+        text: welcomeNote.content,
+        fontSize: '48px',
+        fontFamily: 'Arial, sans-serif',
+        textAlign: 'center',
+        textColor: '#FFFFFF'
+      }),
       order: 1,
-      duration: 15,
-      songId: amazingGrace.id,
-      settings: JSON.stringify({
-        repeat: true,
-        key: 'G'
+      styling: JSON.stringify({
+        background: {
+          type: 'color',
+          color: '#2D3748'
+        },
+        layout: {
+          type: 'default',
+          padding: 40
+        }
       })
     }
   });
 
-  // Create slides
-  console.log('🎬 Creating slides...');
-  await prisma.slide.create({
+  const sermonSlide = await prisma.slide.create({
     data: {
-      title: 'Welcome',
+      presentationId: sermonPresentation.id,
+      type: 'text',
       content: JSON.stringify({
-        text: 'Welcome to Our Church',
-        fontSize: 48,
-        textAlign: 'center'
+        text: sermonNote.content,
+        fontSize: '36px',
+        fontFamily: 'Arial, sans-serif',
+        textAlign: 'center',
+        textColor: '#FFFFFF'
       }),
-      backgroundId: defaultBackground.id,
       order: 1,
-      duration: 10,
-      transition: 'fade'
+      styling: JSON.stringify({
+        background: {
+          type: 'color',
+          color: '#1A202C'
+        },
+        layout: {
+          type: 'default',
+          padding: 40
+        }
+      })
     }
   });
 
-  await prisma.slide.create({
+  // Create text content for the slides
+  console.log('📝 Creating text content...');
+  await prisma.textContent.create({
     data: {
-      title: 'Amazing Grace - Verse 1',
-      content: JSON.stringify({
-        text: 'Amazing grace, how sweet the sound\nThat saved a wretch like me',
-        fontSize: 40,
-        textAlign: 'center'
-      }),
-      backgroundId: imageBackground.id,
-      order: 2,
-      duration: 15,
-      transition: 'crossfade',
-      songId: amazingGrace.id
+      slideId: welcomeSlide.id,
+      text: welcomeNote.content,
+      fontSize: '48px',
+      fontFamily: 'Arial, sans-serif',
+      textAlign: 'center',
+      textColor: '#FFFFFF',
+      backgroundColor: 'transparent',
+      lineHeight: 1.2,
+      padding: JSON.stringify({
+        top: 40,
+        right: 40,
+        bottom: 40,
+        left: 40
+      })
     }
   });
 
-  // Create notes
-  console.log('📔 Creating notes...');
-  await prisma.note.create({
+  await prisma.textContent.create({
     data: {
-      content: 'Remember to adjust sound levels for the worship team',
-      userId: operator.id
-    }
-  });
-
-  // Create preview items
-  console.log('👁️ Creating preview items...');
-  await prisma.previewItem.create({
-    data: {
-      type: 'song',
-      content: JSON.stringify({
-        songId: amazingGrace.id,
-        slides: ['verse1', 'chorus']
-      }),
-      userId: operator.id
+      slideId: sermonSlide.id,
+      text: sermonNote.content,
+      fontSize: '36px',
+      fontFamily: 'Arial, sans-serif',
+      textAlign: 'center',
+      textColor: '#FFFFFF',
+      backgroundColor: 'transparent',
+      lineHeight: 1.2,
+      padding: JSON.stringify({
+        top: 40,
+        right: 40,
+        bottom: 40,
+        left: 40
+      })
     }
   });
 
   console.log('✅ Database seeding completed successfully!');
+  console.log(`Created:`);
+  console.log(`- 2 users (admin, operator)`);
+  console.log(`- 1 media item`);
+  console.log(`- 1 slide theme`);
+  console.log(`- 1 slide template`);
+  console.log(`- 2 notes`);
+  console.log(`- 2 presentations`);
+  console.log(`- 2 slides`);
+  console.log(`- 2 text content items`);
 }
 
 main()

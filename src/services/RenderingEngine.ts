@@ -1,4 +1,5 @@
 import { DisplayInfo } from "./DisplayManager";
+import { renderingEngineObserver } from "@/lib/renderingEngineMiddleware";
 
 // Types based on the schema
 export interface Slide {
@@ -287,10 +288,20 @@ export class RenderingEngine {
 
   public setDisplayInfo(displayInfo: DisplayInfo): void {
     this.displayInfo = displayInfo;
+    // Notify observers of state change
+    renderingEngineObserver.notify({
+      type: 'DISPLAY_INFO_CHANGED',
+      displayInfo: displayInfo,
+    });
   }
 
   public setTheme(theme: SlideTheme): void {
     this.currentTheme = theme;
+    // Notify observers of state change
+    renderingEngineObserver.notify({
+      type: 'THEME_CHANGED',
+      theme: theme,
+    });
   }
 
   public async renderSlide(slide: Slide): Promise<RenderedSlide> {
@@ -319,7 +330,7 @@ export class RenderingEngine {
     const animationData = this.prepareAnimations(slide.animations);
     const transitionData = this.prepareTransitions(slide.transitions);
 
-    return {
+    const renderedSlide = {
       id: slide.id,
       type: slide.type,
       styling: themedStyling,
@@ -328,6 +339,14 @@ export class RenderingEngine {
       transitions: transitionData,
       bounds: this.calculateBounds(themedStyling),
     };
+
+    // Notify observers of slide render
+    renderingEngineObserver.notify({
+      type: 'SLIDE_RENDERED',
+      slide: renderedSlide,
+    });
+
+    return renderedSlide;
   }
 
   private applyTheme(styling: SlideStyle): SlideStyle {
@@ -465,21 +484,28 @@ export class RenderingEngine {
       return { width: 0, height: 0, lines: [] };
     }
 
+    // Apply display scaling factor if available
+    const scaleFactor = this.displayInfo?.scaleFactor || 1;
+    
     ctx.font = `${textContent.fontWeight} ${textContent.fontSize} ${textContent.fontFamily}`;
     const metrics = ctx.measureText(textContent.text);
 
     return {
-      width: metrics.width,
-      height: metrics.actualBoundingBoxAscent + metrics.actualBoundingBoxDescent,
+      width: metrics.width * scaleFactor,
+      height: (metrics.actualBoundingBoxAscent + metrics.actualBoundingBoxDescent) * scaleFactor,
       lines: textContent.text.split('\n').map(line => ({
         text: line,
-        width: ctx.measureText(line).width,
+        width: ctx.measureText(line).width * scaleFactor,
       })),
     };
   }
 
   private calculateMediaPosition(mediaContent: MediaContent, styling: SlideStyle): CalculatedPosition {
-    const displayBounds = this.displayInfo?.bounds || { width: 1920, height: 1080 };
+    if (!this.displayInfo) {
+      throw new Error('Display information not available. Call setDisplayInfo() first.');
+    }
+    
+    const displayBounds = this.displayInfo.bounds;
     
     return {
       x: mediaContent.positioning.x,
@@ -515,7 +541,11 @@ export class RenderingEngine {
   }
 
   private calculateBounds(styling: SlideStyle): BoundingBox {
-    const displayBounds = this.displayInfo?.bounds || { width: 1920, height: 1080 };
+    if (!this.displayInfo) {
+      throw new Error('Display information not available. Call setDisplayInfo() first.');
+    }
+    
+    const displayBounds = this.displayInfo.bounds;
     
     return {
       x: styling.layout.margin.left,

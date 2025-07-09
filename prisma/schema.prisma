@@ -18,9 +18,11 @@ model Presentation {
   lastUsed      DateTime?
   status        String      @default("draft") // draft, published, archived
   metadata      Json?
+  noteId        String?
   
   slides        Slide[]
   mediaItems    MediaItem[]
+  note          Note?       @relation(fields: [noteId], references: [id])
   
   @@map("presentations")
 }
@@ -157,460 +159,40 @@ model SlideTheme {
   @@map("slide_themes")
 }
 
-// // Bible and Scripture Models
-// model Translation {
-//   id          String @id @default(uuid())
-//   name        String @unique // e.g., "English", "French", "Spanish"
-//   code        String @unique // e.g., "en", "fr", "es"
-//   description String?
-//   isDefault   Boolean @default(false)
-//   createdAt   DateTime @default(now())
-//   updatedAt   DateTime @updatedAt
-  
-//   versions    Version[]
-  
-//   @@map("translations")
-// }
 
-// model Version {
-//   id            String @id @default(uuid())
-//   name          String // e.g., "KJV", "NIV", "ESV"
-//   fullName      String // e.g., "King James Version"
-//   translationId String
-//   description   String?
-//   isDefault     Boolean @default(false)
-//   year          Int? // Publication year
-//   publisher     String?
-//   createdAt     DateTime @default(now())
-//   updatedAt     DateTime @updatedAt
-  
-//   translation   Translation @relation(fields: [translationId], references: [id])
-//   verses        Verse[]
-//   scriptures    Scripture[]
-  
-//   @@unique([name, translationId])
-//   @@map("versions")
-// }
 
-// model Book {
-//   id          Int    @id // Book number (1-66)
-//   name        String // e.g., "Genesis", "Matthew"
-//   shortName   String // e.g., "Gen", "Matt"
-//   testament   String // "OT" or "NT"
-//   category    String // "Law", "History", "Poetry", "Prophecy", "Gospel", "Epistle", "Apocalyptic"
-//   chapters    Int    // Number of chapters in the book
-//   order       Int    // Order in the Bible
+model Note {
+  id          String @id @default(uuid())
+  title       String
+  content     String
+  category    String?
+  tags        String? // JSON array of tags
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  userId      String?
   
-//   verses      Verse[]
+  user          User? @relation(fields: [userId], references: [id])
+  presentations Presentation[]
   
-//   @@map("books")
-// }
-
-// model Verse {
-//   id            String @id @default(uuid())
-//   bookId        Int
-//   chapter       Int
-//   verse         Int
-//   text          String
-//   versionId     String
-  
-//   book          Book @relation(fields: [bookId], references: [id])
-//   version       Version @relation(fields: [versionId], references: [id])
-  
-//   topicVerses   TopicVerse[]
-  
-//   @@unique([bookId, chapter, verse, versionId])
-//   @@index([bookId, chapter, verse])
-//   @@index([versionId])
-//   @@map("verses")
-// }
-
-// model Topic {
-//   id          String @id @default(uuid())
-//   name        String @unique
-//   description String?
-//   parentId    String?
-  
-//   parent      Topic? @relation("TopicHierarchy", fields: [parentId], references: [id])
-//   children    Topic[] @relation("TopicHierarchy")
-//   topicVerses TopicVerse[]
-  
-//   @@map("topics")
-// }
-
-// model TopicVerse {
-//   id      String @id @default(uuid())
-//   topicId String
-//   verseId String
-  
-//   topic   Topic @relation(fields: [topicId], references: [id])
-//   verse   Verse @relation(fields: [verseId], references: [id])
-  
-//   @@unique([topicId, verseId])
-//   @@map("topic_verses")
-// }
-
-// // Content Management Models (Songs, Announcements, etc.)
-// model Song {
-//   id          String @id @default(uuid())
-//   title       String
-//   artist      String?
-//   author      String?
-//   ccliNumber  String?
-//   key         String?
-//   tempo       String?
-//   tags        String? // JSON array of tags
-//   category    String?
-//   copyright   String?
-//   notes       String?
-//   createdAt   DateTime @default(now())
-//   updatedAt   DateTime @updatedAt
-//   lastUsed    DateTime?
-//   usageCount  Int @default(0)
-  
-//   presentations Presentation[]
-  
-//   @@index([title])
-//   @@index([artist])
-//   @@index([ccliNumber])
-//   @@map("songs")
-// }
+  @@index([userId])
+  @@map("notes")
+}
 
 
 
-// model Announcement {
-//   id          String @id @default(uuid())
-//   title       String
-//   content     String
-//   category    String?
-//   priority    String? // "low", "medium", "high"
-//   startDate   DateTime?
-//   endDate     DateTime?
-//   tags        String? // JSON array of tags
-//   createdAt   DateTime @default(now())
-//   updatedAt   DateTime @updatedAt
+// User and Settings Models
+model User {
+  id          String @id @default(uuid())
+  username    String @unique
+  email       String? @unique
+  fullName    String?
+  role        String @default("operator") // "admin", "operator", "viewer"
+  preferences String? // JSON user preferences
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  lastLogin   DateTime?
   
-//   presentations Presentation[]
+  notes Note[]
   
-//   @@index([title])
-//   @@index([category])
-//   @@map("announcements")
-// }
-
-// model Scripture {
-//   id          String @id @default(uuid())
-//   reference   String // e.g., "John 3:16", "Psalm 23:1-6"
-//   title       String?
-//   versionId   String
-//   content     String // Full text content
-//   tags        String? // JSON array of tags
-//   createdAt   DateTime @default(now())
-//   updatedAt   DateTime @updatedAt
-  
-//   version       Version @relation(fields: [versionId], references: [id])
-//   presentations Presentation[]
-  
-//   @@index([reference])
-//   @@map("scriptures")
-// }
-
-// model Note {
-//   id          String @id @default(uuid())
-//   title       String
-//   content     String
-//   category    String?
-//   tags        String? // JSON array of tags
-//   createdAt   DateTime @default(now())
-//   updatedAt   DateTime @updatedAt
-//   userId      String?
-  
-//   user          User? @relation(fields: [userId], references: [id])
-//   presentations Presentation[]
-  
-//   @@index([userId])
-//   @@map("notes")
-// }
-
-// // Media Management Models
-// model MediaItem {
-//   id          String @id @default(uuid())
-//   filename    String
-//   originalName String
-//   path        String
-//   type        String // "image", "video", "audio"
-//   mimeType    String
-//   size        Int
-//   duration    Int? // For video/audio in seconds
-//   width       Int? // For images/videos
-//   height      Int? // For images/videos
-//   tags        String? // JSON array of tags
-//   category    String?
-//   description String?
-//   createdAt   DateTime @default(now())
-//   updatedAt   DateTime @updatedAt
-//   lastUsed    DateTime?
-  
-//   presentations Presentation[]
-  
-//   @@index([type])
-//   @@index([category])
-//   @@map("media_items")
-// }
-
-// // Presentation Model - Groups slides together
-// model Presentation {
-//   id          String @id @default(uuid())
-//   title       String
-//   type        PresentationType
-//   description String?
-//   tags        String? // JSON array of tags
-//   createdAt   DateTime @default(now())
-//   updatedAt   DateTime @updatedAt
-  
-//   // Content relationships (one-to-one based on type)
-//   songId         String?
-//   announcementId String?
-//   scriptureId    String?
-//   noteId         String?
-//   mediaItemId    String?
-  
-//   song         Song? @relation(fields: [songId], references: [id])
-//   announcement Announcement? @relation(fields: [announcementId], references: [id])
-//   scripture    Scripture? @relation(fields: [scriptureId], references: [id])
-//   note         Note? @relation(fields: [noteId], references: [id])
-//   mediaItem    MediaItem? @relation(fields: [mediaItemId], references: [id])
-  
-//   // Slides relationship
-//   slides       Slide[]
-  
-//   // Service relationship
-//   serviceItems ServiceItem[]
-  
-//   @@index([type])
-//   @@map("presentations")
-// }
-
-// // Service Planning Models
-// model Service {
-//   id          String @id @default(uuid())
-//   name        String
-//   date        DateTime
-//   type        String? // "Sunday Morning", "Evening", "Special Event"
-//   description String?
-//   notes       String?
-//   duration    Int? // Estimated duration in minutes
-//   createdAt   DateTime @default(now())
-//   updatedAt   DateTime @updatedAt
-  
-//   serviceItems ServiceItem[]
-  
-//   @@index([date])
-//   @@map("services")
-// }
-
-// model ServiceItem {
-//   id             String @id @default(uuid())
-//   serviceId      String
-//   presentationId String
-//   order          Int
-//   duration       Int? // Estimated duration in minutes
-//   notes          String?
-  
-//   service      Service @relation(fields: [serviceId], references: [id])
-//   presentation Presentation @relation(fields: [presentationId], references: [id])
-
-//   @@index([serviceId, order])
-//   @@map("service_items")
-// }
-
-// // User and Settings Models
-// model User {
-//   id          String @id @default(uuid())
-//   username    String @unique
-//   email       String? @unique
-//   fullName    String?
-//   role        String @default("operator") // "admin", "operator", "viewer"
-//   preferences String? // JSON user preferences
-//   createdAt   DateTime @default(now())
-//   updatedAt   DateTime @updatedAt
-//   lastLogin   DateTime?
-  
-//   notes Note[]
-  
-//   @@map("users")
-// }
-
-// model Slide {
-//   id          String   @id @default(uuid())
-//   type        SlideType
-//   title       String?
-//   order       Int
-//   duration    Int?     // Duration in seconds
-//   createdAt   DateTime @default(now())
-//   updatedAt   DateTime @updatedAt
-  
-//   // Background properties
-//   backgroundType       BackgroundType @default(COLOR)
-//   backgroundColor      String?        @default("#000000")
-//   backgroundImageUrl   String?
-//   backgroundImageOpacity Float?       @default(1.0)
-//   backgroundImageBlur  Int?          @default(0)
-//   backgroundImagePosition ImagePosition @default(CENTER)
-//   backgroundVideoUrl   String?
-//   backgroundVideoOpacity Float?       @default(1.0)
-//   backgroundVideoMuted Boolean?       @default(true)
-//   backgroundVideoLoop  Boolean?       @default(true)
-//   backgroundGradientColors String?    // JSON array of hex colors
-//   backgroundGradientDirection GradientDirection @default(HORIZONTAL)
-  
-//   // Transition properties
-//   transitionType     TransitionType @default(FADE)
-//   transitionDuration Int           @default(300) // milliseconds
-  
-//   // Content based on slide type
-//   // Media content (when type is MEDIA)
-//   mediaType    MediaType?
-//   mediaUrl     String?
-//   mediaAlt     String?
-//   mediaControls Boolean?  @default(false)
-//   mediaAutoplay Boolean?  @default(false)
-//   mediaLoop    Boolean?   @default(false)
-//   mediaVolume  Float?     @default(1.0)
-//   mediaCaption String?
-  
-//   // Text content (when type is TEXT)
-//   textType     TextType?
-//   textLayout   TextLayout @default(SINGLE)
-//   textAlignment TextAlignment @default(CENTER)
-  
-//   // Relationships
-//   presentationId String?
-//   presentation   Presentation? @relation(fields: [presentationId], references: [id], onDelete: Cascade)
-  
-//   // Related text elements
-//   textElements TextElement[]
-  
-//   @@index([presentationId, order])
-//   @@map("slides")
-// }
-
-// model TextElement {
-//   id       String @id @default(uuid())
-//   slideId  String
-//   type     TextElementType
-//   content  String
-//   order    Int
-  
-//   // Formatting properties
-//   fontFamily      String  @default("Arial")
-//   fontSize        Int     @default(24)
-//   fontWeight      String  @default("normal")
-//   fontStyle       String  @default("normal")
-//   color           String  @default("#FFFFFF")
-//   backgroundColor String?
-//   textDecoration  String  @default("none")
-//   lineHeight      Float   @default(1.2)
-//   letterSpacing   Float   @default(0)
-//   textShadow      String?
-  
-//   // Position and spacing
-//   marginTop    Int @default(0)
-//   marginBottom Int @default(0)
-//   marginLeft   Int @default(0)
-//   marginRight  Int @default(0)
-//   paddingTop   Int @default(0)
-//   paddingBottom Int @default(0)
-//   paddingLeft  Int @default(0)
-//   paddingRight Int @default(0)
-  
-//   slide Slide @relation(fields: [slideId], references: [id], onDelete: Cascade)
-  
-//   @@index([slideId, order])
-//   @@map("text_elements")
-// }
-
-// // Enums
-// enum SlideType {
-//   MEDIA
-//   TEXT
-//   RICHTEXT
-// }
-
-// enum BackgroundType {
-//   COLOR
-//   IMAGE
-//   VIDEO
-//   GRADIENT
-// }
-
-// enum ImagePosition {
-//   CENTER
-//   TOP
-//   BOTTOM
-//   LEFT
-//   RIGHT
-//   STRETCH
-// }
-
-// enum GradientDirection {
-//   HORIZONTAL
-//   VERTICAL
-//   DIAGONAL
-// }
-
-// enum TransitionType {
-//   FADE
-//   SLIDE
-//   NONE
-// }
-
-// enum MediaType {
-//   IMAGE
-//   VIDEO
-//   AUDIO
-// }
-
-// enum TextType {
-//   NOTES
-//   SONG
-//   ANNOUNCEMENT
-//   SCRIPTURE
-//   CUSTOM
-// }
-
-// enum TextLayout {
-//   SINGLE
-//   DUAL
-//   SPLIT
-//   OVERLAY
-// }
-
-// enum TextAlignment {
-//   LEFT
-//   CENTER
-//   RIGHT
-//   JUSTIFY
-// }
-
-// enum TextElementType {
-//   TITLE
-//   SUBTITLE
-//   BODY
-//   VERSE
-//   CHORUS
-//   BRIDGE
-//   TAG
-//   REFERENCE
-//   SPEAKER
-//   TIMESTAMP
-//   CUSTOM
-// }
-
-// enum PresentationType {
-//   SONG
-//   ANNOUNCEMENT
-//   SCRIPTURE
-//   NOTE
-//   MEDIA
-//   CUSTOM
-// }
+  @@map("users")
+}

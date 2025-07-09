@@ -44,6 +44,7 @@ const LiveDisplayControls: React.FC<LiveDisplayControlsProps> = ({
 
   const handleCreateLive = async () => {
     const targetDisplayId = selectedDisplayId || selectedDisplay?.id;
+    console.log('targetDisplayId', targetDisplayId);
     if (targetDisplayId) {
       const success = await createLive(targetDisplayId);
       if (success) {
@@ -64,10 +65,10 @@ const LiveDisplayControls: React.FC<LiveDisplayControlsProps> = ({
       // Send a welcome message to the live display
       await window.electron.liveDisplay.sendContent({
         type: 'placeholder',
-        title: 'Live Display Ready',
+        title: 'Live Display Ready!',
         content: {
-          mainText: 'PraisePresent Live Display',
-          subText: 'Ready to display content',
+          mainText: 'PraisePresent Live Display!',
+          subText: 'Ready to display content!',
           timestamp: new Date().toLocaleTimeString(),
         },
       });

@@ -33,7 +33,7 @@ export class LiveDisplayWindow {
   /**
    * Create live window on specified display
    */
-  public async createLiveWindow(config: LiveDisplayConfig): Promise<boolean> {
+  public async createLiveWindow(config: LiveDisplayConfig, parentWindow?: BrowserWindow): Promise<boolean> {
     try {
       // Close existing window if any
       this.closeLiveWindow();
@@ -64,6 +64,7 @@ export class LiveDisplayWindow {
         frame: config.frame ?? false,
         alwaysOnTop: config.alwaysOnTop ?? true,
         show: false,
+        parent: parentWindow, // Set parent-child relationship
         webPreferences: {
           nodeIntegration: false,
           contextIsolation: true,

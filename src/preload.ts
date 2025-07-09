@@ -22,5 +22,36 @@ contextBridge.exposeInMainWorld('electron', {
     clearContent: () => ipcRenderer.invoke('live-display:clearContent'),
     showBlack: () => ipcRenderer.invoke('live-display:showBlack'),
     showLogo: () => ipcRenderer.invoke('live-display:showLogo'),
+    // Event listeners for live display content
+    onContentUpdate: (callback: (content: any) => void) => {
+      ipcRenderer.on('live-content-update', (_, content) => callback(content));
+      return () => ipcRenderer.removeAllListeners('live-content-update');
+    },
+    onContentClear: (callback: () => void) => {
+      ipcRenderer.on('live-content-clear', () => callback());
+      return () => ipcRenderer.removeAllListeners('live-content-clear');
+    },
+    onShowBlack: (callback: () => void) => {
+      ipcRenderer.on('live-show-black', () => callback());
+      return () => ipcRenderer.removeAllListeners('live-show-black');
+    },
+    onShowLogo: (callback: () => void) => {
+      ipcRenderer.on('live-show-logo', () => callback());
+      return () => ipcRenderer.removeAllListeners('live-show-logo');
+    },
+    onThemeUpdate: (callback: (theme: any) => void) => {
+      ipcRenderer.on('live-theme-update', (_, theme) => callback(theme));
+      return () => ipcRenderer.removeAllListeners('live-theme-update');
+    },
+  },
+  notes: {
+    create: (request: any) => ipcRenderer.invoke('notes:create', request),
+    list: (options?: any) => ipcRenderer.invoke('notes:list', options),
+    getById: (id: string) => ipcRenderer.invoke('notes:getById', id),
+    update: (request: any) => ipcRenderer.invoke('notes:update', request),
+    delete: (id: string) => ipcRenderer.invoke('notes:delete', id),
+    search: (query: string) => ipcRenderer.invoke('notes:search', query),
+    getCategories: () => ipcRenderer.invoke('notes:getCategories'),
+    getTags: () => ipcRenderer.invoke('notes:getTags'),
   },
 });

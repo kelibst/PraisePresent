@@ -1,5 +1,6 @@
 import { LiveDisplayStatus, LiveDisplayResult } from '../shared/liveDisplayUtils';
 import { DisplayInfo } from '../services/DisplayManager';
+import { CreateNoteRequest, UpdateNoteRequest, NotesListOptions, Note } from '../main/notes-main';
 
 export interface DisplaySettings {
   selectedLiveDisplayId: number | null;
@@ -39,6 +40,22 @@ declare global {
         clearContent: () => Promise<{ success: boolean }>;
         showBlack: () => Promise<{ success: boolean }>;
         showLogo: () => Promise<{ success: boolean }>;
+        // Event listeners
+        onContentUpdate: (callback: (content: any) => void) => () => void;
+        onContentClear: (callback: () => void) => () => void;
+        onShowBlack: (callback: () => void) => () => void;
+        onShowLogo: (callback: () => void) => () => void;
+        onThemeUpdate: (callback: (theme: any) => void) => () => void;
+      };
+      notes: {
+        create: (request: CreateNoteRequest) => Promise<{ success: boolean; note?: Note; error?: string }>;
+        list: (options?: NotesListOptions) => Promise<{ success: boolean; notes?: Note[]; error?: string }>;
+        getById: (id: string) => Promise<{ success: boolean; note?: Note; error?: string }>;
+        update: (request: UpdateNoteRequest) => Promise<{ success: boolean; note?: Note; error?: string }>;
+        delete: (id: string) => Promise<{ success: boolean; error?: string }>;
+        search: (query: string) => Promise<{ success: boolean; notes?: Note[]; error?: string }>;
+        getCategories: () => Promise<{ success: boolean; categories?: string[]; error?: string }>;
+        getTags: () => Promise<{ success: boolean; tags?: string[]; error?: string }>;
       };
     };
   }

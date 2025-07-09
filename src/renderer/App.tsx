@@ -25,12 +25,16 @@ const App: React.FC = () => {
     }
   }, []);
 
-  // If we're in live display mode, render the live display component
+  // If we're in live display mode, render the live display component with Redux Provider
   if (isLiveDisplayMode) {
     return (
-      <div className="live-display-app">
-        <LiveDisplayRenderer displayId={displayId} />
-      </div>
+      <Provider store={store}>
+        <ThemeProvider>
+          <div className="live-display-app">
+            <LiveDisplayRenderer displayId={displayId} />
+          </div>
+        </ThemeProvider>
+      </Provider>
     );
   }
 

@@ -1,19 +1,33 @@
 import React, { useEffect, useState, useRef } from 'react';
+import { useSelector, useDispatch } from 'react-redux';
 import { SlideRenderer } from './SlideRenderer';
 import { Slide, SlideTheme, renderingEngine } from '@/services/RenderingEngine';
+import { useDisplayBounds } from '@/hooks/useDisplayInfo';
+import { useRenderingEngine } from '@/hooks/useRenderingEngine';
+import { 
+  selectLiveDisplayContent, 
+  selectLiveDisplayTheme,
+  setLiveDisplayContent,
+  setLiveDisplayTheme,
+  clearLiveDisplayContent
+} from '@/lib/displaySlice';
+import { 
+  Content, 
+  isSlideContent, 
+  isTextContent, 
+  isMediaContent, 
+  isSystemContent,
+  isBlackScreen,
+  isLogoScreen,
+  isPlaceholder,
+  isError,
+  createPlaceholderContent
+} from '@/types/content';
 
 interface LiveDisplayRendererProps {
   displayId?: number;
   theme?: SlideTheme;
   className?: string;
-}
-
-interface LiveContent {
-  type: 'slide' | 'text' | 'image' | 'video' | 'black' | 'logo' | 'placeholder';
-  data?: any;
-  slide?: Slide;
-  title?: string;
-  content?: any;
 }
 
 export const LiveDisplayRenderer: React.FC<LiveDisplayRendererProps> = ({
@@ -22,105 +36,93 @@ export const LiveDisplayRenderer: React.FC<LiveDisplayRendererProps> = ({
   className = '',
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
-  const [currentContent, setCurrentContent] = useState<LiveContent | null>(null);
+  const dispatch = useDispatch();
   const [isVisible, setIsVisible] = useState(true);
-  const [currentTheme, setCurrentTheme] = useState<SlideTheme | undefined>(theme);
+  
+  // Get state from Redux store
+  const { bounds, workArea, scaleFactor } = useDisplayBounds(displayId || null);
+  const currentContent = useSelector(selectLiveDisplayContent);
+  const currentTheme = useSelector(selectLiveDisplayTheme) || theme;
+  const { engine: renderingEngine, state: renderingState } = useRenderingEngine();
 
   useEffect(() => {
     // Set up IPC listeners for live display content
-    const handleContentUpdate = (content: LiveContent) => {
+    const handleContentUpdate = (content: Content) => {
       console.log('Live display content update:', content);
-      setCurrentContent(content);
+      dispatch(setLiveDisplayContent(content));
       setIsVisible(true);
     };
 
     const handleContentClear = () => {
       console.log('Live display content cleared');
-      setCurrentContent(null);
+      dispatch(clearLiveDisplayContent());
     };
 
     const handleShowBlack = () => {
       console.log('Live display showing black screen');
-      setCurrentContent({ type: 'black' });
+      dispatch(setLiveDisplayContent({
+        id: 'black-screen',
+        type: 'system',
+        data: { variant: 'black' }
+      }));
       setIsVisible(true);
     };
 
     const handleShowLogo = () => {
       console.log('Live display showing logo screen');
-      setCurrentContent({ type: 'logo' });
+      dispatch(setLiveDisplayContent({
+        id: 'logo-screen',
+        type: 'system',
+        data: { 
+          variant: 'logo',
+          title: 'PraisePresent',
+          subtitle: 'Live Display System'
+        }
+      }));
       setIsVisible(true);
     };
 
     const handleThemeUpdate = (newTheme: SlideTheme) => {
       console.log('Live display theme update:', newTheme);
-      setCurrentTheme(newTheme);
+      dispatch(setLiveDisplayTheme(newTheme));
     };
 
-    // Set up IPC listeners (these would be set up in the preload script)
-    if (window.electron) {
-      window.addEventListener('live-content-update', (event: any) => {
-        handleContentUpdate(event.detail);
-      });
+    // Set up proper IPC listeners through the preload script
+    let cleanupFunctions: (() => void)[] = [];
 
-      window.addEventListener('live-content-clear', () => {
-        handleContentClear();
-      });
-
-      window.addEventListener('live-show-black', () => {
-        handleShowBlack();
-      });
-
-      window.addEventListener('live-show-logo', () => {
-        handleShowLogo();
-      });
-
-      window.addEventListener('live-theme-update', (event: any) => {
-        handleThemeUpdate(event.detail);
-      });
+    if (window.electron?.liveDisplay) {
+      // Set up IPC event listeners
+      cleanupFunctions.push(
+        window.electron.liveDisplay.onContentUpdate(handleContentUpdate),
+        window.electron.liveDisplay.onContentClear(handleContentClear),
+        window.electron.liveDisplay.onShowBlack(handleShowBlack),
+        window.electron.liveDisplay.onShowLogo(handleShowLogo),
+        window.electron.liveDisplay.onThemeUpdate(handleThemeUpdate)
+      );
     }
 
     // Initialize with placeholder content
-    setCurrentContent({
-      type: 'placeholder',
-      title: 'Live Display Ready',
-      content: {
-        mainText: 'PraisePresent Live Display',
-        subText: 'Ready to display content',
-        timestamp: new Date().toLocaleTimeString(),
-      },
-    });
+    dispatch(setLiveDisplayContent(createPlaceholderContent(
+      'initial-placeholder',
+      'PraisePresent Live Display',
+      'Ready to display content'
+    )));
 
     return () => {
-      // Clean up listeners
-      if (window.electron) {
-        window.removeEventListener('live-content-update', handleContentUpdate as any);
-        window.removeEventListener('live-content-clear', handleContentClear);
-        window.removeEventListener('live-show-black', handleShowBlack);
-        window.removeEventListener('live-show-logo', handleShowLogo);
-        window.removeEventListener('live-theme-update', handleThemeUpdate as any);
-      }
+      // Clean up IPC listeners
+      cleanupFunctions.forEach(cleanup => cleanup());
     };
   }, []);
 
   // Set display info in rendering engine
   useEffect(() => {
-    if (displayId) {
-      // This would typically get display info from the display manager
+    if (displayId && bounds) {
+      // Use proper display information from Redux store
       const displayInfo = {
         id: displayId,
-        bounds: { 
-          x: 0, 
-          y: 0, 
-          width: window.innerWidth, 
-          height: window.innerHeight 
-        },
-        workArea: { 
-          x: 0, 
-          y: 0, 
-          width: window.innerWidth, 
-          height: window.innerHeight 
-        },
-        scaleFactor: 1,
+        bounds: bounds,
+        workArea: workArea || bounds,
+        scaleFactor: scaleFactor,
         rotation: 0,
         touchSupport: "unavailable" as const,
         isPrimary: false,
@@ -129,7 +131,7 @@ export const LiveDisplayRenderer: React.FC<LiveDisplayRendererProps> = ({
       };
       renderingEngine.setDisplayInfo(displayInfo);
     }
-  }, [displayId]);
+  }, [displayId, bounds, workArea, scaleFactor]);
 
   const containerStyle: React.CSSProperties = {
     width: '100vw',
@@ -151,24 +153,98 @@ export const LiveDisplayRenderer: React.FC<LiveDisplayRendererProps> = ({
       return <div>No content to display</div>;
     }
 
-    switch (currentContent.type) {
-      case 'slide':
-        if (currentContent.slide) {
-          return (
-            <SlideRenderer
-              slide={currentContent.slide}
-              theme={currentTheme}
-              isActive={isVisible}
-              className="live-slide"
+    // Handle slide content
+    if (isSlideContent(currentContent)) {
+      // For slide content, we need to convert it to a Slide object
+      // This is a temporary solution - ideally the slide data should be passed properly
+      return <div>Slide content rendering not yet implemented</div>;
+    }
+
+    // Handle text content
+    if (isTextContent(currentContent)) {
+      const { text, styling } = currentContent.data;
+      return (
+        <div style={{ 
+          width: '100%', 
+          height: '100%', 
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          textAlign: styling.textAlign as any,
+          fontSize: styling.fontSize,
+          fontFamily: styling.fontFamily,
+          fontWeight: styling.fontWeight,
+          color: styling.textColor,
+          backgroundColor: styling.backgroundColor,
+          padding: `${styling.padding.top}px ${styling.padding.right}px ${styling.padding.bottom}px ${styling.padding.left}px`,
+        }}>
+          {text}
+        </div>
+      );
+    }
+
+    // Handle media content
+    if (isMediaContent(currentContent)) {
+      const { url, mediaType } = currentContent.data;
+      
+      if (mediaType === 'image') {
+        return (
+          <div style={{ 
+            width: '100%', 
+            height: '100%', 
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}>
+            <img 
+              src={url} 
+              alt="Live content"
+              style={{
+                maxWidth: '100%',
+                maxHeight: '100%',
+                objectFit: 'contain',
+              }}
             />
-          );
-        }
-        return <div>Invalid slide data</div>;
+          </div>
+        );
+      }
 
-      case 'black':
+      if (mediaType === 'video') {
+        return (
+          <div style={{ 
+            width: '100%', 
+            height: '100%', 
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}>
+            <video 
+              src={url}
+              autoPlay
+              loop
+              muted
+              style={{
+                maxWidth: '100%',
+                maxHeight: '100%',
+                objectFit: 'contain',
+              }}
+            />
+          </div>
+        );
+      }
+
+      return <div>Unsupported media type: {mediaType}</div>;
+    }
+
+    // Handle system content
+    if (isSystemContent(currentContent)) {
+      const systemData = currentContent.data;
+
+      if (isBlackScreen(systemData)) {
         return <div style={{ width: '100%', height: '100%', backgroundColor: '#000000' }} />;
+      }
 
-      case 'logo':
+      if (isLogoScreen(systemData)) {
         return (
           <div style={{ 
             width: '100%', 
@@ -186,24 +262,25 @@ export const LiveDisplayRenderer: React.FC<LiveDisplayRendererProps> = ({
               color: '#ffffff',
               textAlign: 'center',
             }}>
-              PraisePresent
+              {systemData.title || 'PraisePresent'}
             </div>
             <div style={{ 
               fontSize: '1.5rem', 
               color: '#cccccc',
               textAlign: 'center',
             }}>
-              Live Display System
+              {systemData.subtitle || 'Live Display System'}
             </div>
           </div>
         );
+      }
 
-      case 'placeholder':
+      if (isPlaceholder(systemData)) {
         return (
           <div style={{ 
             width: '100%', 
             height: '100%', 
-            backgroundColor: '#2a2a2a',
+            backgroundColor: '#000000',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -216,99 +293,71 @@ export const LiveDisplayRenderer: React.FC<LiveDisplayRendererProps> = ({
               marginBottom: '1rem',
               color: '#ffffff',
             }}>
-              {currentContent.content?.mainText || 'Live Display'}
+              {systemData.title}
             </div>
-            <div style={{ 
-              fontSize: '1.5rem', 
-              color: '#cccccc',
-              marginBottom: '2rem',
-            }}>
-              {currentContent.content?.subText || 'Ready to display content'}
-            </div>
-            {currentContent.content?.timestamp && (
+            {systemData.subtitle && (
+              <div style={{ 
+                fontSize: '1.5rem', 
+                color: '#cccccc',
+                marginBottom: '2rem',
+              }}>
+                {systemData.subtitle}
+              </div>
+            )}
+            {systemData.timestamp && (
               <div style={{ 
                 fontSize: '1rem', 
                 color: '#999999',
               }}>
-                {currentContent.content.timestamp}
+                {systemData.timestamp}
               </div>
             )}
           </div>
         );
+      }
 
-      case 'text':
+      if (isError(systemData)) {
         return (
           <div style={{ 
             width: '100%', 
             height: '100%', 
+            backgroundColor: '#1a1a1a',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            textAlign: 'center',
-            fontSize: '3rem',
-            fontWeight: 'bold',
-            color: '#ffffff',
-            padding: '2rem',
-          }}>
-            {currentContent.data?.text || 'Text Content'}
-          </div>
-        );
-
-      case 'image':
-        return (
-          <div style={{ 
-            width: '100%', 
-            height: '100%', 
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}>
-            <img 
-              src={currentContent.data?.url} 
-              alt="Live content"
-              style={{
-                maxWidth: '100%',
-                maxHeight: '100%',
-                objectFit: 'contain',
-              }}
-            />
-          </div>
-        );
-
-      case 'video':
-        return (
-          <div style={{ 
-            width: '100%', 
-            height: '100%', 
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}>
-            <video 
-              src={currentContent.data?.url}
-              autoPlay
-              loop
-              muted
-              style={{
-                maxWidth: '100%',
-                maxHeight: '100%',
-                objectFit: 'contain',
-              }}
-            />
-          </div>
-        );
-
-      default:
-        return (
-          <div style={{ 
-            fontSize: '2rem', 
-            color: '#ff6b6b',
+            flexDirection: 'column',
             textAlign: 'center',
           }}>
-            Unknown content type: {currentContent.type}
+            <div style={{ 
+              fontSize: '2rem', 
+              fontWeight: 'bold', 
+              marginBottom: '1rem',
+              color: '#ff6b6b',
+            }}>
+              Error: {systemData.message}
+            </div>
+            {systemData.details && (
+              <div style={{ 
+                fontSize: '1rem', 
+                color: '#cccccc',
+              }}>
+                {systemData.details}
+              </div>
+            )}
           </div>
         );
+      }
     }
+
+    return (
+      <div style={{ 
+        fontSize: '2rem', 
+        color: '#ff6b6b',
+        textAlign: 'center',
+      }}>
+        Unknown content type: {currentContent.type}
+      </div>
+    );
   };
 
   return (

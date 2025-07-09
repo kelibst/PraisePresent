@@ -5,6 +5,8 @@ import { displayManager } from './services/DisplayManager';
 import { initializeDisplayMain, cleanupDisplayMain } from './main/display-main';
 import { liveDisplayWindow } from './main/liveDisplayWindow';
 import { sendContentWithDelay } from './shared/liveDisplayUtils';
+import { initializePrisma, gracefulShutdown } from './services/prisma';
+import './main/notes-main';
 
 // These constants are injected by Electron Forge and Vite
 declare const MAIN_WINDOW_VITE_DEV_SERVER_URL: string | undefined;
@@ -16,7 +18,7 @@ if (started) {
 }
 
 // Live display initialization function
-async function initializeLiveDisplay() {
+async function initializeLiveDisplay(parentWindow?: BrowserWindow) {
   try {
     // Get available displays
     const displays = displayManager.getDisplays();
@@ -26,13 +28,13 @@ async function initializeLiveDisplay() {
     if (displays.length > 1 && secondaryDisplay) {
       console.log(`Initializing live display on secondary display: ${secondaryDisplay.id}`);
       
-      // Create live display window on secondary display
+      // Create live display window on secondary display with parent relationship
       const success = await liveDisplayWindow.createLiveWindow({
         displayId: secondaryDisplay.id,
         fullscreen: true,
         alwaysOnTop: true,
         frame: false,
-      });
+      }, parentWindow);
       
       if (success) {
         console.log(`Live display initialized successfully on display ${secondaryDisplay.id}`);
@@ -119,6 +121,23 @@ const createWindow = () => {
     },
   });
 
+  // Set up window lifecycle management
+  mainWindow.on('closed', () => {
+    console.log('Main window closed, cleaning up live display...');
+    // Close live display when main window is closed
+    liveDisplayWindow.closeLiveWindow();
+    
+    // Clean up other resources
+    cleanupDisplayMain();
+    displayManager.removeChangeListener();
+  });
+
+  // Handle window close attempts
+  mainWindow.on('close', (event) => {
+    // Allow the window to close normally but ensure cleanup happens
+    console.log('Main window closing, preparing cleanup...');
+  });
+
   // Load the app
   if (MAIN_WINDOW_VITE_DEV_SERVER_URL) {
     mainWindow.loadURL(MAIN_WINDOW_VITE_DEV_SERVER_URL);
@@ -132,7 +151,7 @@ const createWindow = () => {
     
     // Initialize live display after main window is ready
     setTimeout(() => {
-      initializeLiveDisplay();
+      initializeLiveDisplay(mainWindow);
     }, 1000); // Wait 1 second for everything to be ready
   });
 
@@ -140,34 +159,48 @@ const createWindow = () => {
   if (MAIN_WINDOW_VITE_DEV_SERVER_URL) {
     mainWindow.webContents.openDevTools();
   }
+
+  return mainWindow;
 };
 
+// Track main window reference
+let mainWindow: BrowserWindow | null = null;
+
 // Initialize app when ready
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
+  // Initialize Prisma
+  await initializePrisma();
+  
   // Initialize display management
   displayManager.initialize();
   initializeDisplayMain();
   
   // Create main window
-  createWindow();
+  mainWindow = createWindow();
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
-      createWindow();
+      mainWindow = createWindow();
     }
   });
 });
 
 // Quit when all windows are closed, except on macOS
 app.on('window-all-closed', () => {
+  // Ensure live display is closed when all windows are closed
+  console.log('All windows closed, cleaning up...');
+  liveDisplayWindow.closeLiveWindow();
+  mainWindow = null;
+  
   if (process.platform !== 'darwin') {
     app.quit();
   }
 });
 
 // Clean up before quitting
-app.on('before-quit', () => {
+app.on('before-quit', async () => {
   cleanupDisplayMain();
   liveDisplayWindow.closeLiveWindow();
   displayManager.removeChangeListener();
+  await gracefulShutdown();
 });

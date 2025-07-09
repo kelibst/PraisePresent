@@ -12,6 +12,8 @@ import {
   FiMoon,
   FiVideo,
   FiSettings,
+  FiFileText,
+  FiTool,
 } from "react-icons/fi";
 /* @ts-ignore */
 import logoLight from "@/assets/logo-white.png";
@@ -39,7 +41,9 @@ const menu = [
   // { label: 'Presentations', icon: <FiMonitor />, path: '/presentations' },
   // { label: 'Services', icon: <FiList />, path: '/services' },
   { label: "Live Presentation", icon: <FiVideo />, path: "/service" },
+  { label: "Notes", icon: <FiFileText />, path: "/notes" },
   { label: "Settings", icon: <FiSettings />, path: "/settings" },
+  { label: "Test Rendering", icon: <FiTool />, path: "/test-rendering" },
 ];
 
 const AnimatedSidebar: React.FC<{ open: boolean; onToggle: () => void }> = ({

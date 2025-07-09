@@ -1,3 +1,5 @@
+import { createPlaceholderContent } from '@/types/content';
+
 export interface LiveDisplayConfig {
   displayId: number;
   fullscreen?: boolean;
@@ -34,15 +36,12 @@ export class LiveDisplayError extends Error {
   }
 }
 
-export const createInitialContent = (): LiveDisplayContent => ({
-  type: 'placeholder',
-  title: 'Live Display Ready',
-  content: {
-    mainText: 'PraisePresent Live Display',
-    subText: 'Ready to display content',
-    timestamp: new Date().toLocaleTimeString(),
-  },
-});
+export const createInitialContent = () => 
+  createPlaceholderContent(
+    'live-display-initial',
+    'PraisePresent Live Display',
+    'Ready to display content'
+  );
 
 export const validateDisplayId = (displayId: number | null | undefined): number => {
   if (!displayId || typeof displayId !== 'number') {
@@ -68,7 +67,7 @@ export const createSuccessResult = (displayId?: number, settings?: any): LiveDis
 });
 
 export const sendContentWithDelay = (
-  sendFunction: (content: LiveDisplayContent) => void,
+  sendFunction: (content: any) => void,
   delay: number = 1000
 ): void => {
   setTimeout(() => {

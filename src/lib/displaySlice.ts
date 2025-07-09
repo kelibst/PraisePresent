@@ -20,6 +20,8 @@ export interface DisplayState {
   lastUpdated: number;
   displayCaptures: Record<number, string>; // displayId -> base64 image
   capturingDisplays: number[]; // displayIds currently being captured
+  liveDisplayContent: any | null; // Current content being displayed
+  liveDisplayTheme: any | null; // Current theme for live display
 }
 
 const initialState: DisplayState = {
@@ -39,6 +41,8 @@ const initialState: DisplayState = {
   lastUpdated: 0,
   displayCaptures: {},
   capturingDisplays: [],
+  liveDisplayContent: null,
+  liveDisplayTheme: null,
 };
 
 // Async thunk to get displays from main process
@@ -165,6 +169,18 @@ const displaySlice = createSlice({
     clearAllDisplayCaptures: (state) => {
       state.displayCaptures = {};
     },
+
+    setLiveDisplayContent: (state, action: PayloadAction<any>) => {
+      state.liveDisplayContent = action.payload;
+    },
+
+    setLiveDisplayTheme: (state, action: PayloadAction<any>) => {
+      state.liveDisplayTheme = action.payload;
+    },
+
+    clearLiveDisplayContent: (state) => {
+      state.liveDisplayContent = null;
+    },
   },
 
   extraReducers: (builder) => {
@@ -272,6 +288,9 @@ export const {
   setDisplayError,
   clearDisplayCapture,
   clearAllDisplayCaptures,
+  setLiveDisplayContent,
+  setLiveDisplayTheme,
+  clearLiveDisplayContent,
 } = displaySlice.actions;
 
 export default displaySlice.reducer;
@@ -305,3 +324,7 @@ export const selectDisplayCapture =
 export const selectIsCapturing =
   (displayId: number) => (state: { display: DisplayState }) =>
     state.display.capturingDisplays.includes(displayId);
+export const selectLiveDisplayContent = (state: { display: DisplayState }) =>
+  state.display.liveDisplayContent;
+export const selectLiveDisplayTheme = (state: { display: DisplayState }) =>
+  state.display.liveDisplayTheme;
