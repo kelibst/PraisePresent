@@ -1,42 +1,51 @@
-import React from "react";
-import AppRoutes from "@/routes";
+import React, { useEffect, useState } from 'react';
+import { BrowserRouter } from 'react-router-dom';
+import { Provider } from 'react-redux';
+import { store } from '../lib/store';
+import { ThemeProvider } from '../lib/theme';
+import LiveDisplayRenderer from '../components/rendering/LiveDisplayRenderer';
+import '../index.css';
+import AppRoutes from '../routes';
 
 const App: React.FC = () => {
-  // Check if we're in live display mode via query parameter
-  const urlParams = new URLSearchParams(window.location.search);
-  const isLiveDisplayMode = urlParams.get("mode") === "live-display";
+  const [isLiveDisplayMode, setIsLiveDisplayMode] = useState(false);
+  const [displayId, setDisplayId] = useState<number | undefined>();
 
-  console.log("App.tsx: Current URL:", window.location.href);
-  console.log("App.tsx: Query params:", window.location.search);
-  console.log("App.tsx: Live display mode:", isLiveDisplayMode);
+  useEffect(() => {
+    // Check if we're in live display mode
+    const urlParams = new URLSearchParams(window.location.search);
+    const mode = urlParams.get('mode');
+    
+    if (mode === 'live-display') {
+      setIsLiveDisplayMode(true);
+      const displayIdParam = urlParams.get('displayId');
+      if (displayIdParam) {
+        setDisplayId(parseInt(displayIdParam, 10));
+      }
+    }
+  }, []);
 
-  // If this is the live display window, render only the LiveDisplayRenderer
-  // if (isLiveDisplayMode) {
-  //   console.log("App.tsx: Rendering LiveDisplayRenderer for live display mode");
-  //   return <LiveDisplayRenderer />;
-  // }
-
-  // Main application component with initialization
-  const MainApp: React.FC = () => {
-
-
+  // If we're in live display mode, render the live display component
+  if (isLiveDisplayMode) {
     return (
-      <div className="app-window">
-        <div className="app-content">
-          {/* Custom Title Bar */}
-          {/* <TitleBar title="PraisePresent - Church Presentation System" /> */}
-
-          {/* Main Application Content */}
-          <div className="flex-1 overflow-y-auto">
-            <AppRoutes />
-          </div>
-        </div>
+      <div className="live-display-app">
+        <LiveDisplayRenderer displayId={displayId} />
       </div>
     );
-  };
+  }
 
-  // Regular main application mode
-  return <MainApp />;
+  // Otherwise, render the normal app
+  return (
+    <Provider store={store}>
+      <ThemeProvider>
+        <BrowserRouter>
+          <div className="app">
+            <AppRoutes />
+          </div>
+        </BrowserRouter>
+      </ThemeProvider>
+    </Provider>
+  );
 };
 
 export default App;

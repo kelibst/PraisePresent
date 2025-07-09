@@ -68,8 +68,6 @@ const DisplaySettings: React.FC = () => {
     }
   }, [selectedLiveDisplayId, displays, dispatch]);
 
-  console.log(error, "displaysettings error");
-
   // Event handlers
   const handleRefreshDisplays = () => {
     dispatch(refreshDisplays());

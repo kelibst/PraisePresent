@@ -657,19 +657,7 @@ export class DisplayManager {
       this.secondaryDisplay =
         this.displays.find((display) => !display.isPrimary) || null;
 
-      console.log(
-        `Found ${this.displays.length} display(s):`,
-        this.displays.map((d) => ({
-          id: d.id,
-          label: d.label,
-          friendlyName: d.friendlyName,
-          manufacturer: d.manufacturer,
-          model: d.model,
-          bounds: d.bounds,
-          isPrimary: d.isPrimary,
-          nativeInfo: d.nativeInfo,
-        }))
-      );
+   
     } catch (error) {
       console.error("Error refreshing displays:", error);
       this.displays = [];

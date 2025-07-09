@@ -1,4 +1,4 @@
-import React from "react";
+import React, { memo, useEffect } from "react";
 import { FiMonitor } from "react-icons/fi";
 import {
   Card,
@@ -16,12 +16,22 @@ interface DisplayStatusCardProps {
   currentSelectedDisplay: any;
 }
 
-const DisplayStatusCard: React.FC<DisplayStatusCardProps> = ({
+const DisplayStatusCard: React.FC<DisplayStatusCardProps> = memo(({
   displayCount,
   hasMultipleDisplays,
   currentSelectedDisplay,
 }) => {
-  const { liveDisplayStatus } = useLiveDisplay();
+  const { liveDisplayStatus, refreshStatus, selectedDisplay } = useLiveDisplay();
+
+  // Check status when component mounts and when selected display changes
+  useEffect(() => {
+    if (selectedDisplay?.id) {
+      refreshStatus();
+    }
+  }, [selectedDisplay?.id, refreshStatus]);
+
+  const displayName = currentSelectedDisplay?.friendlyName || currentSelectedDisplay?.label;
+  const isActive = liveDisplayStatus?.isVisible;
 
   return (
     <Card>
@@ -66,7 +76,7 @@ const DisplayStatusCard: React.FC<DisplayStatusCardProps> = ({
           <div>
             <span className="font-medium">Status:</span>
             <span className="ml-2">
-              {liveDisplayStatus?.isVisible ? (
+              {isActive ? (
                 <Badge variant="default">Active</Badge>
               ) : (
                 <Badge variant="secondary">Inactive</Badge>
@@ -77,6 +87,8 @@ const DisplayStatusCard: React.FC<DisplayStatusCardProps> = ({
       </CardContent>
     </Card>
   );
-};
+});
+
+DisplayStatusCard.displayName = "DisplayStatusCard";
 
 export default DisplayStatusCard;

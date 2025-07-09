@@ -1,4 +1,4 @@
-import { app, BrowserWindow } from 'electron';
+import { app, BrowserWindow, session } from 'electron';
 import path from 'node:path';
 import started from 'electron-squirrel-startup';
 import { displayManager } from './services/DisplayManager';
@@ -14,6 +14,43 @@ if (started) {
 }
 
 const createWindow = () => {
+  // Set up CSP - more permissive in development
+  if (MAIN_WINDOW_VITE_DEV_SERVER_URL) {
+    // Development CSP - more permissive for Vite
+    session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
+      callback({
+        responseHeaders: {
+          ...details.responseHeaders,
+          'Content-Security-Policy': [
+            "default-src 'self';",
+            "script-src 'self' 'unsafe-inline' 'unsafe-eval';", // Allow inline scripts for dev
+            "style-src 'self' 'unsafe-inline';",
+            "font-src 'self' data:;",
+            "img-src 'self' data: https:;",
+            "connect-src 'self' https: ws: wss:;", // Allow websockets for HMR
+          ].join(' ')
+        }
+      });
+    });
+  } else {
+    // Production CSP - more restrictive
+    session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
+      callback({
+        responseHeaders: {
+          ...details.responseHeaders,
+          'Content-Security-Policy': [
+            "default-src 'self';",
+            "script-src 'self';",
+            "style-src 'self' 'unsafe-inline';",
+            "font-src 'self' data:;",
+            "img-src 'self' data: https:;",
+            "connect-src 'self' https:;",
+          ].join(' ')
+        }
+      });
+    });
+  }
+
   // Create the browser window.
   const mainWindow = new BrowserWindow({
     width: 1280,
@@ -33,6 +70,7 @@ const createWindow = () => {
       contextIsolation: true,
       nodeIntegration: false,
       webSecurity: true,
+      sandbox: false, // Disable sandbox in development for better compatibility
     },
   });
 

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useCallback } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import {
   createLiveDisplay,
@@ -38,12 +38,21 @@ export const useLiveDisplay = () => {
       setLiveDisplayStatus(status);
       setLocalError(null);
       dispatch(clearDisplayError());
+      
+      // Update Redux state based on actual status
+      const isActive = status.hasWindow && status.isVisible;
+      if (isActive !== displaySettings.isLiveDisplayActive) {
+        dispatch(setLiveDisplayActive(isActive));
+      }
+      
+      return status;
     } catch (error) {
       const errorMessage = "Failed to get live display status";
       console.error(errorMessage, error);
       setLocalError(errorMessage);
+      return null;
     }
-  }, [dispatch]);
+  }, [dispatch, displaySettings.isLiveDisplayActive]);
 
   const createLive = useCallback(
     async (displayId: number) => {
@@ -58,11 +67,9 @@ export const useLiveDisplay = () => {
       dispatch(clearDisplayError());
 
       try {
-        // Use Redux thunk to create live display
         const resultAction = await dispatch(createLiveDisplay(displayId));
         if (createLiveDisplay.fulfilled.match(resultAction)) {
           await checkLiveDisplayStatus();
-          dispatch(setLiveDisplayActive(true));
           return true;
         }
         return false;
@@ -82,7 +89,6 @@ export const useLiveDisplay = () => {
     try {
       await window.electron.liveDisplay.show();
       await checkLiveDisplayStatus();
-      dispatch(setLiveDisplayActive(true));
       setLocalError(null);
       dispatch(clearDisplayError());
     } catch (error) {
@@ -109,7 +115,6 @@ export const useLiveDisplay = () => {
     try {
       await window.electron.liveDisplay.close();
       await checkLiveDisplayStatus();
-      dispatch(setLiveDisplayActive(false));
       setLocalError(null);
       dispatch(clearDisplayError());
     } catch (error) {
@@ -118,21 +123,6 @@ export const useLiveDisplay = () => {
       setLocalError(errorMessage);
     }
   }, [dispatch, checkLiveDisplayStatus]);
-
-  // Initialize status check on mount and when selected display changes
-  useEffect(() => {
-    checkLiveDisplayStatus();
-  }, [checkLiveDisplayStatus, selectedDisplay?.id]);
-
-  // Sync live display status with Redux state
-  useEffect(() => {
-    if (liveDisplayStatus) {
-      const isActive = liveDisplayStatus.hasWindow && liveDisplayStatus.isVisible;
-      if (isActive !== displaySettings.isLiveDisplayActive) {
-        dispatch(setLiveDisplayActive(isActive));
-      }
-    }
-  }, [liveDisplayStatus, displaySettings.isLiveDisplayActive, dispatch]);
 
   return {
     liveDisplayStatus,

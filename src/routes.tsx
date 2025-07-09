@@ -13,11 +13,10 @@ const AppRoutes = () => {
     <Routes>
       {/* Main application routes with layout */}
       <Route path="/" element={<Homepage />} />
-      <Route element={<AppLayout />}>
+      <Route  element={<AppLayout />}>
         <Route path="/service" element={<Service />} />
         <Route path="/settings" element={<Settings />} />
         {/* <Route path="/live" element={<LivePresentation />} />
-        <Route path="/settings" element={<Settings />} />
         <Route path="/songs" element={<Songs />} /> */}
       </Route>
     </Routes>

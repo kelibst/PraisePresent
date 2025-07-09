@@ -73,12 +73,12 @@ export class LiveDisplayWindow {
       // Load the live display renderer
       if (MAIN_WINDOW_VITE_DEV_SERVER_URL) {
         await this.liveWindow.loadURL(
-          `${MAIN_WINDOW_VITE_DEV_SERVER_URL}?mode=live-display`
+          `${MAIN_WINDOW_VITE_DEV_SERVER_URL}?mode=live-display&displayId=${config.displayId}`
         );
       } else {
         await this.liveWindow.loadFile(
           path.join(__dirname, `../renderer/${MAIN_WINDOW_VITE_NAME}/index.html`),
-          { search: "mode=live-display" }
+          { search: `mode=live-display&displayId=${config.displayId}` }
         );
       }
 
