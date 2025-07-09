@@ -1,17 +1,20 @@
 import { BrowserWindow, screen } from "electron";
 import { displayManager } from "../services/DisplayManager";
 import path from 'path';
+import { 
+  LiveDisplayConfig, 
+  LiveDisplayStatus, 
+  LiveDisplayContent,
+  LiveDisplayError,
+  validateDisplayId,
+  handleLiveDisplayError,
+  sendContentWithDelay,
+  createInitialContent
+} from "../shared/liveDisplayUtils";
 
 // These constants are injected by Electron Forge and Vite
 declare const MAIN_WINDOW_VITE_DEV_SERVER_URL: string | undefined;
 declare const MAIN_WINDOW_VITE_NAME: string;
-
-export interface LiveWindowConfig {
-  displayId: number;
-  fullscreen?: boolean;
-  alwaysOnTop?: boolean;
-  frame?: boolean;
-}
 
 export class LiveDisplayWindow {
   private static instance: LiveDisplayWindow;
@@ -30,22 +33,25 @@ export class LiveDisplayWindow {
   /**
    * Create live window on specified display
    */
-  public async createLiveWindow(config: LiveWindowConfig): Promise<boolean> {
+  public async createLiveWindow(config: LiveDisplayConfig): Promise<boolean> {
     try {
       // Close existing window if any
       this.closeLiveWindow();
 
-      const display = displayManager.getDisplayById(config.displayId);
+      // Validate display ID
+      const displayId = validateDisplayId(config.displayId);
+
+      const display = displayManager.getDisplayById(displayId);
       if (!display) {
-        throw new Error(`Display with ID ${config.displayId} not found`);
+        throw new LiveDisplayError(`Display with ID ${displayId} not found`, 'DISPLAY_NOT_FOUND');
       }
 
       const electronDisplay = screen.getAllDisplays().find(
-        (d) => d.id === config.displayId
+        (d) => d.id === displayId
       );
 
       if (!electronDisplay) {
-        throw new Error(`Electron display with ID ${config.displayId} not found`);
+        throw new LiveDisplayError(`Electron display with ID ${displayId} not found`, 'ELECTRON_DISPLAY_NOT_FOUND');
       }
 
       // Create window with display-specific bounds
@@ -73,12 +79,12 @@ export class LiveDisplayWindow {
       // Load the live display renderer
       if (MAIN_WINDOW_VITE_DEV_SERVER_URL) {
         await this.liveWindow.loadURL(
-          `${MAIN_WINDOW_VITE_DEV_SERVER_URL}?mode=live-display&displayId=${config.displayId}`
+          `${MAIN_WINDOW_VITE_DEV_SERVER_URL}?mode=live-display&displayId=${displayId}`
         );
       } else {
         await this.liveWindow.loadFile(
           path.join(__dirname, `../renderer/${MAIN_WINDOW_VITE_NAME}/index.html`),
-          { search: `mode=live-display&displayId=${config.displayId}` }
+          { search: `mode=live-display&displayId=${displayId}` }
         );
       }
 
@@ -90,7 +96,7 @@ export class LiveDisplayWindow {
       // Set up window event handlers
       this.setupWindowEvents();
 
-      this.currentDisplayId = config.displayId;
+      this.currentDisplayId = displayId;
 
       return true;
     } catch (error) {
@@ -178,7 +184,7 @@ export class LiveDisplayWindow {
   /**
    * Get live window status
    */
-  public getStatus(): object {
+  public getStatus(): LiveDisplayStatus {
     const window = this.getLiveWindow();
     return {
       hasWindow: !!window,

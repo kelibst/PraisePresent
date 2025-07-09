@@ -1,26 +1,5 @@
-export interface DisplayInfo {
-  id: number;
-  label: string;
-  friendlyName: string;
-  bounds: {
-    x: number;
-    y: number;
-    width: number;
-    height: number;
-  };
-  isPrimary: boolean;
-  internal: boolean;
-  rotation: number;
-  scaleFactor: number;
-}
-
-export interface LiveDisplayStatus {
-  hasWindow: boolean;
-  isVisible: boolean;
-  currentDisplayId: number | null;
-  bounds: { x: number; y: number; width: number; height: number } | null;
-  isFullscreen: boolean;
-}
+import { LiveDisplayStatus, LiveDisplayResult } from '../shared/liveDisplayUtils';
+import { DisplayInfo } from '../services/DisplayManager';
 
 export interface DisplaySettings {
   selectedLiveDisplayId: number | null;
@@ -48,15 +27,10 @@ declare global {
           isLiveDisplayActive: boolean;
           liveDisplayStatus: LiveDisplayStatus;
         }>;
-        initializeLiveDisplay: (displayId: number) => Promise<{
-          success: boolean;
-          displayId?: number;
-          settings?: DisplaySettings;
-          error?: string;
-        }>;
+        initializeLiveDisplay: (displayId: number) => Promise<LiveDisplayResult>;
       };
       liveDisplay: {
-        create: (config: { displayId: number }) => Promise<{ success: boolean; displayId: number }>;
+        create: (config: { displayId: number }) => Promise<LiveDisplayResult>;
         show: () => Promise<{ success: boolean }>;
         hide: () => Promise<{ success: boolean }>;
         close: () => Promise<{ success: boolean }>;

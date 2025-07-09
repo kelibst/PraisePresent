@@ -1,6 +1,16 @@
 import { ipcMain, screen, desktopCapturer, BrowserWindow } from "electron";
 import { displayManager } from "@/services/DisplayManager";
 import { liveDisplayWindow } from "@/main/liveDisplayWindow";
+import { 
+  LiveDisplayConfig, 
+  LiveDisplayResult,
+  LiveDisplayError,
+  validateDisplayId,
+  handleLiveDisplayError,
+  createSuccessResult,
+  sendContentWithDelay,
+  createInitialContent
+} from "@/shared/liveDisplayUtils";
 
 // Store app settings (in a real app, this would be in a persistent store)
 let displaySettings = {
@@ -124,7 +134,7 @@ export function initializeDisplayMain(): void {
   });
 
   // Live display handlers
-  ipcMain.handle("live-display:create", async (_, { displayId }: { displayId?: number }) => {
+  ipcMain.handle("live-display:create", async (_, { displayId }: { displayId?: number }): Promise<LiveDisplayResult> => {
     try {
       const targetDisplayId = displayId 
         || displaySettings.selectedLiveDisplayId 
@@ -132,24 +142,26 @@ export function initializeDisplayMain(): void {
         || displayManager.getPrimaryDisplay()?.id;
 
       if (!targetDisplayId) {
-        throw new Error("No suitable display found");
+        throw new LiveDisplayError("No suitable display found", 'NO_DISPLAY_FOUND');
       }
 
+      const validDisplayId = validateDisplayId(targetDisplayId);
+
       const success = await liveDisplayWindow.createLiveWindow({
-        displayId: targetDisplayId,
+        displayId: validDisplayId,
         fullscreen: displaySettings.liveDisplayFullscreen,
         alwaysOnTop: displaySettings.liveDisplayAlwaysOnTop,
       });
 
       if (success) {
         displaySettings.isLiveDisplayActive = true;
-        displaySettings.selectedLiveDisplayId = targetDisplayId;
+        displaySettings.selectedLiveDisplayId = validDisplayId;
+        return createSuccessResult(validDisplayId);
+      } else {
+        throw new LiveDisplayError("Failed to create live display window", 'WINDOW_CREATION_FAILED');
       }
-
-      return { success, displayId: targetDisplayId };
     } catch (error) {
-      console.error("Error creating live display:", error);
-      throw error;
+      return handleLiveDisplayError(error, 'creation');
     }
   });
 
@@ -230,38 +242,33 @@ export function initializeDisplayMain(): void {
   });
 
   // Initialize live display from Redux (when user creates one)
-  ipcMain.handle("display:initializeLiveDisplay", async (_, displayId) => {
+  ipcMain.handle("display:initializeLiveDisplay", async (_, displayId): Promise<LiveDisplayResult> => {
     try {
+      const validDisplayId = validateDisplayId(displayId);
+
       const success = await liveDisplayWindow.createLiveWindow({
-        displayId,
+        displayId: validDisplayId,
         fullscreen: displaySettings.liveDisplayFullscreen,
         alwaysOnTop: displaySettings.liveDisplayAlwaysOnTop,
       });
 
       if (success) {
         displaySettings.isLiveDisplayActive = true;
-        displaySettings.selectedLiveDisplayId = displayId;
+        displaySettings.selectedLiveDisplayId = validDisplayId;
         
-        // Send initial content
-        setTimeout(() => {
-          liveDisplayWindow.sendMessage('live-content-update', {
-            type: 'placeholder',
-            title: 'Live Display Ready',
-            content: {
-              mainText: 'PraisePresent Live Display',
-              subText: 'Ready to display content',
-              timestamp: new Date().toLocaleTimeString(),
-            },
-          });
-        }, 1000);
+        // Send initial content with delay
+        sendContentWithDelay((content) => {
+          liveDisplayWindow.sendMessage('live-content-update', content);
+        });
         
         liveDisplayWindow.showLiveWindow();
+        
+        return createSuccessResult(validDisplayId, displaySettings);
+      } else {
+        throw new LiveDisplayError("Failed to create live display window", 'WINDOW_CREATION_FAILED');
       }
-
-      return { success, displayId, settings: displaySettings };
     } catch (error) {
-      console.error("Error initializing live display from Redux:", error);
-      return { success: false, error: error instanceof Error ? error.message : String(error) };
+      return handleLiveDisplayError(error, 'initialization');
     }
   });
 }
@@ -272,6 +279,9 @@ export function cleanupDisplayMain(): void {
     "display:captureDisplay",
     "display:testDisplay",
     "display:saveSettings",
+    "display:getSettings",
+    "display:syncState",
+    "display:initializeLiveDisplay",
     "live-display:create",
     "live-display:show",
     "live-display:hide",

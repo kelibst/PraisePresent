@@ -4,6 +4,7 @@ import started from 'electron-squirrel-startup';
 import { displayManager } from './services/DisplayManager';
 import { initializeDisplayMain, cleanupDisplayMain } from './main/display-main';
 import { liveDisplayWindow } from './main/liveDisplayWindow';
+import { sendContentWithDelay } from './shared/liveDisplayUtils';
 
 // These constants are injected by Electron Forge and Vite
 declare const MAIN_WINDOW_VITE_DEV_SERVER_URL: string | undefined;
@@ -37,18 +38,10 @@ async function initializeLiveDisplay() {
         console.log(`Live display initialized successfully on display ${secondaryDisplay.id}`);
         
         // Send initial welcome content after window is ready
-        setTimeout(() => {
+        sendContentWithDelay((content) => {
           const liveWindow = liveDisplayWindow.getLiveWindow();
           if (liveWindow && !liveWindow.isDestroyed() && liveWindow.webContents) {
-            liveDisplayWindow.sendMessage('live-content-update', {
-              type: 'placeholder',
-              title: 'Live Display Ready',
-              content: {
-                mainText: 'PraisePresent Live Display',
-                subText: 'Ready to display content',
-                timestamp: new Date().toLocaleTimeString(),
-              },
-            });
+            liveDisplayWindow.sendMessage('live-content-update', content);
           }
         }, 3000); // Wait 3 seconds for window to be fully ready
         

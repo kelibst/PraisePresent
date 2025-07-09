@@ -10,14 +10,11 @@ import {
   clearDisplayError,
 } from "@/lib/displaySlice";
 import type { AppDispatch } from "@/lib/store";
-
-interface LiveDisplayStatus {
-  hasWindow: boolean;
-  isVisible: boolean;
-  currentDisplayId: number | null;
-  bounds: { x: number; y: number; width: number; height: number } | null;
-  isFullscreen: boolean;
-}
+import { 
+  LiveDisplayStatus, 
+  LiveDisplayError,
+  getDisplayValidationError
+} from "@/shared/liveDisplayUtils";
 
 export const useLiveDisplay = () => {
   const dispatch = useDispatch<AppDispatch>();
@@ -77,9 +74,9 @@ export const useLiveDisplay = () => {
 
   const createLive = useCallback(
     async (displayId: number) => {
-      if (!displayId) {
-        const errorMessage = "Please select a display for live output first";
-        dispatch(setDisplayError(errorMessage));
+      const validationError = getDisplayValidationError(displayId);
+      if (validationError) {
+        dispatch(setDisplayError(validationError));
         return false;
       }
 

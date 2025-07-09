@@ -1,41 +1,6 @@
 import { DisplayInfo } from "@/services/DisplayManager";
 import { createSlice, createAsyncThunk, PayloadAction } from "@reduxjs/toolkit";
 
-// Define the electron API interface
-declare global {
-  interface Window {
-    electron: {
-      displayManager: {
-        getDisplays: () => Promise<{
-          displays: DisplayInfo[];
-          primaryDisplay: DisplayInfo | null;
-          secondaryDisplay: DisplayInfo | null;
-        }>;
-        captureDisplay: (displayId: number) => Promise<string>;
-        testDisplay: (displayId: number) => Promise<{ success: boolean }>;
-        saveSettings: (settings: any) => Promise<any>;
-      };
-      liveDisplay: {
-        create: (config: { displayId: number }) => Promise<{ success: boolean; displayId: number }>;
-        show: () => Promise<{ success: boolean }>;
-        hide: () => Promise<{ success: boolean }>;
-        close: () => Promise<{ success: boolean }>;
-        getStatus: () => Promise<{
-          hasWindow: boolean;
-          isVisible: boolean;
-          currentDisplayId: number | null;
-          bounds: { x: number; y: number; width: number; height: number } | null;
-          isFullscreen: boolean;
-        }>;
-        sendContent: (content: any) => Promise<{ success: boolean }>;
-        clearContent: () => Promise<{ success: boolean }>;
-        showBlack: () => Promise<{ success: boolean }>;
-        showLogo: () => Promise<{ success: boolean }>;
-      };
-    };
-  }
-}
-
 export interface DisplaySettings {
   selectedLiveDisplayId: number | null;
   isLiveDisplayActive: boolean;
@@ -140,7 +105,7 @@ export const createLiveDisplay = createAsyncThunk(
     try {
       const result = await window.electron.liveDisplay.create({ displayId });
       if (result.success) {
-        return result.displayId;
+        return result.displayId || null;
       }
       throw new Error("Failed to create live display");
     } catch (error) {
