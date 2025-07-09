@@ -198,6 +198,72 @@ export function initializeDisplayMain(): void {
     displaySettings = { ...displaySettings, ...settings };
     return displaySettings;
   });
+
+  // Get current display settings
+  ipcMain.handle("display:getSettings", () => {
+    return displaySettings;
+  });
+
+  // Sync Redux state with main process
+  ipcMain.handle("display:syncState", (_, reduxState) => {
+    try {
+      // Update main process settings with Redux state
+      if (reduxState.selectedLiveDisplayId !== undefined) {
+        displaySettings.selectedLiveDisplayId = reduxState.selectedLiveDisplayId;
+      }
+      if (reduxState.isLiveDisplayActive !== undefined) {
+        displaySettings.isLiveDisplayActive = reduxState.isLiveDisplayActive;
+      }
+      
+      // Get current live display status
+      const liveStatus = liveDisplayWindow.getStatus();
+      
+      // Return combined state for Redux to update
+      return {
+        ...displaySettings,
+        liveDisplayStatus: liveStatus,
+      };
+    } catch (error) {
+      console.error("Error syncing display state:", error);
+      return displaySettings;
+    }
+  });
+
+  // Initialize live display from Redux (when user creates one)
+  ipcMain.handle("display:initializeLiveDisplay", async (_, displayId) => {
+    try {
+      const success = await liveDisplayWindow.createLiveWindow({
+        displayId,
+        fullscreen: displaySettings.liveDisplayFullscreen,
+        alwaysOnTop: displaySettings.liveDisplayAlwaysOnTop,
+      });
+
+      if (success) {
+        displaySettings.isLiveDisplayActive = true;
+        displaySettings.selectedLiveDisplayId = displayId;
+        
+        // Send initial content
+        setTimeout(() => {
+          liveDisplayWindow.sendMessage('live-content-update', {
+            type: 'placeholder',
+            title: 'Live Display Ready',
+            content: {
+              mainText: 'PraisePresent Live Display',
+              subText: 'Ready to display content',
+              timestamp: new Date().toLocaleTimeString(),
+            },
+          });
+        }, 1000);
+        
+        liveDisplayWindow.showLiveWindow();
+      }
+
+      return { success, displayId, settings: displaySettings };
+    } catch (error) {
+      console.error("Error initializing live display from Redux:", error);
+      return { success: false, error: error instanceof Error ? error.message : String(error) };
+    }
+  });
 }
 
 export function cleanupDisplayMain(): void {

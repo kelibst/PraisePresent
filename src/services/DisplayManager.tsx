@@ -707,6 +707,7 @@ export class DisplayManager {
     };
   }
 
+
   /**
    * Set change listener callback
    */

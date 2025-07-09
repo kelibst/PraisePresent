@@ -168,8 +168,10 @@ export class LiveDisplayWindow {
    * Send message to live window
    */
   public sendMessage(channel: string, ...args: any[]): void {
-    if (this.liveWindow && !this.liveWindow.isDestroyed()) {
+    if (this.liveWindow && !this.liveWindow.isDestroyed() && this.liveWindow.webContents) {
       this.liveWindow.webContents.send(channel, ...args);
+    } else {
+      console.warn(`Cannot send message to live window: ${channel}`, 'Window not ready');
     }
   }
 

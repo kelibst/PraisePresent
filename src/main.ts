@@ -3,6 +3,7 @@ import path from 'node:path';
 import started from 'electron-squirrel-startup';
 import { displayManager } from './services/DisplayManager';
 import { initializeDisplayMain, cleanupDisplayMain } from './main/display-main';
+import { liveDisplayWindow } from './main/liveDisplayWindow';
 
 // These constants are injected by Electron Forge and Vite
 declare const MAIN_WINDOW_VITE_DEV_SERVER_URL: string | undefined;
@@ -11,6 +12,57 @@ declare const MAIN_WINDOW_VITE_NAME: string;
 // Handle creating/removing shortcuts on Windows when installing/uninstalling.
 if (started) {
   app.quit();
+}
+
+// Live display initialization function
+async function initializeLiveDisplay() {
+  try {
+    // Get available displays
+    const displays = displayManager.getDisplays();
+    const secondaryDisplay = displayManager.getSecondaryDisplay();
+    
+    // Only initialize if we have multiple displays
+    if (displays.length > 1 && secondaryDisplay) {
+      console.log(`Initializing live display on secondary display: ${secondaryDisplay.id}`);
+      
+      // Create live display window on secondary display
+      const success = await liveDisplayWindow.createLiveWindow({
+        displayId: secondaryDisplay.id,
+        fullscreen: true,
+        alwaysOnTop: true,
+        frame: false,
+      });
+      
+      if (success) {
+        console.log(`Live display initialized successfully on display ${secondaryDisplay.id}`);
+        
+        // Send initial welcome content after window is ready
+        setTimeout(() => {
+          const liveWindow = liveDisplayWindow.getLiveWindow();
+          if (liveWindow && !liveWindow.isDestroyed() && liveWindow.webContents) {
+            liveDisplayWindow.sendMessage('live-content-update', {
+              type: 'placeholder',
+              title: 'Live Display Ready',
+              content: {
+                mainText: 'PraisePresent Live Display',
+                subText: 'Ready to display content',
+                timestamp: new Date().toLocaleTimeString(),
+              },
+            });
+          }
+        }, 3000); // Wait 3 seconds for window to be fully ready
+        
+        // Show the window
+        liveDisplayWindow.showLiveWindow();
+      } else {
+        console.warn('Failed to initialize live display');
+      }
+    } else {
+      console.log('Single display detected - live display initialization skipped');
+    }
+  } catch (error) {
+    console.error('Error initializing live display:', error);
+  }
 }
 
 const createWindow = () => {
@@ -84,6 +136,11 @@ const createWindow = () => {
   // Show window when ready
   mainWindow.once('ready-to-show', () => {
     mainWindow.show();
+    
+    // Initialize live display after main window is ready
+    setTimeout(() => {
+      initializeLiveDisplay();
+    }, 1000); // Wait 1 second for everything to be ready
   });
 
   // Open DevTools in development
@@ -118,5 +175,6 @@ app.on('window-all-closed', () => {
 // Clean up before quitting
 app.on('before-quit', () => {
   cleanupDisplayMain();
+  liveDisplayWindow.closeLiveWindow();
   displayManager.removeChangeListener();
 });

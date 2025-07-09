@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { FiEye, FiMonitor, FiRefreshCw } from "react-icons/fi";
 import { Button } from "@/components/ui/button";
 import {
@@ -30,7 +30,17 @@ const LiveDisplayControls: React.FC<LiveDisplayControlsProps> = ({
     hideLive,
     closeLive,
     displaySettings,
+    refreshStatus,
+    syncWithMainProcess,
   } = useLiveDisplay();
+
+  // Sync with main process on component mount and when selected display changes
+  useEffect(() => {
+    if (selectedDisplayId) {
+      refreshStatus();
+      syncWithMainProcess();
+    }
+  }, [selectedDisplayId, refreshStatus, syncWithMainProcess]);
 
   const handleCreateLive = async () => {
     const targetDisplayId = selectedDisplayId || selectedDisplay?.id;
@@ -42,6 +52,11 @@ const LiveDisplayControls: React.FC<LiveDisplayControlsProps> = ({
         await sendInitialContent();
       }
     }
+  };
+
+  const handleSyncWithMain = async () => {
+    await syncWithMainProcess();
+    await refreshStatus();
   };
 
   const sendInitialContent = async () => {
@@ -167,6 +182,11 @@ const LiveDisplayControls: React.FC<LiveDisplayControlsProps> = ({
                   </Button>
                 </>
               )}
+              
+              <Button onClick={handleSyncWithMain} variant="outline" size="sm">
+                <FiRefreshCw className="w-4 h-4 mr-2" />
+                Sync
+              </Button>
             </div>
           </div>
 

@@ -32,6 +32,24 @@ export const useLiveDisplay = () => {
   // Combine Redux and local errors
   const error = reduxError || localError;
 
+  const syncWithMainProcess = useCallback(async () => {
+    try {
+      const syncResult = await window.electron.displayManager.syncState({
+        selectedLiveDisplayId: selectedDisplay?.id,
+        isLiveDisplayActive: displaySettings.isLiveDisplayActive,
+      });
+      
+      if (syncResult.liveDisplayStatus) {
+        setLiveDisplayStatus(syncResult.liveDisplayStatus);
+      }
+      
+      return syncResult;
+    } catch (error) {
+      console.error('Failed to sync with main process:', error);
+      return null;
+    }
+  }, [selectedDisplay?.id, displaySettings.isLiveDisplayActive]);
+
   const checkLiveDisplayStatus = useCallback(async () => {
     try {
       const status = await window.electron.liveDisplay.getStatus();
@@ -45,6 +63,9 @@ export const useLiveDisplay = () => {
         dispatch(setLiveDisplayActive(isActive));
       }
       
+      // Sync with main process
+      await syncWithMainProcess();
+      
       return status;
     } catch (error) {
       const errorMessage = "Failed to get live display status";
@@ -52,7 +73,7 @@ export const useLiveDisplay = () => {
       setLocalError(errorMessage);
       return null;
     }
-  }, [dispatch, displaySettings.isLiveDisplayActive]);
+  }, [dispatch, displaySettings.isLiveDisplayActive, syncWithMainProcess]);
 
   const createLive = useCallback(
     async (displayId: number) => {
@@ -67,12 +88,17 @@ export const useLiveDisplay = () => {
       dispatch(clearDisplayError());
 
       try {
-        const resultAction = await dispatch(createLiveDisplay(displayId));
-        if (createLiveDisplay.fulfilled.match(resultAction)) {
+        // Use the main process initialization for consistency
+        const result = await window.electron.displayManager.initializeLiveDisplay(displayId);
+        
+        if (result.success) {
           await checkLiveDisplayStatus();
           return true;
+        } else {
+          const errorMessage = result.error || "Failed to create live display";
+          dispatch(setDisplayError(errorMessage));
+          return false;
         }
-        return false;
       } catch (error) {
         const errorMessage = "Failed to create live display";
         console.error(errorMessage, error);
@@ -135,5 +161,6 @@ export const useLiveDisplay = () => {
     hideLive,
     closeLive,
     refreshStatus: checkLiveDisplayStatus,
+    syncWithMainProcess,
   };
 };

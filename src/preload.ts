@@ -8,6 +8,9 @@ contextBridge.exposeInMainWorld('electron', {
     captureDisplay: (displayId: number) => ipcRenderer.invoke('display:captureDisplay', displayId),
     testDisplay: (displayId: number) => ipcRenderer.invoke('display:testDisplay', displayId),
     saveSettings: (settings: any) => ipcRenderer.invoke('display:saveSettings', settings),
+    getSettings: () => ipcRenderer.invoke('display:getSettings'),
+    syncState: (reduxState: any) => ipcRenderer.invoke('display:syncState', reduxState),
+    initializeLiveDisplay: (displayId: number) => ipcRenderer.invoke('display:initializeLiveDisplay', displayId),
   },
   liveDisplay: {
     create: (config: { displayId: number }) => ipcRenderer.invoke('live-display:create', config),
