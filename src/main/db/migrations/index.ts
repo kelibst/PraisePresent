@@ -15,6 +15,15 @@ const migrations: Migration[] = [
            value TEXT NOT NULL
          );`,
   },
+  {
+    id: 2,
+    name: 'init_secrets',
+    // Values are safeStorage-encrypted blobs (CLAUDE.md §1.7) — never plaintext.
+    up: `CREATE TABLE IF NOT EXISTS secrets (
+           key   TEXT PRIMARY KEY,
+           value BLOB NOT NULL
+         );`,
+  },
 ];
 
 // Idempotent: applied migrations are tracked in _migrations; only pending ones
