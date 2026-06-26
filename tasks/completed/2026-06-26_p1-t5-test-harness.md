@@ -2,7 +2,7 @@
 - **ID:** 2026-06-26_p1-t5-test-harness
 - **Phase:** 1
 - **Assigned agent type:** tester
-- **Status:** pending
+- **Status:** done
 
 ## Goal
 Stand up the two test runners with one real passing test each, wired into a `test` script and CI (P1-T4). This is the harness every later phase's tests build on (audit O6).
@@ -23,3 +23,5 @@ Stand up the two test runners with one real passing test each, wired into a `tes
 - [ ] reviewer signed off
 
 ## Outcome (filled on completion)
+**2026-06-26.** Vitest (`vitest.config.ts`) + a `cn()` unit test (3 cases) — **3/3 pass**. Playwright-Electron (`playwright.config.ts` + `tests/e2e/smoke.spec.ts`) launches the built app and asserts `#root` visible — **1/1 pass**. Scripts: `test`, `test:watch`, `test:e2e`. Wired into CI (P1-T4).
+- **Notable:** debugged a launch failure to root cause — this IDE shell exports `ELECTRON_RUN_AS_NODE=1` (+ `ELECTRON_FORCE_IS_PACKAGED=true`), which makes Electron run as plain Node so `require('electron')` returns a path string and the app crashes. The smoke test strips both for launch (no-op in clean CI). Reviewer PASS.

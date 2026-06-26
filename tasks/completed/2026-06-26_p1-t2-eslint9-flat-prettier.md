@@ -2,7 +2,7 @@
 - **ID:** 2026-06-26_p1-t2-eslint9-flat-prettier
 - **Phase:** 1
 - **Assigned agent type:** implementer
-- **Status:** pending
+- **Status:** done
 
 ## Goal
 Migrate off the legacy `.eslintrc.json` to ESLint 9 flat config with typescript-eslint 8, add react-hooks + import rules, **electron-security lint rules** that make renderer-boundary violations (CLAUDE.md §5.2) hard errors, and Prettier. (Phase 0 T8 only added the TS import-resolver on the legacy config as a minimal unblock — this is the real migration.)
@@ -24,3 +24,4 @@ Migrate off the legacy `.eslintrc.json` to ESLint 9 flat config with typescript-
 - [ ] reviewer + security signed off (security reviews the boundary rules)
 
 ## Outcome (filled on completion)
+**2026-06-26.** Replaced `.eslintrc.json` with flat `eslint.config.mjs` (eslint 9.39, typescript-eslint 8, eslint-plugin-react-hooks 5, eslint-config-prettier). Added a `no-restricted-imports` boundary for `src/renderer|shared|audience/**` banning `electron`/`electron/renderer`/`fs`/`better-sqlite3`/`node:*` — **verified it errors** via a probe (3 errors), confirmed again by both reviewers. Added Prettier (`.prettierrc.json`, `.prettierignore`, `format`/`format:check` scripts) and formatted source; CJS config override for postcss/tailwind. `lint`/`format:check` clean. Reviewer + security reviewer PASS (§9/§7).
