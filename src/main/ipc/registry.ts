@@ -20,8 +20,10 @@ export function handle<TReq, TRes>(
     try {
       return ok(await handler(parsed.data));
     } catch (e) {
+      // Log the detail in main; return a generic message to the renderer so
+      // internal paths/stack traces never cross the bridge (CLAUDE.md §5.7).
       log.error(`IPC ${channel}: handler error —`, e);
-      return err(e instanceof Error ? e.message : String(e));
+      return err(`${channel} failed`);
     }
   });
 }
