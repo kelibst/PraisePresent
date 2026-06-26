@@ -27,20 +27,23 @@ describe('migration runner', () => {
   it('applies all pending migrations on a fresh db', () => {
     const { db, applied } = makeFakeDb();
     runMigrations(db);
+    // At least the first migrations are recorded; count grows as domains land.
     expect(applied.has(1)).toBe(true);
     expect(applied.has(2)).toBe(true);
+    expect(applied.size).toBeGreaterThanOrEqual(2);
   });
 
   it('is idempotent — a second run applies nothing new', () => {
     const { db, applied, execed } = makeFakeDb();
     runMigrations(db);
+    const sizeAfterFirst = applied.size;
     const countAfterFirst = execed.length;
     runMigrations(db);
-    // Only the _migrations CREATE TABLE re-runs; no migration SQL re-applied.
+    // Only the _migrations CREATE TABLE re-runs; no migration's own DDL re-applies.
     const reAppliedMigrationSql = execed
       .slice(countAfterFirst)
-      .filter((s) => s.includes('CREATE TABLE IF NOT EXISTS settings') || s.includes('secrets'));
+      .filter((s) => /CREATE TABLE IF NOT EXISTS (settings|secrets|songs)/.test(s));
     expect(reAppliedMigrationSql).toHaveLength(0);
-    expect(applied.size).toBe(2);
+    expect(applied.size).toBe(sizeAfterFirst); // nothing new applied
   });
 });

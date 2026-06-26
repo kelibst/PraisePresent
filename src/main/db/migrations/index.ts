@@ -24,6 +24,26 @@ const migrations: Migration[] = [
            value BLOB NOT NULL
          );`,
   },
+  {
+    id: 3,
+    name: 'init_songs',
+    up: `CREATE TABLE IF NOT EXISTS songs (
+           id     INTEGER PRIMARY KEY AUTOINCREMENT,
+           title  TEXT NOT NULL,
+           author TEXT NOT NULL DEFAULT '',
+           ccli   TEXT NOT NULL DEFAULT '',
+           tags   TEXT NOT NULL DEFAULT '[]'
+         );
+         CREATE TABLE IF NOT EXISTS song_sections (
+           id         INTEGER PRIMARY KEY AUTOINCREMENT,
+           song_id    INTEGER NOT NULL REFERENCES songs(id) ON DELETE CASCADE,
+           kind       TEXT NOT NULL,
+           label      TEXT NOT NULL,
+           content    TEXT NOT NULL,
+           sort_order INTEGER NOT NULL
+         );
+         CREATE INDEX IF NOT EXISTS idx_song_sections_song ON song_sections(song_id);`,
+  },
 ];
 
 // Idempotent: applied migrations are tracked in _migrations; only pending ones

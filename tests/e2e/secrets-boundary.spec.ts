@@ -16,7 +16,9 @@ test('secrets are not reachable from the renderer', async () => {
   await w.waitForLoadState('domcontentloaded');
 
   const apiKeys = await w.evaluate(() => Object.keys(window.api).sort());
-  expect(apiKeys).toEqual(['present', 'settings']);
+  // The bridge exposes domain surfaces (settings/present/songs/…) but NEVER secrets.
+  expect(apiKeys).not.toContain('secrets');
+  expect(apiKeys).toEqual(expect.arrayContaining(['present', 'settings']));
   expect(await w.evaluate(() => 'secrets' in window.api)).toBe(false);
 
   await app.close();

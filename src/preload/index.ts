@@ -18,6 +18,14 @@ const api: Api = {
       return () => ipcRenderer.removeListener(CHANNELS.present.state, listener);
     },
   },
+  songs: {
+    list: () => ipcRenderer.invoke(CHANNELS.songs.list),
+    get: (id) => ipcRenderer.invoke(CHANNELS.songs.get, { id }),
+    create: (input) => ipcRenderer.invoke(CHANNELS.songs.create, input),
+    update: (input) => ipcRenderer.invoke(CHANNELS.songs.update, input),
+    delete: (id) => ipcRenderer.invoke(CHANNELS.songs.delete, { id }),
+    importText: (input) => ipcRenderer.invoke(CHANNELS.songs.importText, input),
+  },
 };
 
 contextBridge.exposeInMainWorld('api', api);
