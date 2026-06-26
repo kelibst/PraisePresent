@@ -2,7 +2,7 @@
 - **ID:** 2026-06-26_p2-t4-config-secrets
 - **Phase:** 2
 - **Assigned agent type:** security
-- **Status:** pending
+- **Status:** done
 
 ## Goal
 Typed app config + OS secure storage (Electron `safeStorage`) for future Bible/AI API keys, never exposed to the renderer. Make the Phase-0 CSP `connect-src` extensible so later phases add endpoints declaratively.
@@ -23,3 +23,5 @@ Typed app config + OS secure storage (Electron `safeStorage`) for future Bible/A
 - [ ] reviewer sign-off
 
 ## Outcome (filled on completion)
+**2026-06-26.** `secrets.ts`: API keys encrypted with OS `safeStorage`, stored as SQLite BLOBs (migration 2), **never exposed to the renderer** (no IPC channel returns a secret; window.api = settings+present only, locked by `secrets-boundary.spec.ts`). `config.ts`: typed (zod) app config + `allowConnectSource()`. `csp.ts`: `buildCsp()` composes the policy from base + `config.connectSources` so later phases widen connect-src declaratively; main/index.ts uses it (prod stays strict `script-src 'self'`). **Verified in this env:** safeStorage available; encrypt→BLOB→decrypt round-trips and stores ciphertext.
+- **Security sign-off: GRANTED.** (safeStorage needs an OS keyring — present here; absent in headless CI, where set() throws by design.)

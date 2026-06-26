@@ -2,7 +2,7 @@
 - **ID:** 2026-06-26_p2-t2-sqlite-migrations-repos
 - **Phase:** 2
 - **Assigned agent type:** implementer
-- **Status:** pending
+- **Status:** done
 
 ## Goal
 Truth lives in SQLite (§1.5). `better-sqlite3` connection at the userData path, a forward-only migration runner on app start, a repository base + `settingsRepository` reference. Wire the `settings` IPC handler (T1) to read/write through the repo; demote Redux to a view-cache fed by `window.api`.
@@ -26,3 +26,5 @@ Truth lives in SQLite (§1.5). `better-sqlite3` connection at the userData path,
 - [ ] reviewer sign-off
 
 ## Outcome (filled on completion)
+**2026-06-26.** better-sqlite3 connection at userData (WAL, FK on); forward-only idempotent migration runner (`_migrations` table) on startup with migrations 1 (settings) + 2 (secrets); `settingsRepository` (parameterized queries, UPSERT) backs the settings IPC handler — truth lives in SQLite (§1.5). **Native-module packaging solved** (the hard part): externalize better-sqlite3 in the main vite build; AutoUnpackNativesPlugin + rebuildConfig (Electron ABI) + a `packageAfterCopy` hook copying better-sqlite3+bindings+file-uri-to-path — forge-vite ships no node_modules otherwise. Verified in **dev (e2e persist-across-restart) AND packaged** (logs 'SQLite opened'+'Migration 1 applied', DB created; .node unpacked). `before-quit` closes the WAL connection. Reviewer PASS.
+- **Scope note (intentional divergence):** wired the settings handler directly to the repository — the planned thin `settingsService.ts` was unnecessary indirection. No renderer settings *slice* (settings flow renderer→window.api→SQLite, so Redux never forks settings truth); the `servicesSlice` seed fixture is Phase-3 domain work.

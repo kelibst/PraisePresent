@@ -1,7 +1,7 @@
 import { app, session } from 'electron';
 import started from 'electron-squirrel-startup';
 import log from './infra/logger';
-import { initDatabase } from './db';
+import { initDatabase, closeDb } from './db';
 import { registerIpcHandlers } from './ipc';
 import { openWindows, createPresenterWindow, hasPresenterWindow } from './windows/windowManager';
 import { buildCsp } from './infra/csp';
@@ -35,6 +35,11 @@ app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
     app.quit();
   }
+});
+
+// Checkpoint and close the SQLite WAL connection cleanly on shutdown.
+app.on('before-quit', () => {
+  closeDb();
 });
 
 app.on('activate', () => {
