@@ -1,14 +1,19 @@
 import { useCallback, useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { Link, useParams } from 'react-router-dom';
 import type { Plan, PlanItem } from '@/shared/schemas/plan';
 import type { SongSummary } from '@/shared/schemas/song';
 import { blocksToDeck, singleSlideDeck } from '@/shared/lib/buildDeck';
+
+// Explicit load states so the view never hangs (§5.7): plans.get can return
+// ok:false (a real error) or ok:true with null data (the id does not exist).
+type Status = 'loading' | 'ready' | 'notfound' | 'error';
 
 // A single service plan: ordered mixed elements, persisted in SQLite. Add songs
 // (from the library) or custom items, reorder, and present each to the audience.
 export default function ServiceDetail() {
   const { id } = useParams();
   const planId = Number(id);
+  const [status, setStatus] = useState<Status>('loading');
   const [plan, setPlan] = useState<Plan | null>(null);
   const [songs, setSongs] = useState<SongSummary[]>([]);
   const [estimate, setEstimate] = useState(0);
@@ -19,8 +24,22 @@ export default function ServiceDetail() {
   }, [planId]);
 
   const load = useCallback(async () => {
+    setStatus('loading');
+    if (!Number.isInteger(planId) || planId <= 0) {
+      setStatus('notfound');
+      return;
+    }
     const [p, s] = await Promise.all([window.api.plans.get(planId), window.api.songs.list()]);
-    if (p.ok) setPlan(p.data);
+    if (!p.ok) {
+      setStatus('error');
+      return;
+    }
+    if (!p.data) {
+      setStatus('notfound');
+      return;
+    }
+    setPlan(p.data);
+    setStatus('ready');
     if (s.ok) setSongs(s.data);
     await refreshEstimate();
   }, [planId, refreshEstimate]);
@@ -98,7 +117,29 @@ export default function ServiceDetail() {
     }
   };
 
-  if (!plan) return <div className="text-muted-foreground">Loading…</div>;
+  if (status === 'loading') return <div className="text-muted-foreground">Loading…</div>;
+
+  if (status === 'notfound') {
+    return (
+      <div className="flex flex-col gap-3">
+        <p className="text-foreground">Service not found.</p>
+        <Link to="/services" className="text-sm font-medium text-primary hover:underline">
+          ← Back to services
+        </Link>
+      </div>
+    );
+  }
+
+  if (status === 'error' || !plan) {
+    return (
+      <div className="flex flex-col gap-3">
+        <p className="text-foreground">Couldn’t load this service. Please try again.</p>
+        <Link to="/services" className="text-sm font-medium text-primary hover:underline">
+          ← Back to services
+        </Link>
+      </div>
+    );
+  }
 
   return (
     <div className="mb-8 flex flex-col gap-6">

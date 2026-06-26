@@ -61,7 +61,7 @@ export default function ServicesPage() {
                   onClick={() => navigate(`/services/${p.id}`)}
                 >
                   <div className="text-lg font-semibold text-foreground">{p.name}</div>
-                  <div className="flex items-center gap-2 text-blue-600">
+                  <div className="flex items-center gap-2 text-muted-foreground">
                     <FiUser />
                     <span className="text-sm text-muted-foreground">
                       {p.scheduledFor ?? 'Unscheduled'}

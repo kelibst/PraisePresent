@@ -1,84 +1,114 @@
+import { useCallback, useEffect, useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { FiBook, FiMusic, FiImage, FiMonitor, FiList, FiSettings, FiPlus } from 'react-icons/fi';
 import { ChurchIcon } from 'lucide-react';
-import React from 'react';
-import { FiPlus, FiUser } from 'react-icons/fi';
-import { useNavigate } from 'react-router-dom';
+import type { PlanSummary } from '@/shared/schemas/plan';
 
-const services = [
-  {
-    id: '1',
-    name: 'Sunday Worship',
-    created: '2024-05-01',
-    modified: '2024-05-07',
-    createdBy: 'Pastor John',
-  },
-  {
-    id: '2',
-    name: 'Youth Service',
-    created: '2024-04-20',
-    modified: '2024-05-05',
-    createdBy: 'Sister Mary',
-  },
-  {
-    id: '3',
-    name: 'Prayer Meeting',
-    created: '2024-05-03',
-    modified: '2024-05-06',
-    createdBy: 'Brother Paul',
-  },
-];
+// Real landing page (§1.5): quick links to the live domains plus the most
+// recent service plans read from SQLite via window.api. No fixtures, no alerts,
+// no links to non-existent ids — the template cruft was removed here.
+const QUICK_ACTIONS = [
+  { label: 'Scripture', to: '/scripture', icon: FiBook },
+  { label: 'Songs', to: '/songs', icon: FiMusic },
+  { label: 'Services', to: '/services', icon: FiList },
+  { label: 'Present', to: '/present', icon: FiMonitor },
+  { label: 'Media', to: '/media', icon: FiImage },
+  { label: 'Settings', to: '/settings', icon: FiSettings },
+] as const;
 
-const HomePage = () => {
+const RECENT_LIMIT = 5;
+
+export default function HomePage() {
+  const [plans, setPlans] = useState<PlanSummary[]>([]);
   const navigate = useNavigate();
+
+  const refresh = useCallback(async () => {
+    const res = await window.api.plans.list();
+    if (res.ok) setPlans(res.data);
+  }, []);
+
+  useEffect(() => {
+    void refresh();
+  }, [refresh]);
+
+  // Mirror ServicesPage.createPlan: persist a new plan, then open it (§1.9 —
+  // one way to create a service, shared shape).
+  const createService = async () => {
+    const res = await window.api.plans.create({
+      name: 'New service',
+      scheduledFor: null,
+      notes: '',
+      items: [],
+    });
+    if (res.ok) navigate(`/services/${res.data}`);
+  };
+
+  const recent = plans.slice(0, RECENT_LIMIT);
+
   return (
-    <div className="flex min-h-screen">
-      {/* Left: Start a new Service */}
-      <div className="flex flex-col justify-center items-center flex-1 bg-blue-800 dark:bg-slate-600  text-white relative overflow-hidden">
-        {/* Decorative circle */}
-        <div
-          className="absolute top-0 left-0 w-1/2 h-1/2 rounded-full border-4 border-blue-400 opacity-30"
-          style={{ transform: 'translate(-30%,-30%)' }}
-        />
-        <div
-          className="absolute bottom-0 right-0 w-1/2 h-1/2 rounded-full border-4 border-blue-400 opacity-30"
-          style={{ transform: 'translate(30%,30%)' }}
-        />
-        {/* Church Icon */}
-        <ChurchIcon className="w-10 h-10 my-10" />
-        <h2 className="text-2xl font-bold mb-10">Start a new Service</h2>
-        <button
-          className="flex items-center gap-2 bg-white text-blue-600 font-semibold px-6 py-3 rounded shadow hover:bg-blue-50 transition"
-          onClick={() => alert('Start new service (to be implemented)')}
-        >
-          <FiPlus /> New Service
-        </button>
-      </div>
-      {/* Right: Services List */}
-      <div className="flex-1 bg-background p-12 flex flex-col">
-        <h2 className="text-2xl font-bold mb-8 text-foreground">Services List</h2>
-        <div className="flex flex-col gap-4">
-          {services.map((service) => (
-            <div
-              key={service.id}
-              className="rounded-lg shadow border p-6 flex items-center justify-between hover:bg-blue-50 transition cursor-pointer"
-              onClick={() => navigate(`/services/${service.id}`)}
+    <div className="flex min-h-screen flex-col gap-10 bg-background p-12">
+      <header className="flex items-center gap-4">
+        <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-primary text-primary-foreground">
+          <ChurchIcon className="h-7 w-7" aria-hidden />
+        </div>
+        <div>
+          <h1 className="text-3xl font-bold text-foreground">PraisePresent</h1>
+          <p className="text-sm text-muted-foreground">Worship presentation for your church.</p>
+        </div>
+      </header>
+
+      <section aria-labelledby="quick-actions-heading">
+        <h2 id="quick-actions-heading" className="mb-4 text-lg font-semibold text-foreground">
+          Quick actions
+        </h2>
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+          {QUICK_ACTIONS.map(({ label, to, icon: Icon }) => (
+            <Link
+              key={to}
+              to={to}
+              className="flex flex-col items-center gap-2 rounded-lg border p-5 text-center transition hover:bg-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring"
             >
-              <div>
-                <div className="text-lg font-semibold text-foreground">{service.name}</div>
-                <div className="text-sm text-muted-foreground flex gap-4 mt-1">
-                  <span>Created: {service.created}</span>
-                  <span>Modified: {service.modified}</span>
-                </div>
-              </div>
-              <div className="flex items-center gap-2 text-blue-600">
-                <FiUser />
-                <span className="font-medium">{service.createdBy}</span>
-              </div>
-            </div>
+              <Icon className="h-6 w-6 text-primary" aria-hidden />
+              <span className="text-sm font-medium text-foreground">{label}</span>
+            </Link>
           ))}
         </div>
-      </div>
+      </section>
+
+      <section aria-labelledby="recent-heading" className="flex flex-col gap-4">
+        <div className="flex items-center justify-between">
+          <h2 id="recent-heading" className="text-lg font-semibold text-foreground">
+            Recent services
+          </h2>
+          <button
+            type="button"
+            onClick={createService}
+            className="flex items-center gap-2 rounded bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring"
+          >
+            <FiPlus aria-hidden /> New service
+          </button>
+        </div>
+
+        {recent.length === 0 ? (
+          <p className="text-sm text-muted-foreground">No services yet — create one to begin.</p>
+        ) : (
+          <ul className="flex flex-col gap-3">
+            {recent.map((p) => (
+              <li key={p.id}>
+                <Link
+                  to={`/services/${p.id}`}
+                  className="flex items-center justify-between rounded-lg border p-5 transition hover:bg-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring"
+                >
+                  <span className="text-base font-semibold text-foreground">{p.name}</span>
+                  <span className="text-sm text-muted-foreground">
+                    {p.scheduledFor ?? 'Unscheduled'}
+                  </span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
     </div>
   );
-};
-
-export default HomePage;
+}
