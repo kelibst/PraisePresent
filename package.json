@@ -19,7 +19,9 @@
   "keywords": [],
   "author": "kelib",
   "license": "MIT",
-  "trustedDependencies": ["electron"],
+  "trustedDependencies": [
+    "electron"
+  ],
   "devDependencies": {
     "@electron-forge/cli": "^7.8.0",
     "@electron-forge/maker-deb": "^7.8.0",

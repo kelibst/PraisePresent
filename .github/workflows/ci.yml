@@ -42,6 +42,9 @@ jobs:
       - name: Lint
         run: bun run lint
 
+      - name: Format check
+        run: bun run format:check
+
       - name: Unit tests (Vitest)
         run: bun run test
 
