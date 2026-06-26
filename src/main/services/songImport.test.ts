@@ -19,4 +19,10 @@ describe('parsePlainText', () => {
   it('returns no sections for empty input', () => {
     expect(parsePlainText('   \n\n  ')).toEqual([]);
   });
+
+  it('handles Windows CRLF line endings in headers', () => {
+    const sections = parsePlainText('[Chorus]\r\nsing it\r\n\r\n[Verse 1]\r\ngo');
+    expect(sections[0]).toMatchObject({ kind: 'chorus', label: 'Chorus', content: 'sing it' });
+    expect(sections[1]).toMatchObject({ kind: 'verse', label: 'Verse 1', content: 'go' });
+  });
 });

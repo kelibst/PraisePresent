@@ -5,6 +5,7 @@ import type { SongSection } from '@/shared/schemas/song';
 // otherwise it's "Verse N". Label keywords map to a section kind.
 export function parsePlainText(text: string): SongSection[] {
   const blocks = text
+    .replace(/\r\n/g, '\n') // normalize Windows line endings
     .split(/\n\s*\n/)
     .map((b) => b.trim())
     .filter(Boolean);
