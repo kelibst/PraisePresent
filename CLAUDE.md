@@ -10,7 +10,7 @@
 
 - **Stack:** Electron · electron-forge · Vite · React · TypeScript · Redux Toolkit · Tailwind + shadcn/ui · SQLite (`better-sqlite3`, being added). Optional Rust (napi-rs/sidecar) for search + offline AI only.
 - **Current reality:** an early scaffold (~1k LOC, ~90% template), being revived. **Do not assume features exist — verify in code.**
-- **The plan of record lives in [`plan/phases/`](plan/phases/).** The full audit, architecture target, and rationale live in [`revival/`](revival/) (or `docs/revival/` after restructure). Read the relevant phase brief and the audit before starting work.
+- **The plan of record lives in [`plan/phases/`](plan/phases/).** The full audit, architecture target, and rationale live in [`docs/revival/`](docs/revival/). Read the relevant phase brief and the audit before starting work.
 
 ---
 
@@ -203,5 +203,5 @@ A task is **done** only when **all** are true:
 
 ## 8. References
 - Plan of record: [`plan/`](plan/) — PM briefs per phase in [`plan/phases/`](plan/phases/) (start at `plan/phases/README.md`), and the **AI auto-scripture-detection technical spec** at [`plan/ai-scripture-detection-spec.md`](plan/ai-scripture-detection-spec.md).
-- Audit, architecture target, Node-vs-Rust analysis, risks: [`revival/`](revival/) (→ `docs/revival/` after Phase 0 restructure). The `plan/` folder stays at repo root.
-- Product requirements (SRS): `Project.md` (→ `docs/Project.md` after restructure) — **aspirational**; treat "% implemented" honestly.
+- Audit, architecture target, Node-vs-Rust analysis, risks: [`docs/revival/`](docs/revival/). The `plan/` folder stays at repo root.
+- Product requirements (SRS): [`docs/Project.md`](docs/Project.md) — **aspirational**; treat "% implemented" honestly.
