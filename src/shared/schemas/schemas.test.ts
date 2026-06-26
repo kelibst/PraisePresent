@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { settingsGetRequest, settingsSetRequest } from './settings';
 import { presentState } from './present';
+import { planCreate } from './plan';
 
 describe('settings schemas', () => {
   it('accepts a valid get request', () => {
@@ -25,5 +26,33 @@ describe('present state schema', () => {
   });
   it('rejects an unknown mode', () => {
     expect(presentState.safeParse({ mode: 'explode', slide: null }).success).toBe(false);
+  });
+});
+
+describe('plan schema', () => {
+  it('accepts a plan with a song item and a custom item', () => {
+    const res = planCreate.safeParse({
+      name: 'Sunday',
+      scheduledFor: null,
+      notes: '',
+      items: [
+        { kind: 'song', refId: 1, title: 'Grace', content: '', sortOrder: 0 },
+        { kind: 'custom', refId: null, title: 'Welcome', content: 'Hi', sortOrder: 1 },
+      ],
+    });
+    expect(res.success).toBe(true);
+  });
+  it('rejects an empty name and an unknown item kind', () => {
+    expect(
+      planCreate.safeParse({ name: '', scheduledFor: null, notes: '', items: [] }).success,
+    ).toBe(false);
+    expect(
+      planCreate.safeParse({
+        name: 'x',
+        scheduledFor: null,
+        notes: '',
+        items: [{ kind: 'banana', refId: null, title: 't', content: '', sortOrder: 0 }],
+      }).success,
+    ).toBe(false);
   });
 });

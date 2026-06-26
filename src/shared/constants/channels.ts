@@ -18,4 +18,11 @@ export const CHANNELS = {
     delete: 'songs:delete',
     importText: 'songs:import-text',
   },
+  plans: {
+    list: 'plans:list',
+    get: 'plans:get',
+    create: 'plans:create',
+    update: 'plans:update',
+    delete: 'plans:delete',
+  },
 } as const;

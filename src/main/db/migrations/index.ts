@@ -44,6 +44,26 @@ const migrations: Migration[] = [
          );
          CREATE INDEX IF NOT EXISTS idx_song_sections_song ON song_sections(song_id);`,
   },
+  {
+    id: 4,
+    name: 'init_plans',
+    up: `CREATE TABLE IF NOT EXISTS plans (
+           id            INTEGER PRIMARY KEY AUTOINCREMENT,
+           name          TEXT NOT NULL,
+           scheduled_for TEXT,
+           notes         TEXT NOT NULL DEFAULT ''
+         );
+         CREATE TABLE IF NOT EXISTS plan_items (
+           id         INTEGER PRIMARY KEY AUTOINCREMENT,
+           plan_id    INTEGER NOT NULL REFERENCES plans(id) ON DELETE CASCADE,
+           kind       TEXT NOT NULL,
+           ref_id     INTEGER,
+           title      TEXT NOT NULL,
+           content    TEXT NOT NULL DEFAULT '',
+           sort_order INTEGER NOT NULL
+         );
+         CREATE INDEX IF NOT EXISTS idx_plan_items_plan ON plan_items(plan_id);`,
+  },
 ];
 
 // Idempotent: applied migrations are tracked in _migrations; only pending ones

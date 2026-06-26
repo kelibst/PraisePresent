@@ -1,6 +1,7 @@
 import type { Result } from '@/shared/types/result';
 import type { PresentState } from '@/shared/schemas/present';
 import type { Song, SongCreate, SongImportText, SongSummary } from '@/shared/schemas/song';
+import type { Plan, PlanCreate, PlanSummary } from '@/shared/schemas/plan';
 
 // The typed surface exposed on `window.api` by the preload bridge. The renderer
 // imports ONLY this type and calls `window.api` — never electron/ipcRenderer
@@ -22,6 +23,13 @@ export interface Api {
     update(input: Song): Promise<Result<void>>;
     delete(id: number): Promise<Result<void>>;
     importText(input: SongImportText): Promise<Result<number>>;
+  };
+  plans: {
+    list(): Promise<Result<PlanSummary[]>>;
+    get(id: number): Promise<Result<Plan | null>>;
+    create(input: PlanCreate): Promise<Result<number>>;
+    update(input: Plan): Promise<Result<void>>;
+    delete(id: number): Promise<Result<void>>;
   };
 }
 

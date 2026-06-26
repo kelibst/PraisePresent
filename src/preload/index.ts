@@ -26,6 +26,13 @@ const api: Api = {
     delete: (id) => ipcRenderer.invoke(CHANNELS.songs.delete, { id }),
     importText: (input) => ipcRenderer.invoke(CHANNELS.songs.importText, input),
   },
+  plans: {
+    list: () => ipcRenderer.invoke(CHANNELS.plans.list),
+    get: (id) => ipcRenderer.invoke(CHANNELS.plans.get, { id }),
+    create: (input) => ipcRenderer.invoke(CHANNELS.plans.create, input),
+    update: (input) => ipcRenderer.invoke(CHANNELS.plans.update, input),
+    delete: (id) => ipcRenderer.invoke(CHANNELS.plans.delete, { id }),
+  },
 };
 
 contextBridge.exposeInMainWorld('api', api);
