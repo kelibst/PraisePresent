@@ -14,7 +14,7 @@
 
 **Branch:** `phase0/baseline-setup` (ALL work is on this one branch; nothing pushed to remote yet). **Tag:** `v0.1.0-baseline` (pre-restructure rollback point).
 **Remote:** `https://github.com/kelibst/PraisePresent.git` (origin) — **nothing pushed; `gh` is NOT authenticated locally.**
-**Gate is green:** `bunx tsc --noEmit` 0 errors · `bun run lint` 0 · format clean · **62 Vitest unit tests** · **10 Playwright-Electron e2e tests** all pass. Working tree clean except this file.
+**Gate is green:** `bunx tsc --noEmit` 0 errors · `bun run lint` 0 · format clean · **62 Vitest unit tests** · **11 Playwright-Electron e2e tests** all pass. Working tree clean except this file.
 
 ### Phases complete
 - **Phase 0 (Stabilize & Restructure)** — ✅ DONE. Restructured to the target tree, dead code purged, `HashRouter` (B1 fixed), Electron security hardened (S1–S4). **Package manager is `bun`, not npm.**
@@ -79,9 +79,14 @@ Songs and Plans are the reference. To add domain `X`, copy this exact shape:
 
 ## 5. Open tasks (`tasks/active/`)
 
-- ✅ **`2026-06-26_p3-d1-scripture.md`** — **DONE** (moved to `tasks/completed/`). Bundled WEB, FTS5, offline search, present-to-audience. FTS5 ~1ms so no Rust task filed.
-- ✅ **`2026-06-26_p3-d2-presentation-engine.md`** — **impl DONE** (moved to `tasks/completed/`). Deck model + transitions + presenter + keyboard. Closed D1 follow-up (a) (multi-verse scripture deck). ⚠ pending the user's observed dual-monitor fps run (see §6).
-- **`2026-06-26_p3-d4-media.md`** — NOT started. Media library + image/video/audio on the audience window. **Verification limit:** needs sample media files + observed playback.
+> **⚡ NEW from a 2026-06-26 observed run with the user — read §10 before picking work.** The app was launched on the user's desktop; the foundation/domains work, but the SHELL/UX is not "ready" yet. Two new tasks were filed + the shell-coherence pass was done.
+
+- ✅ **`2026-06-26_p3-d1-scripture.md`** — **DONE** (`tasks/completed/`). Bundled WEB, FTS5, offline search, present-to-audience. FTS5 ~1ms so no Rust task filed.
+- ✅ **`2026-06-26_p3-d2-presentation-engine.md`** — **impl DONE** (`tasks/completed/`). Deck model + transitions + presenter + keyboard. Closed D1 follow-up (a). ⚠ pending the user's observed dual-monitor fps run (§6).
+- ✅ **`2026-06-26_p3-shell-coherence.md`** — **DONE** (`tasks/completed/`, commit `c243ede`). Wired dead `/settings`+`/media` links, killed HomePage template fake-data (fixed the Services "Loading…" hang), set the `--primary` token to brand Deep Purple. Reviewer PASS.
+- ⭐ **`2026-06-26_scripture-browser-ui.md`** — NEW, NOT started. The Scripture page is search-only → looks empty/black even though 31,095 verses are imported. Add a **book→chapter→verse Bible browser** + re-add the `getChapter` IPC path (removed at D1 close). **High user-visible priority.**
+- ⭐ **`2026-06-26_settings-restore-display-config.md`** — NEW, NOT started. User: "old settings had a good number of features; new one is an empty template." TRUE — pre-revival **display/output settings** (audience-monitor selection, `DisplayManager`) were purged in Phase 0. Rebuild real Settings (esp. display config) to current architecture; recoverable from git history (paths in the task file).
+- **`2026-06-26_p3-d4-media.md`** — NOT started. Media library + image/video/audio on the audience window. **Verification limit:** needs sample media files + observed playback. Extend the D2 `PresentState` with a media slide kind (don't fork present).
 - **`2026-06-26_p1-t4-ci-pipeline.md`** — CI workflow authored + committed; **blocked on a GitHub push** (gh not authed). Trial-PR-green + branch protection are USER steps. Closing it also closes `t7`.
 - **`2026-06-26_t7-cross-platform-packaging-verify.md`** — Linux verified; Windows/macOS pending CI.
 - **`2026-06-26_p1-followup-electron-38-bump.md`** — electron 36.9.5 fixed the ASAR-integrity CVE; 3 other moderate advisories need electron **38.8.6+** (major bump). Low practical risk; do when a major-bump window is acceptable.
@@ -90,9 +95,12 @@ Songs and Plans are the reference. To add domain `X`, copy this exact shape:
 
 ## 6. Recommended next steps (in order)
 
-1. **PUSH THE BRANCH and let CI validate everything on Windows/macOS/Linux before building more.** A lot rides on the foundation now and this is a single-Linux env — CI is the safety net it can't be. (User must push / `gh auth`. Local `bun run make` installers also need `rpmbuild`/`dpkg` which aren't installed — CI handles per-OS via `package`/`make`.)
-2. ✅ **D1 Scripture** — DONE.
-3. ✅ **D2 Presentation engine** — impl DONE. ⚠ Get the user's **observed dual-monitor fps run** to fully close acceptance (§6).
+> **Reality check (2026-06-26 observed run):** the BACKEND is solid, but the user's takeaway from running it was "it doesn't feel ready." Prioritize **user-visible readiness** (Scripture browser, real Settings, then Media) alongside finishing domains — not just green gates. See §10.
+
+1. **PUSH THE BRANCH and let CI validate everything on Windows/macOS/Linux before building more.** Single-Linux env — CI is the safety net it can't be. (User must push / `gh auth`.)
+2. ⭐ **Scripture browser UI** (`tasks/active/2026-06-26_scripture-browser-ui.md`) — highest user-visible impact; the imported Bible is invisible without it.
+3. ⭐ **Restore real Settings + display config** (`tasks/active/2026-06-26_settings-restore-display-config.md`) — core for a dual-screen app.
+4. ✅ **D1 Scripture / D2 engine / shell-coherence** — DONE. ⚠ D2 still needs the user's **observed dual-monitor fps run** to fully close (§6).
 4. **D4 Media** — LAST domain. Media library + image/video/audio on the audience window. Needs sample media + observed playback (coordinate with user). The audience `present` model + `Slide`/`Transition` from D2 are the integration point — a media slide kind likely extends `PresentState`.
 5. After all 5 domains + the D2 observed run: run the **Phase 3 MVP exit gate** in `plan/phases/phase-3-domains.md`, then Phase 4 (AI scripture detection — `plan/ai-scripture-detection-spec.md`) and Phase 5 (hardening/release).
 
@@ -117,8 +125,19 @@ Songs and Plans are the reference. To add domain `X`, copy this exact shape:
 
 ---
 
+## 10. Observed-run findings (2026-06-26 — read before building UX)
+The app was launched on the user's desktop (`out/praisepresent-linux-x64/praisepresent`, env strips `ELECTRON_RUN_AS_NODE`). Backend healthy (logs: migrations 1–5, "Scripture hydrated: 31095 verses", audience window up). User feedback + diagnosis:
+1. **"Most menu items lead to non-existing pages" (Settings/Media blank), Services "loading and nothing."** → FIXED by the shell-coherence pass (`c243ede`): dead routes wired, HomePage fake-data cruft (links to non-existent `/services/1..3`) removed — that was the root of the `ServiceDetail` permanent "Loading…" (it had no not-found state). All 7 sidebar links now resolve.
+2. **"No scriptures at all, everything is black."** → NOT a data problem. Live DB has all **31,095 verses + FTS populated** (verified via `sqlite3 -readonly ~/.config/praisepresent/praisepresent.db`). The Scripture page is **search-only** (Reference/Keyword box; empty until you search) with **no Bible browser** — so it looks blank. Filed `2026-06-26_scripture-browser-ui.md`. There are **NO other pre-downloaded bible files** anywhere (Desktop/Downloads/Documents searched); the bundled `resources/bible/web.json.gz` is the only dataset and it's already hydrated. Nothing to "import."
+3. **"Old settings had a good number of features; new one is an empty template."** → TRUE. Pre-revival display/output settings (`src/pages/Settings.tsx`, `src/components/settings/display/GeneralSettings.tsx`, `src/services/DisplayManager.tsx`, `src/lib/settingSlice.ts`) were purged in Phase 0 (`02c0bed`). Filed `2026-06-26_settings-restore-display-config.md` (recover from git history, rebuild to current main/IPC architecture).
+4. **Brand:** the `--primary` token is now Deep Purple `#5E3B9E` (looks correct in the user's screenshot). Theme defaults to `'system'`; user's OS is dark → app renders in dark mode (near-black bg `222.2 84% 4.9%`, light text) — that's normal dark mode, not a bug, but the empty Scripture area reads as "black."
+**Takeaway:** gates are green and the architecture is sound, but **user-perceived readiness lags** — favor the two new UX tasks + Media before declaring Phase 3 done.
+
 ## 9. Full commit history this session (newest first, on `phase0/baseline-setup`)
 ```
+c243ede fix(phase3): shell/navigation coherence — wire dead links, kill template cruft, fix Services hang
+e21193a feat(phase3): presentation engine — live deck, transitions, presenter + keyboard (P3-D2)
+7c4316e feat(phase3): Scripture domain — bundled WEB, FTS5 search, present-to-audience (P3-D1)
 a8bb5ad feat(phase3): surface plan duration estimate (plans:estimate + UI); close P3-D5
 cada7c7 feat(phase3): Service planning domain; retire servicesData fixture + Redux (P3-D5)
 d55e5d5 fix(phase3): CRLF-normalize song import; close P3-D3 (reviewer PASS)
