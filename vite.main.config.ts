@@ -13,6 +13,10 @@ export default defineConfig({
   },
   build: {
     rollupOptions: {
+      // better-sqlite3 is a native module (.node) — rollup cannot bundle it, so
+      // keep it external and require()'d at runtime. Forge's rebuild builds it
+      // for Electron's ABI and auto-unpack-natives ships it outside the asar.
+      external: ['better-sqlite3'],
       output: { entryFileNames: 'main.js' },
     },
   },
