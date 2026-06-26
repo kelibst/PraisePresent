@@ -9,4 +9,4 @@ const servicesSlice = createSlice({
   },
 });
 
-export default servicesSlice.reducer; 
+export default servicesSlice.reducer;

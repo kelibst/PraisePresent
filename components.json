@@ -13,4 +13,4 @@
     "components": "@/renderer/components",
     "utils": "@/renderer/lib/utils"
   }
-} 
+}

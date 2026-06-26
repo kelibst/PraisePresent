@@ -1,6 +1,6 @@
 import React from 'react';
 import { useSelector } from 'react-redux';
-import { RootState } from '@/renderer/store';
+import type { RootState } from '@/renderer/store';
 import { FiUser } from 'react-icons/fi';
 import { useNavigate, useLocation, Outlet } from 'react-router-dom';
 
@@ -42,4 +42,4 @@ const ServicesPage = () => {
   );
 };
 
-export default ServicesPage; 
+export default ServicesPage;

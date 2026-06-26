@@ -20,4 +20,4 @@ export const services = [
     modified: '2024-05-06',
     createdBy: 'Brother Paul',
   },
-]; 
+];

@@ -24,5 +24,5 @@ createRoot(document.getElementById('root')!).render(
         <AppRouter />
       </ThemeProvider>
     </Provider>
-  </React.StrictMode>
+  </React.StrictMode>,
 );

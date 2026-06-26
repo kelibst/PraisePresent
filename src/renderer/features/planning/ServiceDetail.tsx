@@ -1,7 +1,7 @@
 import React from 'react';
 import { useParams } from 'react-router-dom';
 import { useSelector } from 'react-redux';
-import { RootState } from '@/renderer/store';
+import type { RootState } from '@/renderer/store';
 import { FiUser } from 'react-icons/fi';
 
 const ServiceDetail = () => {
@@ -21,4 +21,4 @@ const ServiceDetail = () => {
   );
 };
 
-export default ServiceDetail; 
+export default ServiceDetail;
