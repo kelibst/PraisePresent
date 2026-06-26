@@ -32,6 +32,7 @@ const api: Api = {
     create: (input) => ipcRenderer.invoke(CHANNELS.plans.create, input),
     update: (input) => ipcRenderer.invoke(CHANNELS.plans.update, input),
     delete: (id) => ipcRenderer.invoke(CHANNELS.plans.delete, { id }),
+    estimate: (id) => ipcRenderer.invoke(CHANNELS.plans.estimate, { id }),
   },
 };
 

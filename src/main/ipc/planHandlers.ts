@@ -17,4 +17,5 @@ export function registerPlanHandlers(): void {
   handle(CHANNELS.plans.delete, planId, ({ id }) => {
     planService.delete(id);
   });
+  handle(CHANNELS.plans.estimate, planId, ({ id }) => planService.estimateMinutes(id));
 }

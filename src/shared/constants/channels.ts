@@ -24,5 +24,6 @@ export const CHANNELS = {
     create: 'plans:create',
     update: 'plans:update',
     delete: 'plans:delete',
+    estimate: 'plans:estimate',
   },
 } as const;

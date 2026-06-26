@@ -10,12 +10,19 @@ export default function ServiceDetail() {
   const planId = Number(id);
   const [plan, setPlan] = useState<Plan | null>(null);
   const [songs, setSongs] = useState<SongSummary[]>([]);
+  const [estimate, setEstimate] = useState(0);
+
+  const refreshEstimate = useCallback(async () => {
+    const e = await window.api.plans.estimate(planId);
+    if (e.ok) setEstimate(e.data);
+  }, [planId]);
 
   const load = useCallback(async () => {
     const [p, s] = await Promise.all([window.api.plans.get(planId), window.api.songs.list()]);
     if (p.ok) setPlan(p.data);
     if (s.ok) setSongs(s.data);
-  }, [planId]);
+    await refreshEstimate();
+  }, [planId, refreshEstimate]);
 
   useEffect(() => {
     void load();
@@ -27,6 +34,7 @@ export default function ServiceDetail() {
     const next = { ...plan, items: reindexed };
     await window.api.plans.update(next);
     setPlan(next);
+    await refreshEstimate();
   };
 
   const addSong = (song: SongSummary) => {
@@ -82,7 +90,10 @@ export default function ServiceDetail() {
 
   return (
     <div className="mb-8 flex flex-col gap-6">
-      <h3 className="text-2xl font-bold text-foreground">{plan.name}</h3>
+      <div className="flex items-baseline gap-3">
+        <h3 className="text-2xl font-bold text-foreground">{plan.name}</h3>
+        <span className="text-sm text-muted-foreground">~{estimate} min</span>
+      </div>
 
       <div className="flex flex-col gap-2">
         {plan.items.map((item, i) => (

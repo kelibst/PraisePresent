@@ -30,6 +30,7 @@ export interface Api {
     create(input: PlanCreate): Promise<Result<number>>;
     update(input: Plan): Promise<Result<void>>;
     delete(id: number): Promise<Result<void>>;
+    estimate(id: number): Promise<Result<number>>;
   };
 }
 
