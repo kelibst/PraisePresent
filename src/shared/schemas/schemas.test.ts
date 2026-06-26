@@ -19,14 +19,26 @@ describe('settings schemas', () => {
 });
 
 describe('present state schema', () => {
-  it('accepts a slide state', () => {
-    expect(presentState.safeParse({ mode: 'slide', slide: { text: 'hi' } }).success).toBe(true);
+  const transition = { type: 'fade' as const, durationMs: 400 };
+  it('accepts a slide-deck state', () => {
+    expect(
+      presentState.safeParse({
+        mode: 'slide',
+        deck: [{ id: 's1', lines: ['hi'] }],
+        index: 0,
+        transition,
+      }).success,
+    ).toBe(true);
   });
-  it('accepts black with null slide', () => {
-    expect(presentState.safeParse({ mode: 'black', slide: null }).success).toBe(true);
+  it('accepts black with an empty deck (fail-safe)', () => {
+    expect(presentState.safeParse({ mode: 'black', deck: [], index: 0, transition }).success).toBe(
+      true,
+    );
   });
   it('rejects an unknown mode', () => {
-    expect(presentState.safeParse({ mode: 'explode', slide: null }).success).toBe(false);
+    expect(
+      presentState.safeParse({ mode: 'explode', deck: [], index: 0, transition }).success,
+    ).toBe(false);
   });
 });
 

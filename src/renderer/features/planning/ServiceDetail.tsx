@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import type { Plan, PlanItem } from '@/shared/schemas/plan';
 import type { SongSummary } from '@/shared/schemas/song';
+import { blocksToDeck, singleSlideDeck } from '@/shared/lib/buildDeck';
 
 // A single service plan: ordered mixed elements, persisted in SQLite. Add songs
 // (from the library) or custom items, reorder, and present each to the audience.
@@ -78,11 +79,22 @@ export default function ServiceDetail() {
   const present = async (item: PlanItem) => {
     if (item.kind === 'song' && item.refId) {
       const res = await window.api.songs.get(item.refId);
-      const text =
-        res.ok && res.data ? (res.data.sections[0]?.content ?? res.data.title) : item.title;
-      await window.api.present.setState({ mode: 'slide', slide: { text } });
+      // Present the full song as a multi-slide deck (one slide per section).
+      if (res.ok && res.data && res.data.sections.length > 0) {
+        const deck = blocksToDeck(
+          res.data.sections.map((sec) => ({ text: sec.content, label: sec.label })),
+          `song-${res.data.id}`,
+        );
+        await window.api.present.setDeck(deck);
+        return;
+      }
+      await window.api.present.setDeck(
+        singleSlideDeck(item.title, undefined, `item-${item.sortOrder}`),
+      );
     } else {
-      await window.api.present.setState({ mode: 'slide', slide: { text: item.content } });
+      await window.api.present.setDeck(
+        singleSlideDeck(item.content, undefined, `item-${item.sortOrder}`),
+      );
     }
   };
 

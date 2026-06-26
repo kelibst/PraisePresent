@@ -40,14 +40,15 @@ test('import a song, persist it, and present a section to the audience', async (
   expect(list.ok).toBe(true);
   expect(list.data.some((s: { title: string }) => s.title === 'Amazing Grace')).toBe(true);
 
-  // Project the first section; the audience window mirrors it.
+  // Project the song as a deck; the audience window mirrors the first slide.
   await presenter.evaluate(async () => {
     const got = await window.api.songs.get(1);
     if (got.ok && got.data) {
-      await window.api.present.setState({
-        mode: 'slide',
-        slide: { text: got.data.sections[0].content },
-      });
+      const deck = got.data.sections.map((sec, i) => ({
+        id: `song-1-${i}`,
+        lines: sec.content.split('\n'),
+      }));
+      await window.api.present.setDeck(deck, 0);
     }
   });
   await expect(audience.getByText('Amazing grace how sweet')).toBeVisible();

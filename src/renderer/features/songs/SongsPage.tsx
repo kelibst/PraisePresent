@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { Song, SongSummary } from '@/shared/schemas/song';
+import { blocksToDeck } from '@/shared/lib/buildDeck';
 
 // Songs feature: list, import (plain text), and project a song's sections to the
 // audience window via the Phase 2 present:* broadcast. Business logic lives in
@@ -40,9 +41,17 @@ export default function SongsPage() {
     }
   };
 
-  const present = (content: string) =>
-    window.api.present.setState({ mode: 'slide', slide: { text: content } });
-  const black = () => window.api.present.setState({ mode: 'black', slide: null });
+  // Present the whole song as a deck (one slide per section), starting at the
+  // clicked section. Live next/prev then walk the song.
+  const presentSong = (startIndex: number) => {
+    if (!selected) return;
+    const deck = blocksToDeck(
+      selected.sections.map((sec) => ({ text: sec.content, label: sec.label })),
+      `song-${selected.id}`,
+    );
+    void window.api.present.setDeck(deck, startIndex);
+  };
+  const black = () => window.api.present.black();
 
   return (
     <div className="flex min-h-screen gap-6 bg-background p-8">
@@ -112,7 +121,7 @@ export default function SongsPage() {
                       {sec.label}
                     </span>
                     <button
-                      onClick={() => present(sec.content)}
+                      onClick={() => presentSong(i)}
                       className="rounded bg-primary px-3 py-1 text-sm font-medium text-primary-foreground hover:opacity-90"
                     >
                       Present

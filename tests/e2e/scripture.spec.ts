@@ -77,10 +77,7 @@ test('hydrate WEB offline, search by reference + keyword, and present a verse', 
   await presenter.evaluate(async () => {
     const res = await window.api.scripture.lookupReference('John 3:16');
     if (res.ok && res.data[0]) {
-      await window.api.present.setState({
-        mode: 'slide',
-        slide: { text: res.data[0].text },
-      });
+      await window.api.present.setDeck([{ id: 'jn3-16', lines: [res.data[0].text] }], 0);
     }
   });
   await expect(audience.getByText(/For God so loved the world/)).toBeVisible();

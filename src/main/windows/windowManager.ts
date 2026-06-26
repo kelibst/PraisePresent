@@ -2,7 +2,9 @@ import { app, BrowserWindow, screen, shell } from 'electron';
 import path from 'node:path';
 import log from '../infra/logger';
 import { CHANNELS } from '@/shared/constants/channels';
-import type { PresentState } from '@/shared/schemas/present';
+import type { PresentState, PresentSlide, Transition } from '@/shared/schemas/present';
+import { FAILSAFE } from '@/shared/schemas/present';
+import { reduce, type PresentAction } from '../services/presentEngine';
 
 const PRESENTER_SIZE = { width: 1280, height: 800 };
 
@@ -11,7 +13,7 @@ let audienceWindow: BrowserWindow | null = null;
 
 // Live presentation state is owned by main (CLAUDE.md §5.3). Default is black —
 // the audience never shows anything unintended, and we fail safe to it (§5.7).
-let liveState: PresentState = { mode: 'black', slide: null };
+let liveState: PresentState = FAILSAFE;
 
 function secureWebPreferences() {
   return {
@@ -57,6 +59,8 @@ export function createPresenterWindow(): BrowserWindow {
   });
   hardenWindow(presenterWindow);
   loadRoute(presenterWindow, '/');
+  // Mirror current live state to the presenter once it is ready (§5.4 preview).
+  presenterWindow.webContents.on('did-finish-load', () => broadcastState());
   if (!app.isPackaged) presenterWindow.webContents.openDevTools();
   presenterWindow.on('closed', () => {
     presenterWindow = null;
@@ -95,15 +99,25 @@ export function createAudienceWindow(): BrowserWindow {
   return audienceWindow;
 }
 
+// Broadcast the live state to BOTH windows: the audience renders it, the
+// presenter mirrors it so the preview tracks the live index/mode (§5.4).
 function broadcastState() {
-  if (audienceWindow && !audienceWindow.isDestroyed()) {
-    audienceWindow.webContents.send(CHANNELS.present.state, liveState);
+  for (const win of [presenterWindow, audienceWindow]) {
+    if (win && !win.isDestroyed()) {
+      win.webContents.send(CHANNELS.present.state, liveState);
+    }
   }
 }
 
-export function setLiveState(state: PresentState) {
-  liveState = state;
+// Apply a live-presentation action through the pure reducer, then broadcast.
+// Main is the single source of truth (§5.3) and clamps every index (§5.7).
+export function dispatchPresent(action: PresentAction): void {
+  liveState = reduce(liveState, action);
   broadcastState();
+}
+
+export function setDeck(deck: PresentSlide[], index?: number, transition?: Transition): void {
+  dispatchPresent({ type: 'setDeck', deck, index, transition });
 }
 
 export function getLiveState(): PresentState {
@@ -112,7 +126,7 @@ export function getLiveState(): PresentState {
 
 // Fail-safe entry point — anything can call this to force the audience black.
 export function blackout() {
-  setLiveState({ mode: 'black', slide: null });
+  dispatchPresent({ type: 'black' });
 }
 
 // Re-place / recreate the audience window when displays change, without

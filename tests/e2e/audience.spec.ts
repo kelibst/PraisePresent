@@ -27,14 +27,14 @@ test('audience window mirrors the presenter slide and fails safe to black', asyn
   expect(audience).toBeTruthy();
   expect(presenter).toBeTruthy();
 
-  // Presenter pushes a slide; audience mirrors it.
+  // Presenter pushes a deck; audience mirrors the current slide.
   await presenter!.evaluate(() =>
-    window.api.present.setState({ mode: 'slide', slide: { text: 'MIRROR TEST' } }),
+    window.api.present.setDeck([{ id: 's1', lines: ['MIRROR TEST'] }], 0),
   );
   await expect(audience!.getByText('MIRROR TEST')).toBeVisible();
 
   // Black out — audience fails safe; the slide is gone.
-  await presenter!.evaluate(() => window.api.present.setState({ mode: 'black', slide: null }));
+  await presenter!.evaluate(() => window.api.present.black());
   await expect(audience!.getByText('MIRROR TEST')).toBeHidden();
 
   await app.close();

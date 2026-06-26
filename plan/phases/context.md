@@ -14,17 +14,18 @@
 
 **Branch:** `phase0/baseline-setup` (ALL work is on this one branch; nothing pushed to remote yet). **Tag:** `v0.1.0-baseline` (pre-restructure rollback point).
 **Remote:** `https://github.com/kelibst/PraisePresent.git` (origin) — **nothing pushed; `gh` is NOT authenticated locally.**
-**Gate is green:** `bunx tsc --noEmit` 0 errors · `bun run lint` 0 · format clean · **38 Vitest unit tests** · **8 Playwright-Electron e2e tests** all pass. Working tree clean except this file.
+**Gate is green:** `bunx tsc --noEmit` 0 errors · `bun run lint` 0 · format clean · **62 Vitest unit tests** · **10 Playwright-Electron e2e tests** all pass. Working tree clean except this file.
 
 ### Phases complete
 - **Phase 0 (Stabilize & Restructure)** — ✅ DONE. Restructured to the target tree, dead code purged, `HashRouter` (B1 fixed), Electron security hardened (S1–S4). **Package manager is `bun`, not npm.**
 - **Phase 1 (Toolchain)** — ✅ DONE. TS 5.9, ESLint 9 flat config + Prettier + **electron-security boundary lint rules** (renderer/shared/audience CANNOT import electron/node/fs/ipcRenderer/better-sqlite3 — enforced as lint ERRORS), Vite 7, electron 36.9.5, Vitest + Playwright-Electron harness, electron-log + renderer error boundary + crash handlers, **CI workflow authored** (`.github/workflows/ci.yml`, 3-OS matrix on bun).
 - **Phase 2 (Foundation)** — ✅ DONE. Typed zod-validated **IPC + contextBridge**, **SQLite (better-sqlite3) + forward-only migrations + repository layer**, **WindowManager + audience window** (`present:*` broadcast, fails safe to black), **safeStorage secrets** (main-only) + declarative CSP, foundation tests. All security-signed-off.
-- **Phase 3 (Domains)** — 🟡 **3 of 5 DONE.**
+- **Phase 3 (Domains)** — 🟡 **4 of 5 DONE** (D2 impl done; one hardware-gated observed run pending — see below).
   - ✅ **D3 Songs** — full vertical slice: migration/repository/service/IPC/UI + present-to-audience. Reviewer PASS.
   - ✅ **D5 Service Planning** — real persisted plans, **retired the `servicesData` fixture + Redux entirely**, duration estimate. Reviewer PASS.
   - ✅ **D1 Scripture** — bundled **Public-Domain WEB** (`resources/bible/web.json.gz`, 1.24 MB, 66 books / 31,095 verses), migration 5 + **FTS5**, offline hydration, reference + keyword search, present-to-audience. Reviewer PASS + Security SIGN-OFF. **FTS5 ~1ms → no Rust task needed.**
-  - ⬜ **D2 Presentation engine**, **D4 Media** — NOT started (see §5/§6).
+  - ✅ **D2 Presentation engine** — live **deck** model (main-owned, pure reducer + clamping), `present:set-deck/next/prev/goto/black/blank/clear/get-state` (removed `set-state`), presenter `/present` (current+next preview, keyboard live controls §5.4), audience compositor opacity transitions, **provably fail-safe to black**. Migrated all present callers (scripture→multi-verse deck, songs→section deck, plans). Reviewer PASS + Security SIGN-OFF. **⚠ ONE acceptance item pending (hardware-gated):** human observed DUAL-MONITOR run for fps/smoothness (≥30fps) + true 2nd-screen placement — un-verifiable in this single-display headless env. Coordinate with the user.
+  - ⬜ **D4 Media** — NOT started (see §5/§6). LAST Phase-3 domain.
 
 ---
 
@@ -79,7 +80,7 @@ Songs and Plans are the reference. To add domain `X`, copy this exact shape:
 ## 5. Open tasks (`tasks/active/`)
 
 - ✅ **`2026-06-26_p3-d1-scripture.md`** — **DONE** (moved to `tasks/completed/`). Bundled WEB, FTS5, offline search, present-to-audience. FTS5 ~1ms so no Rust task filed.
-- **`2026-06-26_p3-d2-presentation-engine.md`** — NOT started. ⭐ now the top domain. Slide model + transitions (≥30 fps) + presenter preview + keyboard live controls. **Verification limit:** fps/visual smoothness need observed/visual verification + ideally a 2nd monitor. **Inherits two D1 follow-ups (see §7):** multi-verse scripture slide chunking + chapter-browse get-chapter path.
+- ✅ **`2026-06-26_p3-d2-presentation-engine.md`** — **impl DONE** (moved to `tasks/completed/`). Deck model + transitions + presenter + keyboard. Closed D1 follow-up (a) (multi-verse scripture deck). ⚠ pending the user's observed dual-monitor fps run (see §6).
 - **`2026-06-26_p3-d4-media.md`** — NOT started. Media library + image/video/audio on the audience window. **Verification limit:** needs sample media files + observed playback.
 - **`2026-06-26_p1-t4-ci-pipeline.md`** — CI workflow authored + committed; **blocked on a GitHub push** (gh not authed). Trial-PR-green + branch protection are USER steps. Closing it also closes `t7`.
 - **`2026-06-26_t7-cross-platform-packaging-verify.md`** — Linux verified; Windows/macOS pending CI.
@@ -91,13 +92,15 @@ Songs and Plans are the reference. To add domain `X`, copy this exact shape:
 
 1. **PUSH THE BRANCH and let CI validate everything on Windows/macOS/Linux before building more.** A lot rides on the foundation now and this is a single-Linux env — CI is the safety net it can't be. (User must push / `gh auth`. Local `bun run make` installers also need `rpmbuild`/`dpkg` which aren't installed — CI handles per-OS via `package`/`make`.)
 2. ✅ **D1 Scripture** — DONE.
-3. **D2 Presentation engine**, then **D4 Media** — buildable but need visual/asset verification; coordinate observed runs with the user. D2 should absorb the two D1 follow-ups in §7.
-4. After all 5 domains: run the **Phase 3 MVP exit gate** in `plan/phases/phase-3-domains.md`, then Phase 4 (AI scripture detection — `plan/ai-scripture-detection-spec.md`) and Phase 5 (hardening/release).
+3. ✅ **D2 Presentation engine** — impl DONE. ⚠ Get the user's **observed dual-monitor fps run** to fully close acceptance (§6).
+4. **D4 Media** — LAST domain. Media library + image/video/audio on the audience window. Needs sample media + observed playback (coordinate with user). The audience `present` model + `Slide`/`Transition` from D2 are the integration point — a media slide kind likely extends `PresentState`.
+5. After all 5 domains + the D2 observed run: run the **Phase 3 MVP exit gate** in `plan/phases/phase-3-domains.md`, then Phase 4 (AI scripture detection — `plan/ai-scripture-detection-spec.md`) and Phase 5 (hardening/release).
 
 ---
 
 ## 7. Non-blocking follow-ups (reviewer-noted; opportunistic)
-- **Scripture → belongs to D2 (presentation engine):** (a) multi-verse passage projection needs slide chunking + next/prev navigation (the pure chunker `chunkForProjection` was REMOVED at D1 close as premature dead code — §1.9 — rebuild it in D2 context); (b) chapter-browse UI (the `getChapter` stack was likewise removed; re-add a `scripture:get-chapter` path when the browse UI lands). `bibleRepository`/schema are multi-translation-ready (`translation_id` keyed) but only WEB is bundled; a translation picker would consume the already-wired `listTranslations`/`listBooks`.
+- **Scripture:** (a) ✅ DONE in D2 — multi-verse passage projection now builds a deck (one slide per verse) with next/prev navigation. (b) STILL OPEN — chapter-browse UI (the `getChapter` stack was removed at D1 close; re-add a `scripture:get-chapter` path when the browse UI lands). `bibleRepository`/schema are multi-translation-ready (`translation_id` keyed) but only WEB is bundled; a translation picker would consume the already-wired `listTranslations`/`listBooks`.
+- **Present model is now a deck** (`PresentState = { mode, deck, index, transition }`, owned by main, pure reducer in `src/main/services/presentEngine.ts`). D4 media should extend it with a media slide kind rather than forking a second present path (§1.9).
 - Songs: no edit/delete UI yet; no OpenLyrics/CCLI import; CCLI reporting hook (R17) later.
 - Plans: drag-drop reorder is up/down buttons (brief-sanctioned); recurring templates deferred; scripture/media item kinds land with D1/D4.
 - IPC registry `handle(channel: string, ...)` could be typed against a `CHANNELS` union for compile-time safety.

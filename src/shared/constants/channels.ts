@@ -7,8 +7,15 @@ export const CHANNELS = {
     set: 'settings:set',
   },
   present: {
-    setState: 'present:set-state', // renderer -> main (invoke)
-    state: 'present:state', // main -> audience window (event push)
+    setDeck: 'present:set-deck', // renderer -> main (invoke): replace the live deck
+    next: 'present:next', // renderer -> main: advance one slide (clamped)
+    prev: 'present:prev', // renderer -> main: go back one slide (clamped)
+    goto: 'present:goto', // renderer -> main: jump to an index (clamped)
+    black: 'present:black', // renderer -> main: fail-safe black
+    blank: 'present:blank', // renderer -> main: dim/blank, keep deck
+    clear: 'present:clear', // renderer -> main: clear slide, keep deck
+    getState: 'present:get-state', // renderer -> main: current live state (on mount)
+    state: 'present:state', // main -> presenter + audience windows (event push)
   },
   songs: {
     list: 'songs:list',

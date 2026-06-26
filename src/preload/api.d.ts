@@ -1,5 +1,5 @@
 import type { Result } from '@/shared/types/result';
-import type { PresentState } from '@/shared/schemas/present';
+import type { PresentState, PresentSlide, Transition } from '@/shared/schemas/present';
 import type { Song, SongCreate, SongImportText, SongSummary } from '@/shared/schemas/song';
 import type { Plan, PlanCreate, PlanSummary } from '@/shared/schemas/plan';
 import type {
@@ -18,7 +18,16 @@ export interface Api {
     set(key: string, value: string): Promise<Result<void>>;
   };
   present: {
-    setState(state: PresentState): Promise<Result<void>>;
+    /** Replace the live deck (and optionally the start index + transition). */
+    setDeck(deck: PresentSlide[], index?: number, transition?: Transition): Promise<Result<void>>;
+    next(): Promise<Result<void>>;
+    prev(): Promise<Result<void>>;
+    goto(index: number): Promise<Result<void>>;
+    black(): Promise<Result<void>>;
+    blank(): Promise<Result<void>>;
+    clear(): Promise<Result<void>>;
+    /** Read current live state (for a view mounting mid-service). */
+    getState(): Promise<Result<PresentState>>;
     /** Subscribe to live-state pushes; returns an unsubscribe function. */
     onState(callback: (state: PresentState) => void): () => void;
   };

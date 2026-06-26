@@ -7,7 +7,7 @@ const menu = [
   { label: 'Scripture', icon: <FiBook />, path: '/scripture' },
   { label: 'Songs', icon: <FiMusic />, path: '/songs' },
   { label: 'Media', icon: <FiImage />, path: '/media' },
-  { label: 'Presentations', icon: <FiMonitor />, path: '/presentations' },
+  { label: 'Presentation', icon: <FiMonitor />, path: '/present' },
   { label: 'Services', icon: <FiList />, path: '/services' },
   { label: 'Settings', icon: <FiSettings />, path: '/settings' },
 ];

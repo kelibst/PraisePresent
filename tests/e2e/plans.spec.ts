@@ -74,10 +74,10 @@ test('build, save, reload, and present a real service plan', async () => {
   await presenter.evaluate(async (id) => {
     const p = await window.api.plans.get(id);
     if (p.ok && p.data) {
-      await window.api.present.setState({
-        mode: 'slide',
-        slide: { text: p.data.items[1].content },
-      });
+      await window.api.present.setDeck(
+        [{ id: 'plan-item-1', lines: p.data.items[1].content.split('\n') }],
+        0,
+      );
     }
   }, planId);
   await expect(audience.getByText('Welcome to church')).toBeVisible();

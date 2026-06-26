@@ -44,9 +44,28 @@ export default function ScripturePage() {
     }
   };
 
-  const present = (reference: string, text: string) =>
-    window.api.present.setState({ mode: 'slide', slide: { text: `${text}\n\n${reference}` } });
-  const black = () => window.api.present.setState({ mode: 'black', slide: null });
+  // Present a passage as a MULTI-VERSE deck: one slide per verse with its own
+  // reference label, starting at the clicked verse. next/prev then walk verses.
+  const presentVerses = (startIndex: number) => {
+    const deck = verses.map((v) => ({
+      id: `${v.bookNumber}-${v.chapter}-${v.verse}`,
+      lines: [v.text],
+      reference: referenceLabel(v),
+    }));
+    void window.api.present.setDeck(deck, startIndex);
+  };
+
+  // Present keyword hits as a deck, starting at the clicked result.
+  const presentResults = (startIndex: number) => {
+    const deck = results.map((r) => ({
+      id: `${r.bookNumber}-${r.chapter}-${r.verse}`,
+      lines: [r.text],
+      reference: r.reference,
+    }));
+    void window.api.present.setDeck(deck, startIndex);
+  };
+
+  const black = () => window.api.present.black();
 
   const onKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') void search();
@@ -117,7 +136,7 @@ export default function ScripturePage() {
       {/* Reference lookup: verses in order. */}
       {verses.length > 0 && (
         <ul className="flex flex-col gap-2">
-          {verses.map((v) => (
+          {verses.map((v, i) => (
             <li key={`${v.bookNumber}-${v.chapter}-${v.verse}`} className="rounded-lg border p-4">
               <div className="flex items-start justify-between gap-4">
                 <p className="text-foreground">
@@ -125,7 +144,7 @@ export default function ScripturePage() {
                   {v.text}
                 </p>
                 <button
-                  onClick={() => present(referenceLabel(v), v.text)}
+                  onClick={() => presentVerses(i)}
                   className="shrink-0 rounded bg-primary px-3 py-1 text-sm font-medium text-primary-foreground hover:opacity-90"
                 >
                   Present
@@ -139,7 +158,7 @@ export default function ScripturePage() {
       {/* Keyword search: each hit shows its reference. */}
       {results.length > 0 && (
         <ul className="flex flex-col gap-2">
-          {results.map((r) => (
+          {results.map((r, i) => (
             <li key={`${r.bookNumber}-${r.chapter}-${r.verse}`} className="rounded-lg border p-4">
               <div className="flex items-start justify-between gap-4">
                 <div>
@@ -147,7 +166,7 @@ export default function ScripturePage() {
                   <p className="text-foreground">{r.text}</p>
                 </div>
                 <button
-                  onClick={() => present(r.reference, r.text)}
+                  onClick={() => presentResults(i)}
                   className="shrink-0 rounded bg-primary px-3 py-1 text-sm font-medium text-primary-foreground hover:opacity-90"
                 >
                   Present

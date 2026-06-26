@@ -11,7 +11,15 @@ const api: Api = {
     set: (key, value) => ipcRenderer.invoke(CHANNELS.settings.set, { key, value }),
   },
   present: {
-    setState: (state) => ipcRenderer.invoke(CHANNELS.present.setState, state),
+    setDeck: (deck, index, transition) =>
+      ipcRenderer.invoke(CHANNELS.present.setDeck, { deck, index, transition }),
+    next: () => ipcRenderer.invoke(CHANNELS.present.next),
+    prev: () => ipcRenderer.invoke(CHANNELS.present.prev),
+    goto: (index) => ipcRenderer.invoke(CHANNELS.present.goto, { index }),
+    black: () => ipcRenderer.invoke(CHANNELS.present.black),
+    blank: () => ipcRenderer.invoke(CHANNELS.present.blank),
+    clear: () => ipcRenderer.invoke(CHANNELS.present.clear),
+    getState: () => ipcRenderer.invoke(CHANNELS.present.getState),
     onState: (callback) => {
       const listener = (_event: unknown, state: PresentState) => callback(state);
       ipcRenderer.on(CHANNELS.present.state, listener);
