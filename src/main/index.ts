@@ -1,9 +1,9 @@
-import { app, BrowserWindow, session, shell } from 'electron';
-import path from 'node:path';
+import { app, session } from 'electron';
 import started from 'electron-squirrel-startup';
 import log from './infra/logger';
 import { initDatabase } from './db';
 import { registerIpcHandlers } from './ipc';
+import { openWindows, createPresenterWindow, hasPresenterWindow } from './windows/windowManager';
 
 // Handle creating/removing shortcuts on Windows when installing/uninstalling.
 if (started) {
@@ -26,62 +26,10 @@ const CSP_DEV =
   "connect-src 'self' ws://localhost:* http://localhost:*; " +
   "object-src 'none'; base-uri 'self'";
 
-const createWindow = () => {
-  const mainWindow = new BrowserWindow({
-    width: 800,
-    height: 600,
-    webPreferences: {
-      preload: path.join(__dirname, 'preload.js'),
-      // Electron-security defaults made explicit (CLAUDE.md §1.4) so a careless
-      // edit can't silently regress them.
-      contextIsolation: true,
-      sandbox: true,
-      nodeIntegration: false,
-    },
-  });
-
-  // Never open new windows from web content; send external https links to the
-  // OS browser instead. Everything else is denied.
-  mainWindow.webContents.setWindowOpenHandler(({ url }) => {
-    if (url.startsWith('https://')) {
-      void shell.openExternal(url);
-    }
-    return { action: 'deny' };
-  });
-
-  // Navigation allow-list: only the dev server (development) or the packaged
-  // app file. Hash-router navigations are same-document and don't fire this.
-  mainWindow.webContents.on('will-navigate', (event, url) => {
-    const devUrl = MAIN_WINDOW_VITE_DEV_SERVER_URL;
-    const allowed = (devUrl && url.startsWith(devUrl)) || url.startsWith('file://');
-    if (!allowed) {
-      event.preventDefault();
-    }
-  });
-
-  // Log renderer crashes rather than dying silently; the window stays
-  // recoverable via the renderer error boundary.
-  mainWindow.webContents.on('render-process-gone', (_event, details) => {
-    log.error('render-process-gone:', details.reason, 'exitCode:', details.exitCode);
-  });
-
-  // and load the index.html of the app.
-  if (MAIN_WINDOW_VITE_DEV_SERVER_URL) {
-    mainWindow.loadURL(MAIN_WINDOW_VITE_DEV_SERVER_URL);
-  } else {
-    mainWindow.loadFile(path.join(__dirname, `../renderer/${MAIN_WINDOW_VITE_NAME}/index.html`));
-  }
-
-  // DevTools only outside the packaged build (CLAUDE.md §1.4).
-  if (!app.isPackaged) {
-    mainWindow.webContents.openDevTools();
-  }
-};
-
 // This method will be called when Electron has finished initialization and is
 // ready to create browser windows.
 app.on('ready', () => {
-  log.info('App ready; creating main window.');
+  log.info('App ready; initializing.');
   initDatabase();
   registerIpcHandlers();
   session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
@@ -92,7 +40,7 @@ app.on('ready', () => {
       },
     });
   });
-  createWindow();
+  openWindows();
 });
 
 // Quit when all windows are closed, except on macOS. There, it's common for
@@ -105,10 +53,10 @@ app.on('window-all-closed', () => {
 });
 
 app.on('activate', () => {
-  // On OS X it's common to re-create a window in the app when the dock icon is
-  // clicked and there are no other windows open.
-  if (BrowserWindow.getAllWindows().length === 0) {
-    createWindow();
+  // On macOS re-create the presenter window when the dock icon is clicked and
+  // there are no windows open.
+  if (!hasPresenterWindow()) {
+    createPresenterWindow();
   }
 });
 
@@ -123,6 +71,3 @@ process.on('uncaughtException', (error) => {
 process.on('unhandledRejection', (reason) => {
   log.error('unhandledRejection:', reason);
 });
-
-// In this file you can include the rest of your app's specific main process
-// code. You can also put them in separate files and import them here.

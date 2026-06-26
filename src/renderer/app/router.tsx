@@ -4,6 +4,7 @@ import HomePage from '@/renderer/features/home/HomePage';
 import ServicesPage from '@/renderer/features/planning/ServicesPage';
 import ServiceDetail from '@/renderer/features/planning/ServiceDetail';
 import AppLayout from '@/renderer/components/layout/AppLayout';
+import AudienceView from '@/renderer/features/presentation/AudienceView';
 
 /**
  * Central application router.
@@ -15,6 +16,8 @@ import AppLayout from '@/renderer/components/layout/AppLayout';
 const AppRouter: React.FC = () => (
   <HashRouter>
     <Routes>
+      {/* Audience/projector window — full-screen, no presenter chrome. */}
+      <Route path="/audience" element={<AudienceView />} />
       <Route path="/" element={<HomePage />} />
       <Route element={<AppLayout />}>
         <Route path="/services" element={<ServicesPage />}>
