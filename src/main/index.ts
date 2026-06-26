@@ -2,6 +2,7 @@ import { app, BrowserWindow, session, shell } from 'electron';
 import path from 'node:path';
 import started from 'electron-squirrel-startup';
 import log from './infra/logger';
+import { registerIpcHandlers } from './ipc';
 
 // Handle creating/removing shortcuts on Windows when installing/uninstalling.
 if (started) {
@@ -80,6 +81,7 @@ const createWindow = () => {
 // ready to create browser windows.
 app.on('ready', () => {
   log.info('App ready; creating main window.');
+  registerIpcHandlers();
   session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
     callback({
       responseHeaders: {

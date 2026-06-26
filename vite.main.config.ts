@@ -1,4 +1,5 @@
 import { defineConfig } from 'vite';
+import path from 'node:path';
 
 // https://vitejs.dev/config
 // Pin the main-process output to `main.js` so package.json "main"
@@ -7,6 +8,9 @@ import { defineConfig } from 'vite';
 // chunk after the entry basename ("index.js"). userConfig is merged last
 // by @electron-forge/plugin-vite, so this override wins.
 export default defineConfig({
+  resolve: {
+    alias: { '@': path.resolve(__dirname, './src') },
+  },
   build: {
     rollupOptions: {
       output: { entryFileNames: 'main.js' },

@@ -1,4 +1,5 @@
 import { defineConfig } from 'vite';
+import path from 'node:path';
 
 // https://vitejs.dev/config
 // Pin the preload output to `preload.js` so main's
@@ -7,6 +8,9 @@ import { defineConfig } from 'vite';
 // name the chunk after the entry basename ("index.js"). userConfig is
 // merged last by @electron-forge/plugin-vite, so this override wins.
 export default defineConfig({
+  resolve: {
+    alias: { '@': path.resolve(__dirname, './src') },
+  },
   build: {
     rollupOptions: {
       output: { entryFileNames: 'preload.js' },
