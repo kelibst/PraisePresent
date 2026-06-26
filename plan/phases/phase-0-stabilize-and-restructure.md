@@ -4,6 +4,8 @@
 
 **Effort:** ~1–2 weeks (1–2 devs) · **Branch prefix:** `phase0/`
 
+> **Tooling note (2026-06-26):** this project uses **bun** as its package manager + script runner. Substitute `bun install` for `npm install` and `bun run <script>` (e.g. `bun run start`/`bun run make`/`bun run lint`) for the `npm`/`npm run` commands written below; use `bun audit --production` for the runtime audit. The lockfile is `bun.lock` (not `package-lock.json`).
+
 ---
 
 ## Entry gate

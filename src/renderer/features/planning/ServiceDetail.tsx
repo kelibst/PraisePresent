@@ -6,7 +6,7 @@ import { FiUser } from 'react-icons/fi';
 
 const ServiceDetail = () => {
   const { id } = useParams();
-  const service = useSelector((state: RootState) => state.services.find((s: any) => s.id === id));
+  const service = useSelector((state: RootState) => state.services.find((s) => s.id === id));
   if (!service) return <div className="text-red-500">Service not found.</div>;
   return (
     <div className="max-w-xl mx-auto rounded-lg shadow border p-8">

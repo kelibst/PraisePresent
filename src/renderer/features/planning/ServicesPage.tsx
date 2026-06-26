@@ -2,20 +2,21 @@ import React from 'react';
 import { useSelector } from 'react-redux';
 import { RootState } from '@/renderer/store';
 import { FiUser } from 'react-icons/fi';
-import { useNavigate, Outlet } from 'react-router-dom';
+import { useNavigate, useLocation, Outlet } from 'react-router-dom';
 
 const ServicesPage = () => {
   const services = useSelector((state: RootState) => state.services);
   const navigate = useNavigate();
+  const location = useLocation();
   return (
     <div className="flex min-h-screen">
       <main className="flex-1 bg-background p-12 flex flex-col">
         <h2 className="text-2xl font-bold mb-8 text-foreground">All Services</h2>
         <Outlet />
         {/* If not rendering a child route, show the list */}
-        {window.location.pathname === '/services' && (
+        {location.pathname === '/services' && (
           <div className="flex flex-col gap-4">
-            {services.map((service: any) => (
+            {services.map((service) => (
               <div
                 key={service.id}
                 className=" rounded-lg shadow border p-6 flex items-center justify-between hover:bg-blue-50 transition cursor-pointer"

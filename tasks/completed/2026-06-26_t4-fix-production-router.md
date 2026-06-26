@@ -2,7 +2,7 @@
 - **ID:** 2026-06-26_t4-fix-production-router
 - **Phase:** 0
 - **Assigned agent type:** implementer
-- **Status:** pending
+- **Status:** done
 
 ## Goal
 Replace `BrowserRouter` with `HashRouter` (or `MemoryRouter`) so routing survives the `file://` packaged load, and centralize routing in `src/renderer/app/router.tsx`. Verify in **both** dev and the packaged `make` build.
@@ -23,4 +23,6 @@ Replace `BrowserRouter` with `HashRouter` (or `MemoryRouter`) so routing survive
 - [ ] reviewer signed off
 
 ## Outcome (filled on completion)
-<router approach chosen, packaged verification notes>
+**2026-06-26.** Replaced `BrowserRouter` with **`HashRouter`**, centralized in new `src/renderer/app/router.tsx` (`AppRouter`). `index.tsx` now renders `<AppRouter/>` inside Provider+ThemeProvider via `createRoot`. Deleted the now-redundant `app/App.tsx` (routes moved into router.tsx). **Regression caught & fixed:** `ServicesPage` gated its list on `window.location.pathname === '/services'`, which is always `/` under HashRouter (path lives in the hash) → switched to react-router `useLocation()`.
+- **Verification:** `grep` confirms no `BrowserRouter`/`window.location` in src (only a doc comment). Packaged build launches and renders cleanly over `file://` (BrowserRouter would have failed there) — B1 closed. Full deep-link/reload e2e click-through deferred to Phase 2 e2e (per brief).
+- **Reviewer (general-purpose): PASS** (§9). tsc/lint clean.
