@@ -34,6 +34,13 @@ const api: Api = {
     delete: (id) => ipcRenderer.invoke(CHANNELS.plans.delete, { id }),
     estimate: (id) => ipcRenderer.invoke(CHANNELS.plans.estimate, { id }),
   },
+  scripture: {
+    listTranslations: () => ipcRenderer.invoke(CHANNELS.scripture.listTranslations),
+    listBooks: () => ipcRenderer.invoke(CHANNELS.scripture.listBooks),
+    lookupReference: (query) => ipcRenderer.invoke(CHANNELS.scripture.lookupReference, { query }),
+    searchKeyword: (query, limit) =>
+      ipcRenderer.invoke(CHANNELS.scripture.searchKeyword, { query, limit }),
+  },
 };
 
 contextBridge.exposeInMainWorld('api', api);

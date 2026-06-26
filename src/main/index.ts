@@ -3,6 +3,7 @@ import started from 'electron-squirrel-startup';
 import log from './infra/logger';
 import { initDatabase, closeDb } from './db';
 import { registerIpcHandlers } from './ipc';
+import { hydrateScripture } from './services/scriptureService';
 import { openWindows, createPresenterWindow, hasPresenterWindow } from './windows/windowManager';
 import { buildCsp } from './infra/csp';
 
@@ -16,6 +17,7 @@ if (started) {
 app.on('ready', () => {
   log.info('App ready; initializing.');
   initDatabase();
+  hydrateScripture();
   registerIpcHandlers();
   session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
     callback({

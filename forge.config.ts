@@ -19,6 +19,12 @@ const NATIVE_RUNTIME_DEPS = ['better-sqlite3', 'bindings', 'file-uri-to-path'];
 const config: ForgeConfig = {
   packagerConfig: {
     asar: true,
+    // Ship the bundled WEB Bible dataset OUTSIDE the asar, into the packaged
+    // app's resources/ dir. The dir basename ("bible") is preserved, so it
+    // resolves at runtime as `path.join(process.resourcesPath, 'bible', ...)`
+    // (see bibleBundle.ts). In dev the same file is read from the repo's
+    // resources/bible via app.getAppPath() (P3-D1).
+    extraResource: ['resources/bible'],
   },
   rebuildConfig: {},
   hooks: {

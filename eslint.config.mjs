@@ -39,6 +39,15 @@ export default tseslint.config(
       '@typescript-eslint/no-require-imports': 'off',
     },
   },
+  // ESM Node build/data scripts (scripts/*.mjs) — run with `node`, not bundled.
+  {
+    files: ['scripts/**/*.mjs'],
+    languageOptions: {
+      ecmaVersion: 2022,
+      sourceType: 'module',
+      globals: { ...globals.node },
+    },
+  },
   // Electron security boundary (CLAUDE.md §5.2): the renderer, shared, and
   // audience layers must never import privileged main-process APIs. Hard errors
   // so a regression fails lint and CI.

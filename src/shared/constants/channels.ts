@@ -26,4 +26,10 @@ export const CHANNELS = {
     delete: 'plans:delete',
     estimate: 'plans:estimate',
   },
+  scripture: {
+    listTranslations: 'scripture:list-translations',
+    listBooks: 'scripture:list-books',
+    lookupReference: 'scripture:lookup-reference',
+    searchKeyword: 'scripture:search-keyword',
+  },
 } as const;

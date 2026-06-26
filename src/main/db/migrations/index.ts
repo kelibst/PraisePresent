@@ -64,6 +64,43 @@ const migrations: Migration[] = [
          );
          CREATE INDEX IF NOT EXISTS idx_plan_items_plan ON plan_items(plan_id);`,
   },
+  {
+    id: 5,
+    name: 'init_scripture',
+    // Bible text is hydrated once from the bundled WEB dataset (offline-first).
+    // bible_verses_fts is an external-content FTS5 index over bible_verses.text;
+    // it's kept in sync explicitly at hydration (no triggers — bulk load only).
+    up: `CREATE TABLE IF NOT EXISTS bible_translations (
+           id           INTEGER PRIMARY KEY AUTOINCREMENT,
+           abbreviation TEXT NOT NULL UNIQUE,
+           name         TEXT NOT NULL,
+           license      TEXT NOT NULL DEFAULT ''
+         );
+         CREATE TABLE IF NOT EXISTS bible_books (
+           number       INTEGER PRIMARY KEY,
+           name         TEXT NOT NULL,
+           abbreviation TEXT NOT NULL,
+           osis_id      TEXT NOT NULL,
+           testament    TEXT NOT NULL
+         );
+         CREATE TABLE IF NOT EXISTS bible_verses (
+           id             INTEGER PRIMARY KEY AUTOINCREMENT,
+           translation_id INTEGER NOT NULL REFERENCES bible_translations(id) ON DELETE CASCADE,
+           book_number    INTEGER NOT NULL REFERENCES bible_books(number),
+           chapter        INTEGER NOT NULL,
+           verse          INTEGER NOT NULL,
+           text           TEXT NOT NULL,
+           UNIQUE(translation_id, book_number, chapter, verse)
+         );
+         CREATE INDEX IF NOT EXISTS idx_bible_verses_ref
+           ON bible_verses(translation_id, book_number, chapter, verse);
+         CREATE VIRTUAL TABLE IF NOT EXISTS bible_verses_fts USING fts5(
+           text,
+           content='bible_verses',
+           content_rowid='id',
+           tokenize='porter unicode61'
+         );`,
+  },
 ];
 
 // Idempotent: applied migrations are tracked in _migrations; only pending ones

@@ -6,6 +6,7 @@ import ServiceDetail from '@/renderer/features/planning/ServiceDetail';
 import AppLayout from '@/renderer/components/layout/AppLayout';
 import AudienceView from '@/renderer/features/presentation/AudienceView';
 import SongsPage from '@/renderer/features/songs/SongsPage';
+import ScripturePage from '@/renderer/features/scripture/ScripturePage';
 
 /**
  * Central application router.
@@ -21,6 +22,7 @@ const AppRouter: React.FC = () => (
       <Route path="/audience" element={<AudienceView />} />
       <Route path="/" element={<HomePage />} />
       <Route element={<AppLayout />}>
+        <Route path="/scripture" element={<ScripturePage />} />
         <Route path="/songs" element={<SongsPage />} />
         <Route path="/services" element={<ServicesPage />}>
           <Route index element={null} />

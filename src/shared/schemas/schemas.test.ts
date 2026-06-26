@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { settingsGetRequest, settingsSetRequest } from './settings';
 import { presentState } from './present';
 import { planCreate } from './plan';
+import { referenceLookup, keywordSearch } from './scripture';
 
 describe('settings schemas', () => {
   it('accepts a valid get request', () => {
@@ -54,5 +55,17 @@ describe('plan schema', () => {
         items: [{ kind: 'banana', refId: null, title: 't', content: '', sortOrder: 0 }],
       }).success,
     ).toBe(false);
+  });
+});
+
+describe('scripture schemas', () => {
+  it('accepts a reference lookup and rejects an empty query', () => {
+    expect(referenceLookup.safeParse({ query: 'John 3:16' }).success).toBe(true);
+    expect(referenceLookup.safeParse({ query: '' }).success).toBe(false);
+  });
+  it('defaults keyword search limit to 50 and caps it', () => {
+    const parsed = keywordSearch.safeParse({ query: 'love' });
+    expect(parsed.success && parsed.data.limit).toBe(50);
+    expect(keywordSearch.safeParse({ query: 'love', limit: 999 }).success).toBe(false);
   });
 });
