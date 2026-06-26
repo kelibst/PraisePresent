@@ -2,6 +2,7 @@ import React from 'react';
 import { createRoot } from 'react-dom/client';
 import { Provider } from 'react-redux';
 import AppRouter from './app/router';
+import ErrorBoundary from './app/ErrorBoundary';
 import { store } from './store';
 import { ThemeProvider } from './lib/theme';
 import './styles/globals.css';
@@ -19,10 +20,12 @@ import './styles/globals.css';
 
 createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    <Provider store={store}>
-      <ThemeProvider>
-        <AppRouter />
-      </ThemeProvider>
-    </Provider>
+    <ErrorBoundary>
+      <Provider store={store}>
+        <ThemeProvider>
+          <AppRouter />
+        </ThemeProvider>
+      </Provider>
+    </ErrorBoundary>
   </React.StrictMode>,
 );

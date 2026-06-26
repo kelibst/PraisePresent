@@ -1,6 +1,7 @@
 import { app, BrowserWindow, session, shell } from 'electron';
 import path from 'node:path';
 import started from 'electron-squirrel-startup';
+import log from './infra/logger';
 
 // Handle creating/removing shortcuts on Windows when installing/uninstalling.
 if (started) {
@@ -56,6 +57,12 @@ const createWindow = () => {
     }
   });
 
+  // Log renderer crashes rather than dying silently; the window stays
+  // recoverable via the renderer error boundary.
+  mainWindow.webContents.on('render-process-gone', (_event, details) => {
+    log.error('render-process-gone:', details.reason, 'exitCode:', details.exitCode);
+  });
+
   // and load the index.html of the app.
   if (MAIN_WINDOW_VITE_DEV_SERVER_URL) {
     mainWindow.loadURL(MAIN_WINDOW_VITE_DEV_SERVER_URL);
@@ -72,6 +79,7 @@ const createWindow = () => {
 // This method will be called when Electron has finished initialization and is
 // ready to create browser windows.
 app.on('ready', () => {
+  log.info('App ready; creating main window.');
   session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
     callback({
       responseHeaders: {
@@ -98,6 +106,18 @@ app.on('activate', () => {
   if (BrowserWindow.getAllWindows().length === 0) {
     createWindow();
   }
+});
+
+// Surface child-process and unhandled failures instead of crashing the live
+// service (CLAUDE.md §5.7).
+app.on('child-process-gone', (_event, details) => {
+  log.error('child-process-gone:', details.type, details.reason);
+});
+process.on('uncaughtException', (error) => {
+  log.error('uncaughtException:', error);
+});
+process.on('unhandledRejection', (reason) => {
+  log.error('unhandledRejection:', reason);
 });
 
 // In this file you can include the rest of your app's specific main process
