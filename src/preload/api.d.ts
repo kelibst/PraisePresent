@@ -10,6 +10,7 @@ import type {
 } from '@/shared/schemas/scripture';
 import type { DisplayInfo, AudienceSelection } from '@/shared/schemas/display';
 import type { MediaItem } from '@/shared/schemas/media';
+import type { AiCandidate } from '@/shared/schemas/ai';
 
 // The typed surface exposed on `window.api` by the preload bridge. The renderer
 // imports ONLY this type and calls `window.api` — never electron/ipcRenderer
@@ -65,6 +66,10 @@ export interface Api {
     /** Resolve a free-text reference ("John 3:16", "Gen 1:1-3") to its verses. */
     lookupReference(query: string): Promise<Result<BibleVerse[]>>;
     searchKeyword(query: string, limit?: number): Promise<Result<BibleSearchResult[]>>;
+  };
+  ai: {
+    /** Detect + resolve scripture references in free text (typed/pasted). */
+    submitText(text: string): Promise<Result<AiCandidate[]>>;
   };
   media: {
     /** All library items (newest first). */

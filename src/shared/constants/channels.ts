@@ -38,6 +38,9 @@ export const CHANNELS = {
     delete: 'plans:delete',
     estimate: 'plans:estimate',
   },
+  ai: {
+    submitText: 'ai:submit-text', // renderer -> main: detect references in text
+  },
   media: {
     list: 'media:list', // renderer -> main: all library items
     import: 'media:import', // renderer -> main: open OS file picker, add chosen

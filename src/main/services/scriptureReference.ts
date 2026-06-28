@@ -9,9 +9,11 @@ import type { ScriptureReference } from '@/shared/schemas/scripture';
 // Canonical book table (number → name) plus accepted aliases. Aliases cover the
 // full name, the OSIS abbreviation, and common short forms. All matching is
 // case-insensitive and whitespace-insensitive ("1John" === "1 John").
-type BookDef = { number: number; name: string; aliases: string[] };
+export type BookDef = { number: number; name: string; aliases: string[] };
 
-const BOOKS: BookDef[] = [
+// Exported so the AI detector (scriptureDetect.ts) reuses ONE book table —
+// detection sits in front of this parser, it does not duplicate Bible data.
+export const BOOKS: BookDef[] = [
   { number: 1, name: 'Genesis', aliases: ['gen', 'ge', 'gn'] },
   { number: 2, name: 'Exodus', aliases: ['exod', 'exo', 'ex'] },
   { number: 3, name: 'Leviticus', aliases: ['lev', 'le', 'lv'] },

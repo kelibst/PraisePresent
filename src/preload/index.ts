@@ -47,6 +47,9 @@ const api: Api = {
     delete: (id) => ipcRenderer.invoke(CHANNELS.plans.delete, { id }),
     estimate: (id) => ipcRenderer.invoke(CHANNELS.plans.estimate, { id }),
   },
+  ai: {
+    submitText: (text) => ipcRenderer.invoke(CHANNELS.ai.submitText, { text }),
+  },
   media: {
     list: () => ipcRenderer.invoke(CHANNELS.media.list),
     import: () => ipcRenderer.invoke(CHANNELS.media.import),

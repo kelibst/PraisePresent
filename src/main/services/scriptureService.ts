@@ -7,6 +7,7 @@ import type {
   BibleSearchResult,
   BibleTranslation,
   BibleVerse,
+  ScriptureReference,
 } from '@/shared/schemas/scripture';
 
 // Thin scripture service: delegates to the repository + the pure reference
@@ -42,6 +43,10 @@ export const scriptureService = {
   // Browse a whole chapter (book → chapter → verses).
   getChapter: (bookNumber: number, chapter: number): BibleVerse[] =>
     bibleRepository.getChapter(bookNumber, chapter),
+
+  // Resolve an already-parsed reference (used by the AI detector, which produces
+  // structured refs). Empty array when the passage doesn't exist (precision).
+  resolve: (ref: ScriptureReference): BibleVerse[] => bibleRepository.lookupReference(ref),
 
   searchKeyword: (query: string, limit: number): BibleSearchResult[] =>
     bibleRepository.searchKeyword(query, limit),

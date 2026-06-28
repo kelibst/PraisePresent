@@ -1,12 +1,22 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { FiHome, FiBook, FiMusic, FiImage, FiMonitor, FiSettings, FiList } from 'react-icons/fi';
+import {
+  FiHome,
+  FiBook,
+  FiMusic,
+  FiImage,
+  FiMonitor,
+  FiSettings,
+  FiList,
+  FiZap,
+} from 'react-icons/fi';
 
 const menu = [
   { label: 'Home', icon: <FiHome />, path: '/' },
   { label: 'Scripture', icon: <FiBook />, path: '/scripture' },
   { label: 'Songs', icon: <FiMusic />, path: '/songs' },
   { label: 'Media', icon: <FiImage />, path: '/media' },
+  { label: 'Live Detect', icon: <FiZap />, path: '/detect' },
   { label: 'Presentation', icon: <FiMonitor />, path: '/present' },
   { label: 'Services', icon: <FiList />, path: '/services' },
   { label: 'Settings', icon: <FiSettings />, path: '/settings' },

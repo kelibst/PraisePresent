@@ -38,6 +38,7 @@ test('shell routes render and bad service ids fail gracefully', async () => {
     { hash: '#/scripture', expect: /Scripture/ },
     { hash: '#/songs', expect: /Songs/ },
     { hash: '#/media', expect: /Media/ },
+    { hash: '#/detect', expect: /Live Detect/ },
     { hash: '#/present', expect: /./ },
     { hash: '#/services', expect: /Services/ },
     { hash: '#/settings', expect: /Settings/ },

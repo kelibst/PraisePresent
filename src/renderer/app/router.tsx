@@ -10,6 +10,7 @@ import SongsPage from '@/renderer/features/songs/SongsPage';
 import ScripturePage from '@/renderer/features/scripture/ScripturePage';
 import SettingsPage from '@/renderer/features/settings/SettingsPage';
 import MediaPage from '@/renderer/features/media/MediaPage';
+import LiveDetectPage from '@/renderer/features/ai/LiveDetectPage';
 
 /**
  * Central application router.
@@ -29,6 +30,7 @@ const AppRouter: React.FC = () => (
         <Route path="/songs" element={<SongsPage />} />
         <Route path="/media" element={<MediaPage />} />
         <Route path="/present" element={<PresentationPage />} />
+        <Route path="/detect" element={<LiveDetectPage />} />
         <Route path="/services" element={<ServicesPage />}>
           <Route index element={null} />
           <Route path=":id" element={<ServiceDetail />} />
