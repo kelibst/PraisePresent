@@ -101,6 +101,19 @@ const migrations: Migration[] = [
            tokenize='porter unicode61'
          );`,
   },
+  {
+    id: 6,
+    name: 'init_media',
+    // The library REFERENCES files by their original absolute path (no copy).
+    // path is UNIQUE so re-adding the same file is idempotent.
+    up: `CREATE TABLE IF NOT EXISTS media (
+           id         INTEGER PRIMARY KEY AUTOINCREMENT,
+           name       TEXT NOT NULL,
+           path       TEXT NOT NULL UNIQUE,
+           kind       TEXT NOT NULL,
+           created_at TEXT NOT NULL DEFAULT (datetime('now'))
+         );`,
+  },
 ];
 
 // Idempotent: applied migrations are tracked in _migrations; only pending ones

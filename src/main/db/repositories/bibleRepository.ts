@@ -20,6 +20,7 @@ type BookRow = {
   abbreviation: string;
   osis_id: string;
   testament: string;
+  chapter_count: number;
 };
 type VerseRow = {
   book_number: number;
@@ -36,6 +37,7 @@ function mapBook(r: BookRow): BibleBook {
     abbreviation: r.abbreviation,
     osisId: r.osis_id,
     testament: r.testament as BibleBook['testament'],
+    chapterCount: r.chapter_count,
   };
 }
 
@@ -110,12 +112,32 @@ export const bibleRepository = {
   },
 
   listBooks(): BibleBook[] {
+    // chapter_count derived from the verses of the default/first translation so
+    // the browser can render the right number of chapter buttons per book.
     const rows = getDb()
       .prepare(
-        'SELECT number, name, abbreviation, osis_id, testament FROM bible_books ORDER BY number',
+        `SELECT b.number, b.name, b.abbreviation, b.osis_id, b.testament,
+                COALESCE((SELECT MAX(v.chapter) FROM bible_verses v WHERE v.book_number = b.number), 0)
+                  AS chapter_count
+           FROM bible_books b
+          ORDER BY b.number`,
       )
       .all() as BookRow[];
     return rows.map(mapBook);
+  },
+
+  // Whole chapter in verse order (book → chapter → verses) for the browser.
+  // Mirrors lookupReference's whole-chapter path but with explicit args.
+  getChapter(bookNumber: number, chapter: number): BibleVerse[] {
+    const rows = getDb()
+      .prepare(
+        `SELECT v.book_number, b.name AS book_name, v.chapter, v.verse, v.text
+           FROM bible_verses v JOIN bible_books b ON b.number = v.book_number
+          WHERE v.book_number = ? AND v.chapter = ?
+          ORDER BY v.verse`,
+      )
+      .all(bookNumber, chapter) as VerseRow[];
+    return rows.map(mapVerse);
   },
 
   // Resolve a normalized reference to its verses (whole chapter when verseStart

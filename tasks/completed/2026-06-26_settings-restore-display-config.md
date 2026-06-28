@@ -30,4 +30,12 @@ Rebuild a real Settings page: (1) **Display/output settings** — list connected
 - [ ] Theme toggle retained. No renderer access to `electron`/`screen`.
 - [ ] unit/e2e; reviewer + security sign-off.
 
-## Outcome
+## Outcome (2026-06-27 — DONE, reviewer PASS + security SIGN-OFF)
+Rebuilt real Settings with **display/output config**, to the current main/IPC architecture (NOT a copy of the purged template — display logic lives in main; renderer never touches `electron`/`screen`).
+- **Display backend (main):** new `display.ts` schema (`displayInfo`, `audienceSelection`); `display:list/get-audience/set-audience` channels; `displayService` (enumerates `screen.getAllDisplays()`, persists the audience choice via `settingsRepository` key `display.audienceId` with an `'auto'` sentinel, wires `windowManager`); zod-validated handlers.
+- **windowManager:** `audienceTarget()` now honors a `configuredAudienceDisplayId` (overrides the auto-secondary pick), falls back gracefully if the chosen monitor is unplugged (R4), and only goes fullscreen/frameless when the target ≠ primary (so picking the primary never covers the presenter). Extracted `placeAudience()` (reused by `watchDisplays` + a new `setConfiguredAudienceDisplay`). `displayService.init()` loads the persisted choice before `openWindows()` so first placement honors it.
+- **UI:** `SettingsPage` is now a tabbed shell (General/Display). `GeneralSettings` = theme (relocated, not duplicated). `DisplaySettings` = monitor picker (Auto + each display as a selectable card with resolution + Primary badge), persists + re-places live, "Saved" status.
+- **Bridge:** `window.api.display.*` (3 fixed channels) in preload + `api.d.ts`.
+- **Tests:** `tests/e2e/display.spec.ts` — enumeration, choose, persist across restart, UI drives the choice + reset to Auto. All green: tsc 0 · lint 0 · 62 unit · display+settings-persist+shell e2e pass.
+- **Reviews:** reviewer PASS, security SIGN-OFF (renderer has no electron/screen; zod-validated; bad/huge/unplugged displayId falls back safely; fail-safe to black preserved; Electron security config untouched). Adopted the one advisory: `displayId` tightened to `z.number().int()`.
+- Theme still persists to localStorage (pre-existing; flagged as a future §1.5 follow-up, out of scope here).

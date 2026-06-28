@@ -8,6 +8,8 @@ import type {
   BibleTranslation,
   BibleVerse,
 } from '@/shared/schemas/scripture';
+import type { DisplayInfo, AudienceSelection } from '@/shared/schemas/display';
+import type { MediaItem } from '@/shared/schemas/media';
 
 // The typed surface exposed on `window.api` by the preload bridge. The renderer
 // imports ONLY this type and calls `window.api` — never electron/ipcRenderer
@@ -16,6 +18,14 @@ export interface Api {
   settings: {
     get(key: string): Promise<Result<string | null>>;
     set(key: string, value: string): Promise<Result<void>>;
+  };
+  display: {
+    /** Enumerate connected displays (main-side `screen`). */
+    list(): Promise<Result<DisplayInfo[]>>;
+    /** Read the persisted audience-display choice (displayId null = auto). */
+    getAudience(): Promise<Result<AudienceSelection>>;
+    /** Choose the audience display (null = auto); persists + re-places live. */
+    setAudience(displayId: number | null): Promise<Result<AudienceSelection>>;
   };
   present: {
     /** Replace the live deck (and optionally the start index + transition). */
@@ -50,9 +60,21 @@ export interface Api {
   scripture: {
     listTranslations(): Promise<Result<BibleTranslation[]>>;
     listBooks(): Promise<Result<BibleBook[]>>;
+    /** Verses of a whole chapter (book → chapter → verses) for the browser. */
+    getChapter(bookNumber: number, chapter: number): Promise<Result<BibleVerse[]>>;
     /** Resolve a free-text reference ("John 3:16", "Gen 1:1-3") to its verses. */
     lookupReference(query: string): Promise<Result<BibleVerse[]>>;
     searchKeyword(query: string, limit?: number): Promise<Result<BibleSearchResult[]>>;
+  };
+  media: {
+    /** All library items (newest first). */
+    list(): Promise<Result<MediaItem[]>>;
+    /** Open the OS file picker (main) and register the chosen files. */
+    import(): Promise<Result<MediaItem[]>>;
+    /** Register already-known paths (picker/drag-drop); returns the library. */
+    add(paths: string[]): Promise<Result<MediaItem[]>>;
+    /** Remove a library item (does not delete the original file). */
+    remove(id: number): Promise<Result<MediaItem[]>>;
   };
 }
 

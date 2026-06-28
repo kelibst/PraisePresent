@@ -11,6 +11,10 @@ const PRESENTER_SIZE = { width: 1280, height: 800 };
 let presenterWindow: BrowserWindow | null = null;
 let audienceWindow: BrowserWindow | null = null;
 
+// Operator-chosen audience display id (null = auto). Set from the persisted
+// setting on startup and whenever the user changes it in Settings → Display.
+let configuredAudienceDisplayId: number | null = null;
+
 // Live presentation state is owned by main (CLAUDE.md §5.3). Default is black —
 // the audience never shows anything unintended, and we fail safe to it (§5.7).
 let liveState: PresentState = FAILSAFE;
@@ -21,6 +25,9 @@ function secureWebPreferences() {
     contextIsolation: true,
     sandbox: true,
     nodeIntegration: false,
+    // Audience media (video/audio backgrounds) must play without a click — the
+    // operator drives presentation from the presenter window, not the projector.
+    autoplayPolicy: 'no-user-gesture-required',
   } as const;
 }
 
@@ -68,12 +75,43 @@ export function createPresenterWindow(): BrowserWindow {
   return presenterWindow;
 }
 
-// Pick the secondary display if one exists; otherwise fall back to the primary
-// (single-display dev). fullscreen only on a real second screen.
+// Resolve which display the audience window goes on. Honors the operator's
+// configured choice; if that display is gone (hot-unplug — R4) or unset, falls
+// back to the first non-primary display, else the primary (single-display dev).
+// fullscreen+frameless only when the target is NOT the primary, so picking the
+// primary (or falling back to it) never covers the presenter window.
 function audienceTarget() {
   const primary = screen.getPrimaryDisplay();
-  const secondary = screen.getAllDisplays().find((d) => d.id !== primary.id) ?? null;
-  return { display: secondary ?? primary, isSecondary: secondary !== null };
+  const all = screen.getAllDisplays();
+  let display =
+    configuredAudienceDisplayId !== null
+      ? (all.find((d) => d.id === configuredAudienceDisplayId) ?? null)
+      : null;
+  if (!display) display = all.find((d) => d.id !== primary.id) ?? primary;
+  return { display, isSecondary: display.id !== primary.id };
+}
+
+// Re-place the audience window on its resolved target display. Safe to call
+// whenever displays or the configured choice change; blacks out on failure
+// rather than crashing the live service (§5.7/R4).
+function placeAudience() {
+  if (!audienceWindow || audienceWindow.isDestroyed()) return;
+  try {
+    const { display, isSecondary } = audienceTarget();
+    audienceWindow.setBounds(display.bounds);
+    audienceWindow.setFullScreen(isSecondary);
+    log.info(`Audience window re-placed on ${isSecondary ? 'secondary' : 'primary'} display.`);
+  } catch (e) {
+    log.error('Display reflow failed; blacking out:', e);
+    blackout();
+  }
+}
+
+// Set the operator's audience-display choice (null = auto) and re-place the
+// audience window immediately. Called from displayService after persisting.
+export function setConfiguredAudienceDisplay(displayId: number | null): void {
+  configuredAudienceDisplayId = displayId;
+  placeAudience();
 }
 
 export function createAudienceWindow(): BrowserWindow {
@@ -132,21 +170,9 @@ export function blackout() {
 // Re-place / recreate the audience window when displays change, without
 // crashing the live service (R4).
 export function watchDisplays() {
-  const reflow = () => {
-    if (!audienceWindow || audienceWindow.isDestroyed()) return;
-    try {
-      const { display, isSecondary } = audienceTarget();
-      audienceWindow.setBounds(display.bounds);
-      audienceWindow.setFullScreen(isSecondary);
-      log.info('Audience window re-placed after display change.');
-    } catch (e) {
-      log.error('Display reflow failed; blacking out:', e);
-      blackout();
-    }
-  };
-  screen.on('display-added', reflow);
-  screen.on('display-removed', reflow);
-  screen.on('display-metrics-changed', reflow);
+  screen.on('display-added', placeAudience);
+  screen.on('display-removed', placeAudience);
+  screen.on('display-metrics-changed', placeAudience);
 }
 
 export function openWindows() {

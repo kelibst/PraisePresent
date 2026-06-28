@@ -6,6 +6,11 @@ export const CHANNELS = {
     get: 'settings:get',
     set: 'settings:set',
   },
+  display: {
+    list: 'display:list', // renderer -> main: enumerate connected displays
+    getAudience: 'display:get-audience', // renderer -> main: read persisted audience choice
+    setAudience: 'display:set-audience', // renderer -> main: choose + persist + re-place
+  },
   present: {
     setDeck: 'present:set-deck', // renderer -> main (invoke): replace the live deck
     next: 'present:next', // renderer -> main: advance one slide (clamped)
@@ -33,9 +38,16 @@ export const CHANNELS = {
     delete: 'plans:delete',
     estimate: 'plans:estimate',
   },
+  media: {
+    list: 'media:list', // renderer -> main: all library items
+    import: 'media:import', // renderer -> main: open OS file picker, add chosen
+    add: 'media:add', // renderer -> main: register known paths (picker/drag-drop)
+    remove: 'media:remove', // renderer -> main: remove a library item
+  },
   scripture: {
     listTranslations: 'scripture:list-translations',
     listBooks: 'scripture:list-books',
+    getChapter: 'scripture:get-chapter',
     lookupReference: 'scripture:lookup-reference',
     searchKeyword: 'scripture:search-keyword',
   },

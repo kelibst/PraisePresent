@@ -73,6 +73,19 @@ test('hydrate WEB offline, search by reference + keyword, and present a verse', 
     `[scripture bench] keyword FTS5: ${bench.keywordMs.toFixed(1)}ms | reference (Psalm 119): ${bench.referenceMs.toFixed(1)}ms`,
   );
 
+  // listBooks carries a chapter count for the browser's chapter picker.
+  const books = await presenter.evaluate(() => window.api.scripture.listBooks());
+  expect(books.ok).toBe(true);
+  const psalms = books.data.find((b) => b.name === 'Psalms');
+  expect(psalms?.chapterCount).toBe(150);
+
+  // getChapter returns the whole chapter in verse order.
+  const jn1 = await presenter.evaluate(() => window.api.scripture.getChapter(43, 1));
+  expect(jn1.ok).toBe(true);
+  expect(jn1.data[0].verse).toBe(1);
+  expect(jn1.data.length).toBeGreaterThan(40);
+  expect(jn1.data[0].text).toContain('In the beginning was the Word');
+
   // Present the verse; the audience window mirrors it.
   await presenter.evaluate(async () => {
     const res = await window.api.scripture.lookupReference('John 3:16');
@@ -82,11 +95,20 @@ test('hydrate WEB offline, search by reference + keyword, and present a verse', 
   });
   await expect(audience.getByText(/For God so loved the world/)).toBeVisible();
 
-  // The ScripturePage UI renders and drives a reference search (observed running).
+  // The ScripturePage UI renders; the Browse tab is the default and is NOT blank
+  // — it lands on John 1 with readable verses, and a verse projects on click.
   await presenter.evaluate(() => {
     window.location.hash = '#/scripture';
   });
   await expect(presenter.getByRole('heading', { name: 'Scripture' })).toBeVisible();
+  await expect(presenter.getByRole('heading', { name: 'John 1' })).toBeVisible();
+  await presenter
+    .getByRole('button', { name: 'In the beginning was the Word', exact: false })
+    .click();
+  await expect(audience.getByText(/In the beginning was the Word/)).toBeVisible();
+
+  // The Search tab still drives a reference lookup.
+  await presenter.getByRole('tab', { name: 'search' }).click();
   await presenter.getByLabel('Scripture reference').fill('Psalm 23');
   await presenter.getByRole('button', { name: 'Search', exact: true }).click();
   // WEB renders the divine name as "Yahweh" (Psalm 23:1).

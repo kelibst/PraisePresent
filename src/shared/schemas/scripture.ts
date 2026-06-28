@@ -18,6 +18,8 @@ export const bibleBook = z.object({
   abbreviation: z.string(),
   osisId: z.string(),
   testament: z.enum(['OT', 'NT']),
+  // How many chapters the book has — drives the browser's chapter picker.
+  chapterCount: z.number().int().nonnegative(),
 });
 
 export const bibleVerse = z.object({
@@ -38,6 +40,11 @@ export const scriptureReference = z.object({
 
 // IPC inputs.
 export const referenceLookup = z.object({ query: z.string().min(1) });
+// Browse a specific chapter (book → chapter → verses).
+export const chapterRequest = z.object({
+  bookNumber: z.number().int().min(1).max(66),
+  chapter: z.number().int().positive(),
+});
 export const keywordSearch = z.object({
   query: z.string().min(1),
   limit: z.number().int().positive().max(200).default(50),
@@ -53,5 +60,6 @@ export type BibleBook = z.infer<typeof bibleBook>;
 export type BibleVerse = z.infer<typeof bibleVerse>;
 export type ScriptureReference = z.infer<typeof scriptureReference>;
 export type ReferenceLookup = z.infer<typeof referenceLookup>;
+export type ChapterRequest = z.infer<typeof chapterRequest>;
 export type KeywordSearch = z.infer<typeof keywordSearch>;
 export type BibleSearchResult = z.infer<typeof bibleSearchResult>;

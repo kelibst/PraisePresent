@@ -4,13 +4,18 @@ import log from './infra/logger';
 import { initDatabase, closeDb } from './db';
 import { registerIpcHandlers } from './ipc';
 import { hydrateScripture } from './services/scriptureService';
+import { displayService } from './services/displayService';
 import { openWindows, createPresenterWindow, hasPresenterWindow } from './windows/windowManager';
+import { registerMediaScheme, handleMediaProtocol } from './windows/mediaProtocol';
 import { buildCsp } from './infra/csp';
 
 // Handle creating/removing shortcuts on Windows when installing/uninstalling.
 if (started) {
   app.quit();
 }
+
+// Privileged custom schemes MUST be registered before the app is ready.
+registerMediaScheme();
 
 // This method will be called when Electron has finished initialization and is
 // ready to create browser windows.
@@ -19,6 +24,7 @@ app.on('ready', () => {
   initDatabase();
   hydrateScripture();
   registerIpcHandlers();
+  handleMediaProtocol();
   session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
     callback({
       responseHeaders: {
@@ -27,6 +33,7 @@ app.on('ready', () => {
       },
     });
   });
+  displayService.init(); // load persisted audience-display choice before windows open
   openWindows();
 });
 

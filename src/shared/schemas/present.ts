@@ -4,12 +4,22 @@ import { z } from 'zod';
 // audience windows (CLAUDE.md §5.3). `black` is the fail-safe (§5.7).
 export const presentMode = z.enum(['slide', 'black', 'blank', 'clear']);
 
+// Optional media payload on a slide (Phase 3 D4). The audience renders this via
+// the DB-allowlisted `app-media://` protocol; `kind` picks img/video/audio.
+export const slideMediaKind = z.enum(['image', 'video', 'audio']);
+export const slideMedia = z.object({
+  kind: slideMediaKind,
+  url: z.string().min(1), // e.g. app-media://media/12
+});
+
 // A single projectable slide: one or more text lines plus an optional reference
-// label (e.g. "John 3:16"). Media backgrounds are Phase 3 D4.
+// label (e.g. "John 3:16"), and optionally a media element. Text and media can
+// coexist (text overlays the media).
 export const presentSlide = z.object({
   id: z.string().min(1),
   lines: z.array(z.string()),
   reference: z.string().optional(),
+  media: slideMedia.optional(),
 });
 
 export const transitionType = z.enum(['cut', 'fade', 'dissolve']);
@@ -42,6 +52,8 @@ export const gotoInput = z.object({
 });
 
 export type PresentMode = z.infer<typeof presentMode>;
+export type SlideMediaKind = z.infer<typeof slideMediaKind>;
+export type SlideMedia = z.infer<typeof slideMedia>;
 export type PresentSlide = z.infer<typeof presentSlide>;
 export type TransitionType = z.infer<typeof transitionType>;
 export type Transition = z.infer<typeof transition>;

@@ -39,6 +39,10 @@ export const scriptureService = {
     return bibleRepository.lookupReference(ref);
   },
 
+  // Browse a whole chapter (book → chapter → verses).
+  getChapter: (bookNumber: number, chapter: number): BibleVerse[] =>
+    bibleRepository.getChapter(bookNumber, chapter),
+
   searchKeyword: (query: string, limit: number): BibleSearchResult[] =>
     bibleRepository.searchKeyword(query, limit),
 };

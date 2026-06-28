@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { CHANNELS } from '@/shared/constants/channels';
-import { referenceLookup, keywordSearch } from '@/shared/schemas/scripture';
+import { referenceLookup, keywordSearch, chapterRequest } from '@/shared/schemas/scripture';
 import { scriptureService } from '../services/scriptureService';
 import { handle } from './registry';
 
@@ -10,6 +10,9 @@ const noInput = z.undefined();
 export function registerScriptureHandlers(): void {
   handle(CHANNELS.scripture.listTranslations, noInput, () => scriptureService.listTranslations());
   handle(CHANNELS.scripture.listBooks, noInput, () => scriptureService.listBooks());
+  handle(CHANNELS.scripture.getChapter, chapterRequest, ({ bookNumber, chapter }) =>
+    scriptureService.getChapter(bookNumber, chapter),
+  );
   handle(CHANNELS.scripture.lookupReference, referenceLookup, ({ query }) =>
     scriptureService.lookupReference(query),
   );

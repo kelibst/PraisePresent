@@ -10,6 +10,11 @@ const api: Api = {
     get: (key) => ipcRenderer.invoke(CHANNELS.settings.get, { key }),
     set: (key, value) => ipcRenderer.invoke(CHANNELS.settings.set, { key, value }),
   },
+  display: {
+    list: () => ipcRenderer.invoke(CHANNELS.display.list),
+    getAudience: () => ipcRenderer.invoke(CHANNELS.display.getAudience),
+    setAudience: (displayId) => ipcRenderer.invoke(CHANNELS.display.setAudience, { displayId }),
+  },
   present: {
     setDeck: (deck, index, transition) =>
       ipcRenderer.invoke(CHANNELS.present.setDeck, { deck, index, transition }),
@@ -42,9 +47,17 @@ const api: Api = {
     delete: (id) => ipcRenderer.invoke(CHANNELS.plans.delete, { id }),
     estimate: (id) => ipcRenderer.invoke(CHANNELS.plans.estimate, { id }),
   },
+  media: {
+    list: () => ipcRenderer.invoke(CHANNELS.media.list),
+    import: () => ipcRenderer.invoke(CHANNELS.media.import),
+    add: (paths) => ipcRenderer.invoke(CHANNELS.media.add, { paths }),
+    remove: (id) => ipcRenderer.invoke(CHANNELS.media.remove, { id }),
+  },
   scripture: {
     listTranslations: () => ipcRenderer.invoke(CHANNELS.scripture.listTranslations),
     listBooks: () => ipcRenderer.invoke(CHANNELS.scripture.listBooks),
+    getChapter: (bookNumber, chapter) =>
+      ipcRenderer.invoke(CHANNELS.scripture.getChapter, { bookNumber, chapter }),
     lookupReference: (query) => ipcRenderer.invoke(CHANNELS.scripture.lookupReference, { query }),
     searchKeyword: (query, limit) =>
       ipcRenderer.invoke(CHANNELS.scripture.searchKeyword, { query, limit }),

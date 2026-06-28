@@ -19,7 +19,10 @@ export function buildCsp(): string {
     dev ? "script-src 'self' 'unsafe-inline'" : "script-src 'self'",
     "style-src 'self' 'unsafe-inline'",
     "font-src 'self' data:",
-    "img-src 'self' data:",
+    // app-media: is the DB-allowlisted local-media protocol (mediaProtocol.ts) —
+    // images and video/audio on the audience window are served only through it.
+    "img-src 'self' data: app-media:",
+    "media-src 'self' app-media:",
     connectSrc,
     "object-src 'none'",
     "base-uri 'self'",

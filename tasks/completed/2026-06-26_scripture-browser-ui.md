@@ -25,4 +25,10 @@ Add a Bible browser to `src/renderer/features/scripture/ScripturePage.tsx` (or a
 - [ ] `getChapter` stack restored with zod validation; unit/e2e cover it.
 - [ ] reviewer sign-off; UI observed running.
 
-## Outcome
+## Outcome (2026-06-27 — DONE, reviewer PASS)
+Built the book → chapter → verses browser as the **default** Scripture view (page is no longer blank — lands on John 1).
+- **IPC stack:** added `chapterCount` to `bibleBook` schema + `chapterRequest`; `scripture:get-chapter` channel; `bibleRepository.getChapter()` + `listBooks` now returns `chapter_count` (MAX(chapter)); `scriptureService.getChapter`; zod-validated handler; preload bridge + `api.d.ts`. (No prior `getChapter` existed in committed code — built fresh; `lookupReference`'s whole-chapter path was the reference.)
+- **UI:** `BibleBrowser.tsx` (OT/NT book list → chapter grid → verse list, each verse presents to audience via D2 deck; "Present chapter" presents the whole chapter). Extracted the old search into `ScriptureSearch.tsx`; `ScripturePage.tsx` is now a Browse/Search tab host with a Black button. Light polish on the existing style (cards, active states, focus-visible) per the user's "feature-first, polish current style" direction.
+- **Tests:** extended `tests/e2e/scripture.spec.ts` — asserts `chapterCount` (Psalms=150), `getChapter` ordering/content, Browse tab lands on John 1 (not blank), clicking a verse mirrors to audience, Search tab still works. All green: tsc 0 · lint 0 · 62 unit · scripture+shell e2e pass.
+- **Reviewer:** PASS, nits only (race on rapid book-switch — near-impossible at SQLite latency; `translation_id` filter is pre-existing tech debt for the multi-translation milestone, not a regression).
+- Files <300 LOC, no renderer electron/node imports, parameterized SQL.
