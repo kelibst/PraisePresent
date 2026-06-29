@@ -1,5 +1,6 @@
 import { protocol, net } from 'electron';
 import { pathToFileURL } from 'node:url';
+import { existsSync } from 'node:fs';
 import { mediaRepository } from '../db/repositories/mediaRepository';
 import { MEDIA_SCHEME } from '@/shared/constants/media';
 import log from '../infra/logger';
@@ -27,8 +28,13 @@ export function handleMediaProtocol(): void {
     try {
       const id = Number(new URL(request.url).pathname.replace(/^\/+/, ''));
       if (!Number.isInteger(id) || id <= 0) return new Response(null, { status: 400 });
-      const filePath = mediaRepository.getPath(id);
-      if (!filePath) return new Response(null, { status: 404 });
+      const info = mediaRepository.getServeInfo(id);
+      if (!info) return new Response(null, { status: 404 });
+      // Serve the pre-scaled rendition when it exists on disk (B6b — the projector
+      // never decodes an oversized original); fall back to the original otherwise
+      // (rendition cleared/deleted, or never optimized).
+      const filePath =
+        info.rendition && existsSync(info.rendition) ? info.rendition : info.original;
       // net.fetch on a file URL handles range requests (video seeking) for us.
       return net.fetch(pathToFileURL(filePath).toString());
     } catch (e) {

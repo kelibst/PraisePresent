@@ -32,13 +32,20 @@ export const mediaRepository = {
     return rows.map(mapMedia);
   },
 
-  // Resolve the on-disk path for a library id — used ONLY by the app-media://
-  // protocol handler to allow-list which files may be served (§5.2).
-  getPath(id: number): string | null {
-    const r = getDb().prepare('SELECT path FROM media WHERE id = ?').get(id) as
-      | { path: string }
+  // The original path + the optional pre-scaled rendition path (B6b). Used ONLY by
+  // the app-media:// protocol handler to allow-list which files may be served (§5.2):
+  // the protocol serves the rendition when it exists on disk, else the original.
+  getServeInfo(id: number): { original: string; rendition: string | null } | null {
+    const r = getDb().prepare('SELECT path, rendition_path FROM media WHERE id = ?').get(id) as
+      | { path: string; rendition_path: string | null }
       | undefined;
-    return r?.path ?? null;
+    if (!r) return null;
+    return { original: r.path, rendition: r.rendition_path ?? null };
+  },
+
+  // Set (or clear with null) the cached rendition path for a media id (B6b).
+  setRendition(id: number, renditionPath: string | null): void {
+    getDb().prepare('UPDATE media SET rendition_path = ? WHERE id = ?').run(renditionPath, id);
   },
 
   // Idempotent add: insert, or return the existing row's id on the UNIQUE path.

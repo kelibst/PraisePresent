@@ -121,6 +121,22 @@ export function setConfiguredAudienceDisplay(displayId: number | null): void {
   placeAudience();
 }
 
+// Physical-pixel size of the resolved audience (projector) display — the ceiling the
+// media pipeline pre-scales images to (B6b). Falls back to 1080p if `screen` is
+// unavailable (never throws). bounds are DIP; multiply by scaleFactor for real pixels.
+export function getAudienceTargetSize(): { width: number; height: number } {
+  try {
+    const { display } = audienceTarget();
+    const sf = display.scaleFactor || 1;
+    return {
+      width: Math.round(display.bounds.width * sf),
+      height: Math.round(display.bounds.height * sf),
+    };
+  } catch {
+    return { width: 1920, height: 1080 };
+  }
+}
+
 export function createAudienceWindow(): BrowserWindow {
   const { display, isSecondary } = audienceTarget();
   audienceWindow = new BrowserWindow({
