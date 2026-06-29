@@ -6,6 +6,8 @@ import { mediaRepository } from '../db/repositories/mediaRepository';
 import { capabilityService } from './capabilityService';
 import { getAudienceTargetSize } from '../windows/windowManager';
 import { planFit, shouldOptimizeImage, effectiveTarget, renditionExt, type Size } from './mediaPipeline';
+import { shouldTranscodeVideo, buildFfmpegArgs, videoTarget } from './videoPipeline';
+import { enqueueTranscode } from './transcodeSidecar';
 import log from '../infra/logger';
 
 // Image pre-scaling on import (B6b). Decodes oversized images ONCE at import time
@@ -48,5 +50,29 @@ export async function optimizeImage(id: number, originalPath: string): Promise<v
     );
   } catch (e) {
     log.warn(`Media optimize failed for ${id}; serving original:`, e);
+  }
+}
+
+// Queue a video for out-of-process transcode to a projector-fit H.264 rendition (B6c).
+// NON-BLOCKING: returns immediately (videos are slow) — the original is served until
+// the background transcode records its rendition. Error-isolated: a skip/failure just
+// leaves the original. Pre-flight guards format/size; the sidecar caps time + isolates
+// the encode in a child process.
+export function optimizeVideo(id: number, originalPath: string): void {
+  try {
+    const ext = path.extname(originalPath);
+    const bytes = statSync(originalPath).size;
+    const decision = shouldTranscodeVideo(ext, bytes);
+    if (!decision.ok) {
+      log.info(`Media optimize: skip video ${id} (${decision.reason}); serving original.`);
+      return;
+    }
+    const tier = capabilityService.get().tier;
+    const target = videoTarget(getAudienceTargetSize(), tier);
+    const out = path.join(cacheDir(), `${id}_v${target.width}x${target.height}.mp4`);
+    enqueueTranscode({ id, input: originalPath, output: out, args: buildFfmpegArgs(originalPath, out, target, tier) });
+    log.info(`Media optimize: queued video ${id} → ${target.width}x${target.height} (background).`);
+  } catch (e) {
+    log.warn(`Media optimize: could not queue video ${id}; serving original:`, e);
   }
 }

@@ -16,7 +16,10 @@ export default defineConfig({
       // better-sqlite3 is a native module (.node) — rollup cannot bundle it, so
       // keep it external and require()'d at runtime. Forge's rebuild builds it
       // for Electron's ABI and auto-unpack-natives ships it outside the asar.
-      external: ['better-sqlite3'],
+      // ffmpeg-static exports a path computed from its own __dirname; bundling would
+      // break that resolution, so keep it external too. The binary itself is copied
+      // to resources/ via forge extraResource and resolved at runtime (B6c).
+      external: ['better-sqlite3', 'ffmpeg-static'],
       output: { entryFileNames: 'main.js' },
     },
   },

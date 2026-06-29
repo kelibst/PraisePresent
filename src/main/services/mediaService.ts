@@ -2,7 +2,7 @@ import { dialog } from 'electron';
 import { existsSync, unlinkSync } from 'node:fs';
 import { mediaRepository } from '../db/repositories/mediaRepository';
 import { classifyMedia, baseName } from './mediaClassify';
-import { optimizeImage } from './mediaOptimizer';
+import { optimizeImage, optimizeVideo } from './mediaOptimizer';
 import log from '../infra/logger';
 import type { MediaItem } from '@/shared/schemas/media';
 
@@ -63,6 +63,7 @@ export const mediaService = {
       }
       const id = mediaRepository.add(baseName(p), p, kind);
       if (kind === 'image') await optimizeImage(id, p);
+      else if (kind === 'video') optimizeVideo(id, p); // background (non-blocking)
     }
     return mediaRepository.list();
   },

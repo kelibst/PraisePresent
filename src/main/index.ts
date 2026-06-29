@@ -6,6 +6,7 @@ import { registerIpcHandlers } from './ipc';
 import { hydrateScripture } from './services/scriptureService';
 import { displayService } from './services/displayService';
 import { capabilityService } from './services/capabilityService';
+import { cancelAllTranscodes } from './services/transcodeSidecar';
 import { openWindows, createPresenterWindow, hasPresenterWindow } from './windows/windowManager';
 import { registerMediaScheme, handleMediaProtocol } from './windows/mediaProtocol';
 import { buildCsp } from './infra/csp';
@@ -53,8 +54,10 @@ app.on('window-all-closed', () => {
   }
 });
 
-// Checkpoint and close the SQLite WAL connection cleanly on shutdown.
+// Checkpoint and close the SQLite WAL connection cleanly on shutdown; kill any
+// in-flight video transcode so we never strand an ffmpeg child process (B6c).
 app.on('before-quit', () => {
+  cancelAllTranscodes();
   closeDb();
 });
 
