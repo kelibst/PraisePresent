@@ -29,6 +29,18 @@ export function nearestBook(books: BibleBook[], fragment: string): BibleBook | n
   return matchBooks(books, fragment)[0] ?? null;
 }
 
+// True when `text` is an exact book (its full name or its abbreviation), not just
+// a prefix — e.g. "John"/"jhn" are exact, "joh" is not. The segmented field uses
+// this to know when the Book zone holds a real book and live resolution may run
+// (so "jo" doesn't prematurely resolve to Joel mid-type).
+export function isExactBook(books: BibleBook[], text: string): boolean {
+  const t = normalizeFragment(text);
+  if (!t) return false;
+  return books.some(
+    (b) => normalizeFragment(b.name) === t || normalizeFragment(b.abbreviation) === t,
+  );
+}
+
 // The leading book portion of a free-text reference: everything before the first
 // chapter digit. "John 3:16" → "John", "1 John 2" → "1 John", "Ps" → "Ps".
 export function bookFragmentOf(query: string): string {

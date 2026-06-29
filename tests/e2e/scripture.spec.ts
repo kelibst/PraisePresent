@@ -103,9 +103,14 @@ test('hydrate WEB offline, search by reference + keyword, and present a verse', 
     window.location.hash = '#/present';
   });
   await expect(presenter.getByText('Scripture').first()).toBeVisible();
-  await presenter.getByLabel('Scripture reference').fill('John 3:16');
-  await presenter.getByLabel('Scripture reference').press('Enter');
-  await expect(presenter.getByText(/For God so loved the world/).first()).toBeVisible();
+  // The segmented field resolves live from its three zones — no Enter required.
+  await presenter.getByLabel('Book', { exact: true }).fill('John');
+  await presenter.getByLabel('Chapter').fill('3');
+  await presenter.getByLabel('Verse').fill('16');
+  // Wait on the PREVIEW pane's "Up next · John 3:16" label specifically, so we
+  // confirm the field has *staged* John 3:16 (debounced) before sending it live —
+  // not the leftover live-cockpit text projected via setDeck above.
+  await expect(presenter.getByText(/Up next.*John 3:16/)).toBeVisible();
   // Send the staged verse live; the audience window mirrors it. Use `.first()`:
   // the true double-buffer cross-fade (B2) briefly shows BOTH the outgoing and the
   // incoming slide layers, and here both happen to carry the same verse text (it was
@@ -142,9 +147,10 @@ test('hydrate WEB offline, search by reference + keyword, and present a verse', 
   await deckCards.nth(2).click();
   await expect(audience.getByText('John 3:18')).toBeVisible();
 
-  // The reference field still drives an arbitrary lookup (Psalm 23).
-  await presenter.getByLabel('Scripture reference').fill('Psalm 23');
-  await presenter.getByLabel('Scripture reference').press('Enter');
+  // The segmented field still drives an arbitrary lookup (Psalm 23:1).
+  await presenter.getByLabel('Book', { exact: true }).fill('Psalms');
+  await presenter.getByLabel('Chapter').fill('23');
+  await presenter.getByLabel('Verse').fill('1');
   // WEB renders the divine name as "Yahweh" (Psalm 23:1).
   await expect(presenter.getByText(/Yahweh is my shepherd/).first()).toBeVisible();
 
@@ -222,25 +228,34 @@ test('reference field defaults to Genesis 1:1 and resolves the EasyWorship space
   });
   await expect(presenter.getByText('Scripture').first()).toBeVisible();
 
-  const field = presenter.getByLabel('Scripture reference');
+  const bookField = presenter.getByLabel('Book', { exact: true });
 
-  // Never-empty: the field starts at Genesis 1:1 and the verse is already staged.
-  await expect(field).toHaveValue('Genesis 1:1');
+  // Never-empty: the segmented field starts at Genesis 1:1 and is already staged.
+  await expect(bookField).toHaveValue('Genesis');
+  await expect(presenter.getByLabel('Chapter')).toHaveValue('1');
+  await expect(presenter.getByLabel('Verse')).toHaveValue('1');
   await expect(presenter.getByText(/In the beginning/).first()).toBeVisible({
     timeout: 30_000,
   });
 
-  // Type a book fragment, Space to complete it to the nearest book, then the
-  // space form "3 16" — no colon, no Enter — resolves John 3:16 live.
-  await field.click();
-  await field.fill('');
-  await field.pressSequentially('joh', { delay: 40 });
-  await field.press(' ');
-  await expect(field).toHaveValue('John ');
-  await field.pressSequentially('3 16', { delay: 40 });
+  // Type a book fragment, Space to complete it to the nearest book (focus jumps to
+  // the chapter zone), then the space form "3 16" — no colon, no Enter — where the
+  // space advances Chapter → Verse and John 3:16 resolves live.
+  await bookField.click();
+  await bookField.fill('');
+  await bookField.pressSequentially('joh', { delay: 40 });
+  await bookField.press(' ');
+  await expect(bookField).toHaveValue('John');
+  await presenter.keyboard.type('3 16', { delay: 40 });
+  await expect(presenter.getByLabel('Chapter')).toHaveValue('3');
+  await expect(presenter.getByLabel('Verse')).toHaveValue('16');
   await expect(presenter.getByText(/For God so loved the world/).first()).toBeVisible({
     timeout: 10_000,
   });
+
+  // Inline range in the verse zone: "16-18" stages a 3-verse, one-slide-each deck.
+  await presenter.getByLabel('Verse').fill('16-18');
+  await expect(presenter.getByText(/3 verses · one slide each/)).toBeVisible({ timeout: 10_000 });
 
   await app.close();
   fs.rmSync(userDataDir, { recursive: true, force: true });

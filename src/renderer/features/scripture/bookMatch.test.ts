@@ -1,6 +1,12 @@
 import { describe, it, expect } from 'vitest';
 import type { BibleBook } from '@/shared/schemas/scripture';
-import { matchBooks, nearestBook, bookFragmentOf, normalizeFragment } from './bookMatch';
+import {
+  matchBooks,
+  nearestBook,
+  bookFragmentOf,
+  normalizeFragment,
+  isExactBook,
+} from './bookMatch';
 
 // Minimal canonical-order book list (number drives order, like listBooks()).
 const mk = (number: number, name: string, abbreviation: string): BibleBook => ({
@@ -50,6 +56,19 @@ describe('matchBooks / nearestBook', () => {
   it('matches on abbreviation too', () => {
     expect(nearestBook(BOOKS, 'gen')?.name).toBe('Genesis');
     expect(nearestBook(BOOKS, 'jas')?.name).toBe('James');
+  });
+});
+
+describe('isExactBook', () => {
+  it('is true only for a full name or abbreviation, not a prefix', () => {
+    expect(isExactBook(BOOKS, 'John')).toBe(true);
+    expect(isExactBook(BOOKS, 'john')).toBe(true); // case-insensitive
+    expect(isExactBook(BOOKS, 'John ')).toBe(true); // trailing space ignored
+    expect(isExactBook(BOOKS, '1 Thessalonians')).toBe(true);
+    expect(isExactBook(BOOKS, '1thess')).toBe(true); // abbreviation
+    expect(isExactBook(BOOKS, 'joh')).toBe(false); // prefix only
+    expect(isExactBook(BOOKS, 'jo')).toBe(false);
+    expect(isExactBook(BOOKS, '')).toBe(false);
   });
 });
 

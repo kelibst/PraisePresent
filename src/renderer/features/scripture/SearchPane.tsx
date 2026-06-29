@@ -149,13 +149,17 @@ export default function SearchPane({ staged, onStage, onStageIndex, onSendLive }
           </label>
         </div>
 
-        {/* Segmented reference display + translation note for the staged lead. */}
-        <SegmentedReference lead={lead} abbr={abbr} count={staged?.verses.length ?? 0} />
+        {/* In Reference mode the editable field IS the segmented display, so the
+            read-only strip would just duplicate it (§1.9) — show it only for the
+            picker/keyword modes, which have no reference input of their own. */}
+        {mode !== 'reference' && (
+          <SegmentedReference lead={lead} abbr={abbr} count={staged?.verses.length ?? 0} />
+        )}
 
         {/* Active mode body. */}
         <div className="flex min-h-0 flex-1 flex-col">
           {mode === 'reference' && (
-            <ReferenceMode books={books} onResolve={handleReferenceResolve} />
+            <ReferenceMode books={books} abbr={abbr} onResolve={handleReferenceResolve} />
           )}
           {mode === 'picker' && <CardPickerMode onPick={onStage} activeVerse={stagedActiveVerse} />}
           {mode === 'keyword' && (
