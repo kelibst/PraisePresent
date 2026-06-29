@@ -11,6 +11,10 @@ export const CHANNELS = {
     getAudience: 'display:get-audience', // renderer -> main: read persisted audience choice
     setAudience: 'display:set-audience', // renderer -> main: choose + persist + re-place
   },
+  capability: {
+    get: 'capability:get', // renderer -> main: resolved tier + hardware signals (B6a)
+    setOverride: 'capability:set-override', // renderer -> main: set + persist the operator tier override
+  },
   present: {
     setDeck: 'present:set-deck', // renderer -> main (invoke): replace the live deck
     next: 'present:next', // renderer -> main: advance one slide (clamped)

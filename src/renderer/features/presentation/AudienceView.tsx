@@ -58,9 +58,24 @@ export default function AudienceView() {
   // Overscan / TV safe-area inset (% per edge). Read once on mount from settings;
   // 0 = no inset. Garbage/missing values fall back to 0 (never breaks the view).
   const [safeAreaPct, setSafeAreaPct] = useState(0);
+  // Is the GPU compositing the page? When false (software/CPU compositing on a weak
+  // or old machine) the opacity cross-fade animates on the CPU and janks, so we drop
+  // to an instant cut (B6a — "adapt, don't punish"). Defaults true (cross-fade) until
+  // the capability read resolves; capable machines keep the fade.
+  const [compositorSafe, setCompositorSafe] = useState(true);
   const prevSlideRef = useRef<PresentSlide | null>(null);
 
   useEffect(() => window.api.present.onState(setState), []);
+
+  useEffect(() => {
+    let active = true;
+    void window.api.capability.get().then((res) => {
+      if (active && res.ok) setCompositorSafe(res.data.signals.gpuCompositing);
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
 
   useEffect(() => {
     let active = true;
@@ -76,8 +91,10 @@ export default function AudienceView() {
   const slideId = slide?.id ?? null;
   const transitionType = state.transition.type;
   // `cut` and going-to-black are immediate (operator safety); only a slide→slide
-  // change with a non-zero duration drives a cross-fade.
-  const durationMs = transitionType === 'cut' ? 0 : state.transition.durationMs;
+  // change with a non-zero duration drives a cross-fade. On a software-compositing
+  // machine we force the cut (durationMs 0) so the projector never CPU-animates (B6a).
+  const durationMs =
+    transitionType === 'cut' || !compositorSafe ? 0 : state.transition.durationMs;
 
   // Drive the cross-fade: when the visible slide changes, freeze the slide we left
   // as the outgoing layer and schedule its removal. A same-slide re-render (a

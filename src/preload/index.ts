@@ -61,6 +61,11 @@ const api: Api = {
     getAudience: () => ipcRenderer.invoke(CHANNELS.display.getAudience),
     setAudience: (displayId) => ipcRenderer.invoke(CHANNELS.display.setAudience, { displayId }),
   },
+  capability: {
+    get: () => ipcRenderer.invoke(CHANNELS.capability.get),
+    setOverride: (override) =>
+      ipcRenderer.invoke(CHANNELS.capability.setOverride, { override }),
+  },
   present: {
     setDeck: (deck, index, transition) =>
       ipcRenderer.invoke(CHANNELS.present.setDeck, { deck, index, transition }),

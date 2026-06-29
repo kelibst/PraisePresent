@@ -5,6 +5,7 @@ import { initDatabase, closeDb } from './db';
 import { registerIpcHandlers } from './ipc';
 import { hydrateScripture } from './services/scriptureService';
 import { displayService } from './services/displayService';
+import { capabilityService } from './services/capabilityService';
 import { openWindows, createPresenterWindow, hasPresenterWindow } from './windows/windowManager';
 import { registerMediaScheme, handleMediaProtocol } from './windows/mediaProtocol';
 import { buildCsp } from './infra/csp';
@@ -39,6 +40,7 @@ app.on('ready', () => {
     });
   });
   displayService.init(); // load persisted audience-display choice before windows open
+  capabilityService.init(); // detect hardware capability/tier before windows read it (B6a)
   openWindows();
 });
 

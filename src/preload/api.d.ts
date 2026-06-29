@@ -14,6 +14,7 @@ import type {
   BibleVerse,
 } from '@/shared/schemas/scripture';
 import type { DisplayInfo, AudienceSelection } from '@/shared/schemas/display';
+import type { CapabilityInfo, TierOverride } from '@/shared/schemas/capability';
 import type { MediaItem } from '@/shared/schemas/media';
 import type {
   AiCandidate,
@@ -43,6 +44,12 @@ export interface Api {
     getAudience(): Promise<Result<AudienceSelection>>;
     /** Choose the audience display (null = auto); persists + re-places live. */
     setAudience(displayId: number | null): Promise<Result<AudienceSelection>>;
+  };
+  capability: {
+    /** The resolved rendering tier + hardware signals the app adapts to (B6a). */
+    get(): Promise<Result<CapabilityInfo>>;
+    /** Set + persist the operator tier override ('auto' trusts detection). */
+    setOverride(override: TierOverride): Promise<Result<CapabilityInfo>>;
   };
   present: {
     /** Replace the live deck (and optionally the start index + transition). */

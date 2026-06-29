@@ -1,5 +1,6 @@
 import { registerSettingsHandlers } from './settingsHandlers';
 import { registerDisplayHandlers } from './displayHandlers';
+import { registerCapabilityHandlers } from './capabilityHandlers';
 import { registerPresentHandlers } from './presentHandlers';
 import { registerSongHandlers } from './songHandlers';
 import { registerPlanHandlers } from './planHandlers';
@@ -13,6 +14,7 @@ import { registerSearchHandlers } from './searchHandlers';
 export function registerIpcHandlers(): void {
   registerSettingsHandlers();
   registerDisplayHandlers();
+  registerCapabilityHandlers();
   registerPresentHandlers();
   registerSongHandlers();
   registerPlanHandlers();
