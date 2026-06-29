@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Search, Sun, Moon, Monitor } from 'lucide-react';
+import { CalendarDays, Search, Sun, Moon, Monitor } from 'lucide-react';
 
 import { Button } from '@/renderer/components/ui/button';
 import {
@@ -115,7 +115,8 @@ export default function TopBar() {
           value={id === null ? SENTINEL_NONE : String(id)}
           onValueChange={(v) => void setActiveService(v === SENTINEL_NONE ? null : Number(v))}
         >
-          <SelectTrigger aria-label="Active service" className="h-9 bg-pp-surface-1">
+          <SelectTrigger aria-label="Active service" className="h-9 gap-2 bg-pp-surface-1">
+            <CalendarDays className="size-4 shrink-0 text-pp-accent-light" aria-hidden="true" />
             <SelectValue placeholder="No service selected" />
           </SelectTrigger>
           <SelectContent>
@@ -135,7 +136,7 @@ export default function TopBar() {
         onClick={() => setPaletteOpen(true)}
         aria-label="Search (Command or Control + K)"
         aria-keyshortcuts="Meta+K Control+K"
-        className="flex h-9 flex-1 items-center gap-2 rounded-md border border-pp-border-soft bg-pp-surface-1 px-3 text-sm text-pp-text-muted outline-none transition-colors hover:border-pp-border-strong hover:text-pp-text-body focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-pp-surface-2"
+        className="flex h-9 max-w-[440px] flex-1 items-center gap-2 rounded-md border border-pp-border-soft bg-pp-surface-1 px-3 text-sm text-pp-text-muted outline-none transition-colors hover:border-pp-border-strong hover:text-pp-text-body focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-pp-surface-2"
       >
         <Search className="size-4 shrink-0" aria-hidden="true" />
         <span className="truncate">Search scripture, songs, media…</span>
@@ -175,15 +176,18 @@ export default function TopBar() {
       </div>
 
       {/* Black fail-safe (kbd B) */}
-      <Button
-        variant="destructive"
-        size="sm"
+      <button
+        type="button"
         onClick={() => void window.api.present.black()}
         aria-keyshortcuts="B"
         title="Black the audience output (B)"
+        className="inline-flex h-9 items-center gap-1.5 rounded-md border border-pp-border-strong bg-pp-surface-1 px-3 text-sm font-semibold text-pp-text-body transition-colors hover:bg-pp-surface-alt focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
       >
         Black
-      </Button>
+        <kbd className="rounded bg-pp-surface-2 px-1.5 py-0.5 text-[10px] font-medium text-pp-text-muted">
+          B
+        </kbd>
+      </button>
 
       <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} />
     </header>

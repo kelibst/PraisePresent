@@ -7,6 +7,7 @@ export {
   type SlidePreviewProps,
   type SlidePreviewMedia,
   type SlidePreviewMediaKind,
+  type SlidePreviewBackground,
   type SlidePreviewBadge,
   type SlidePreviewVariant,
 } from './SlidePreview';
@@ -15,4 +16,4 @@ export { PaneHeader, type PaneHeaderProps } from './PaneHeader';
 
 export { ScheduleRow, type ScheduleRowProps, type ScheduleItemType } from './ScheduleRow';
 
-export { MiniSlideThumb, type MiniSlideThumbProps } from './MiniSlideThumb';
+export { DeckStripThumb, type DeckStripThumbProps } from './DeckStripThumb';

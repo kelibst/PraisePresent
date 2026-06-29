@@ -1,0 +1,52 @@
+%% PraisePresent — CURRENT rendering engine (as built, verified 2026-06-29)
+%% Render with the Mermaid CLI, the Mermaid Live Editor, or any Mermaid viewer.
+flowchart TB
+    subgraph SRC["Slide sources (all collapse to one PresentSlide shape)"]
+        SCR["Scripture<br/>versesToDeck()<br/>1 verse = 1 slide, locked:true"]
+        SONG["Songs / staged passages"]
+        AICAND["AI candidate<br/>projectVerses()"]
+    end
+
+    subgraph REND_OP["RENDERER — Operator window (#/)"]
+        UPD["usePresentDeck.ts<br/>staging + the ONE present.onState sub"]
+        COCK["LiveCockpit.tsx<br/>deck rail .map() — no memo<br/>SlidePreview twins"]
+    end
+
+    SCR --> UPD
+    SONG --> UPD
+    AICAND --> UPD
+    UPD -->|"present.setDeck / next / prev / goto<br/>setBackground / updateText / black"| BRIDGE
+
+    subgraph PRELOAD["PRELOAD — contextBridge window.api.present"]
+        BRIDGE["ipcRenderer.invoke(channel, payload)"]
+    end
+
+    BRIDGE -->|"present:* invoke"| HANDLERS
+
+    subgraph MAIN["MAIN process — source of truth"]
+        HANDLERS["presentHandlers.ts<br/>zod validate EVERY payload<br/>(full deck re-validated on setDeck)"]
+        REDUCE["presentEngine.reduce()<br/>pure, clamps index, fails safe to black"]
+        STATE["liveState: PresentState<br/>(whole deck held in memory)"]
+        BCAST["broadcastState()<br/>sends ENTIRE PresentState<br/>to BOTH windows, every action"]
+        HANDLERS --> REDUCE --> STATE --> BCAST
+        MPROTO["mediaProtocol.ts<br/>app-media://media/&lt;id&gt;<br/>→ mediaRepository.getPath(id)<br/>→ net.fetch(file URL), range OK"]
+    end
+
+    BCAST -->|"present:state (full state push)"| UPD
+    BCAST -->|"present:state (full state push)"| AUD
+
+    subgraph REND_AUD["RENDERER — Audience window (#/audience) — SAME bundle"]
+        AUD["AudienceView.tsx<br/>setState(wholeState) → full tree reconcile<br/>NO React.memo"]
+        LAYERS["Per-slide paint order (bottom→top):"]
+        BG["1 BackgroundLayer<br/>color = inline style · media = img/video"]
+        MED["2 MediaLayer<br/>img / video(autoplay,loop) / audio<br/>keyed in reconciled tree → REMOUNTS"]
+        TXT["3 Text lines (vw units) + reference label"]
+        FADE["Transition = single opacity 0→1 toggle<br/>fade-from-BLACK, NOT a cross-fade<br/>fade ≡ dissolve (identical)"]
+        AUD --> LAYERS --> BG --> MED --> TXT --> FADE
+    end
+
+    MPROTO -.->|"streams bytes for<br/>app-media:// URLs"| MED
+    MPROTO -.-> BG
+
+    classDef hot fill:#7a2020,stroke:#ff6b6b,color:#fff;
+    class BCAST,HANDLERS,AUD,FADE,MED hot;

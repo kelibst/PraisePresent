@@ -16,6 +16,8 @@ export const CHANNELS = {
     next: 'present:next', // renderer -> main: advance one slide (clamped)
     prev: 'present:prev', // renderer -> main: go back one slide (clamped)
     goto: 'present:goto', // renderer -> main: jump to an index (clamped)
+    setBackground: 'present:set-background', // renderer -> main: set/clear a slide background (clamped)
+    updateText: 'present:update-text', // renderer -> main: replace a slide's text (clamped; locked rejected)
     black: 'present:black', // renderer -> main: fail-safe black
     blank: 'present:blank', // renderer -> main: dim/blank, keep deck
     clear: 'present:clear', // renderer -> main: clear slide, keep deck

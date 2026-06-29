@@ -1,5 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
-import type { PresentState, PresentSlide, SlideMedia } from '@/shared/schemas/present';
+import type {
+  PresentState,
+  PresentSlide,
+  SlideMedia,
+  SlideBackground,
+} from '@/shared/schemas/present';
 import { FAILSAFE } from '@/shared/schemas/present';
 import { SAFE_AREA_KEY, parseSafeAreaPct } from '@/shared/schemas/display';
 
@@ -23,6 +28,8 @@ export default function AudienceView() {
   const [visible, setVisible] = useState(true);
   // A media file that failed to load (moved/corrupt) — fail safe to black (§5.7).
   const [mediaErrorId, setMediaErrorId] = useState<string | null>(null);
+  // A background media file that failed to load — fall back to the gradient (§5.7).
+  const [bgErrorId, setBgErrorId] = useState<string | null>(null);
   // Overscan / TV safe-area inset (% per edge). Read once on mount from settings;
   // 0 = no inset. Garbage/missing values fall back to 0 (never breaks the view).
   const [safeAreaPct, setSafeAreaPct] = useState(0);
@@ -52,6 +59,7 @@ export default function AudienceView() {
     if (slideId === lastSlideId.current) return;
     lastSlideId.current = slideId;
     setMediaErrorId(null);
+    setBgErrorId(null);
     if (state.transition.type === 'cut' || slideId === null) {
       setVisible(true);
       return;
@@ -69,6 +77,8 @@ export default function AudienceView() {
   if (slide) {
     const durationMs = state.transition.type === 'cut' ? 0 : state.transition.durationMs;
     const showMedia = slide.media && mediaErrorId !== slide.id;
+    const showBg =
+      slide.background && !(slide.background.type === 'media' && bgErrorId === slide.id);
     return (
       // Outermost layer is always solid black: the edge-to-edge fail-safe backdrop
       // (§5.7). The radial-gradient slide surface — the full-screen twin of the
@@ -84,6 +94,12 @@ export default function AudienceView() {
         >
           {/* Deep radial-gradient slide surface, matching SlidePreview. */}
           <div className="relative h-full w-full overflow-hidden bg-pp-surface-live bg-[radial-gradient(circle_at_50%_38%,hsl(var(--pp-accent-deep)/0.55),transparent_62%),radial-gradient(circle_at_50%_120%,hsl(var(--background)/0.9),hsl(var(--pp-surface-live)))]">
+            {showBg && (
+              <BackgroundLayer
+                background={slide.background!}
+                onError={() => setBgErrorId(slide.id)}
+              />
+            )}
             {showMedia && (
               <MediaLayer media={slide.media!} onError={() => setMediaErrorId(slide.id)} />
             )}
@@ -149,4 +165,45 @@ function MediaLayer({ media, onError }: { media: SlideMedia; onError: () => void
   }
   // audio: no visual element; the file plays over a black background.
   return <audio src={media.url} onError={onError} autoPlay loop aria-hidden />;
+}
+
+// Renders the slide background full-screen, beneath the media + text layers. A
+// color is an inline fill — the value is allow-listed in main before it reaches
+// here (§5.7), so it can never inject CSS. A media background that errors bubbles
+// up so we fall back to the gradient backdrop, never a broken-image icon.
+function BackgroundLayer({
+  background,
+  onError,
+}: {
+  background: SlideBackground;
+  onError: () => void;
+}) {
+  if (background.type === 'color') {
+    return (
+      <div className="absolute inset-0" style={{ backgroundColor: background.color }} aria-hidden />
+    );
+  }
+  if (background.kind === 'image') {
+    return (
+      <img
+        src={background.url}
+        alt=""
+        aria-hidden
+        onError={onError}
+        className="absolute inset-0 h-full w-full object-cover"
+      />
+    );
+  }
+  return (
+    <video
+      src={background.url}
+      aria-hidden
+      autoPlay
+      loop
+      muted
+      playsInline
+      onError={onError}
+      className="absolute inset-0 h-full w-full object-cover"
+    />
+  );
 }

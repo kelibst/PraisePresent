@@ -2,7 +2,12 @@ import { app, BrowserWindow, screen, shell } from 'electron';
 import path from 'node:path';
 import log from '../infra/logger';
 import { CHANNELS } from '@/shared/constants/channels';
-import type { PresentState, PresentSlide, Transition } from '@/shared/schemas/present';
+import type {
+  PresentState,
+  PresentSlide,
+  Transition,
+  SlideBackground,
+} from '@/shared/schemas/present';
 import { FAILSAFE } from '@/shared/schemas/present';
 import { BLACK_ON_DISCONNECT_KEY, parseBlackOnDisconnect } from '@/shared/schemas/display';
 import { settingsRepository } from '../db/repositories/settingsRepository';
@@ -167,6 +172,18 @@ export function dispatchPresent(action: PresentAction): void {
 
 export function setDeck(deck: PresentSlide[], index?: number, transition?: Transition): void {
   dispatchPresent({ type: 'setDeck', deck, index, transition });
+}
+
+export function setBackground(
+  background: SlideBackground | null,
+  index?: number,
+  applyToAll?: boolean,
+): void {
+  dispatchPresent({ type: 'setBackground', background, index, applyToAll });
+}
+
+export function updateText(lines: string[], index?: number): void {
+  dispatchPresent({ type: 'updateText', lines, index });
 }
 
 export function getLiveState(): PresentState {

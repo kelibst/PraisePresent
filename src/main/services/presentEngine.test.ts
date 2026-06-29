@@ -93,4 +93,113 @@ describe('presentEngine reducer', () => {
     expect(s.mode).toBe('slide');
     expect(s.index).toBe(2);
   });
+
+  describe('setBackground', () => {
+    const color = { type: 'color', color: '#112233' } as const;
+
+    it('sets the background on the current slide only', () => {
+      const s = reduce(withDeck(1), { type: 'setBackground', background: color });
+      expect(s.deck[1].background).toEqual(color);
+      expect(s.deck[0].background).toBeUndefined();
+      expect(s.deck[2].background).toBeUndefined();
+      // mode/index are untouched — a background edit never moves the audience.
+      expect(s.mode).toBe('slide');
+      expect(s.index).toBe(1);
+    });
+
+    it('targets an explicit (clamped) index when given', () => {
+      const s = reduce(withDeck(0), { type: 'setBackground', background: color, index: 99 });
+      expect(s.deck[2].background).toEqual(color); // clamped to last
+      expect(s.deck[0].background).toBeUndefined();
+    });
+
+    it('applyToAll paints every slide', () => {
+      const s = reduce(withDeck(0), {
+        type: 'setBackground',
+        background: color,
+        applyToAll: true,
+      });
+      expect(s.deck.every((sl) => sl.background?.type === 'color')).toBe(true);
+    });
+
+    it('clears the background (null) and drops the key entirely', () => {
+      const withBg = reduce(withDeck(1), { type: 'setBackground', background: color });
+      const cleared = reduce(withBg, { type: 'setBackground', background: null });
+      expect('background' in cleared.deck[1]).toBe(false);
+    });
+
+    it('clears every slide with applyToAll + null', () => {
+      const withBg = reduce(withDeck(0), {
+        type: 'setBackground',
+        background: color,
+        applyToAll: true,
+      });
+      const cleared = reduce(withBg, {
+        type: 'setBackground',
+        background: null,
+        applyToAll: true,
+      });
+      expect(cleared.deck.every((sl) => !('background' in sl))).toBe(true);
+    });
+
+    it('is a no-op on an empty deck (never throws — §5.7)', () => {
+      const s = reduce({ ...FAILSAFE }, { type: 'setBackground', background: color });
+      expect(s.deck).toHaveLength(0);
+      expect(s.mode).toBe('black');
+    });
+
+    it('accepts a media background', () => {
+      const media = { type: 'media', kind: 'image', url: 'app-media://media/7' } as const;
+      const s = reduce(withDeck(0), { type: 'setBackground', background: media });
+      expect(s.deck[0].background).toEqual(media);
+    });
+  });
+
+  describe('updateText', () => {
+    it('replaces the current slide lines and never moves the audience', () => {
+      const s = reduce(withDeck(1), { type: 'updateText', lines: ['edited', 'two'] });
+      expect(s.deck[1].lines).toEqual(['edited', 'two']);
+      expect(s.deck[0].lines).toEqual(['a']); // others untouched
+      expect(s.deck[2].lines).toEqual(['c']);
+      expect(s.mode).toBe('slide');
+      expect(s.index).toBe(1);
+    });
+
+    it('targets an explicit (clamped) index when given', () => {
+      const s = reduce(withDeck(0), { type: 'updateText', lines: ['x'], index: 99 });
+      expect(s.deck[2].lines).toEqual(['x']); // clamped to last
+      expect(s.deck[0].lines).toEqual(['a']);
+    });
+
+    it('hard-rejects an edit to a LOCKED (scripture) slide — no-op (§5.3)', () => {
+      const locked: PresentState = {
+        mode: 'slide',
+        deck: [{ id: 'v', lines: ['John 3:16'], locked: true }],
+        index: 0,
+        transition: DEFAULT_TRANSITION,
+      };
+      const s = reduce(locked, { type: 'updateText', lines: ['tampered'] });
+      expect(s.deck[0].lines).toEqual(['John 3:16']); // unchanged
+      expect(s).toEqual(locked); // identical state — true no-op
+    });
+
+    it('allows empty lines (audience still fails safe — §5.7)', () => {
+      const s = reduce(withDeck(0), { type: 'updateText', lines: [] });
+      expect(s.deck[0].lines).toEqual([]);
+      expect(s.mode).toBe('slide');
+    });
+
+    it('is a no-op on an empty deck (never throws — §5.7)', () => {
+      const s = reduce({ ...FAILSAFE }, { type: 'updateText', lines: ['x'] });
+      expect(s.deck).toHaveLength(0);
+      expect(s.mode).toBe('black');
+    });
+
+    it('back-compat: an unlocked slide with no `locked` key is editable', () => {
+      // deck3 slides carry no `locked` key (existing decks) — editable by default.
+      expect('locked' in deck3[0]).toBe(false);
+      const s = reduce(withDeck(0), { type: 'updateText', lines: ['ok'] });
+      expect(s.deck[0].lines).toEqual(['ok']);
+    });
+  });
 });

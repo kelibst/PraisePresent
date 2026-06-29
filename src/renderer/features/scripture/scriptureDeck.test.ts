@@ -33,9 +33,14 @@ describe('versesToDeck', () => {
   it('makes one slide per verse, each with its own reference + id', () => {
     const deck = versesToDeck([v(3, 16, 'a'), v(3, 17, 'b')]);
     expect(deck).toEqual([
-      { id: '43-3-16', lines: ['a'], reference: 'John 3:16' },
-      { id: '43-3-17', lines: ['b'], reference: 'John 3:17' },
+      { id: '43-3-16', lines: ['a'], reference: 'John 3:16', locked: true },
+      { id: '43-3-17', lines: ['b'], reference: 'John 3:17', locked: true },
     ]);
+  });
+
+  it('marks every scripture slide read-only (locked) — translation integrity', () => {
+    const deck = versesToDeck([v(3, 16, 'a'), v(3, 17, 'b')]);
+    expect(deck.every((s) => s.locked === true)).toBe(true);
   });
 });
 

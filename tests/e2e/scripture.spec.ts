@@ -95,11 +95,12 @@ test('hydrate WEB offline, search by reference + keyword, and present a verse', 
   });
   await expect(audience.getByText(/For God so loved the world/)).toBeVisible();
 
-  // The ScripturePage 3-pane workspace renders. Reference mode is the default and
-  // is NOT blank — its field is prefilled with "John 3:16"; resolving it stages
-  // the verse and sending it live mirrors it to the audience.
+  // The unified Present screen renders. Its left Source panel defaults to the
+  // Scripture tab, where Reference mode is the default and is NOT blank — its
+  // field is prefilled with "John 3:16"; resolving it stages the verse and
+  // sending it live mirrors it to the audience.
   await presenter.evaluate(() => {
-    window.location.hash = '#/scripture';
+    window.location.hash = '#/present';
   });
   await expect(presenter.getByText('Scripture').first()).toBeVisible();
   // Resolve the prefilled reference (Enter) → the staged verse appears in Pane 1.
@@ -108,6 +109,29 @@ test('hydrate WEB offline, search by reference + keyword, and present a verse', 
   // Send the staged verse live; the audience window mirrors it.
   await presenter.getByRole('button', { name: 'Send to Live' }).click();
   await expect(audience.getByText(/For God so loved the world/)).toBeVisible();
+
+  // The live deck renders as a horizontal strip in the cockpit's right pane, with
+  // a LIVE badge on the slide currently on the projector (design: deck moved under
+  // ON SCREEN NOW, no separate vertical rail).
+  const liveDeck = presenter.getByRole('group', { name: 'Live deck slides' });
+  await expect(liveDeck).toBeVisible();
+  await expect(liveDeck.getByText('Live')).toBeVisible();
+
+  // A multi-slide deck: clicking a deck card jumps the audience to that slide
+  // (goto), proving the relocated strip still drives transport.
+  await presenter.evaluate(async () => {
+    const res = await window.api.scripture.lookupReference('John 3:16-18');
+    if (res.ok) {
+      await window.api.present.setDeck(
+        res.data.map((v, i) => ({ id: `jn-${i}`, lines: [v.text], reference: `John 3:${16 + i}` })),
+        0,
+      );
+    }
+  });
+  const deckCards = liveDeck.getByRole('button');
+  await expect(deckCards).toHaveCount(3);
+  await deckCards.nth(2).click();
+  await expect(audience.getByText('John 3:18')).toBeVisible();
 
   // The reference field still drives an arbitrary lookup (Psalm 23).
   await presenter.getByLabel('Scripture reference').fill('Psalm 23');

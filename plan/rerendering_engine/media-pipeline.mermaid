@@ -1,0 +1,48 @@
+%% PraisePresent — Adaptive media pipeline + ingest guard rails
+%% Answers: (a) huge file on a weak machine never crashes; (b) capable machines
+%% are not punished — they get the high-fidelity rendition.
+%% Render with the Mermaid CLI, the Mermaid Live Editor, or any Mermaid viewer.
+flowchart TB
+    ADD["Operator adds media<br/>(could be a 30GB 4K video)"] --> PRE
+
+    subgraph INGEST["INGEST — guard rails (out-of-process sidecar)"]
+        PRE{"Pre-flight checks<br/>size · duration · FREE DISK"}
+        PRE -->|"absurd ceiling exceeded"| REFUSE["Friendly refusal<br/>(no crash, configurable cap)"]
+        PRE -->|"large → warn + queue"| QUEUE["Serialized optimize queue<br/>(1–2 at a time, can't thrash)"]
+        PRE -->|"normal"| QUEUE
+        QUEUE --> TRANSCODE["STREAMED transcode (ffmpeg/sharp)<br/>bounded mem + threads<br/>watchdog · timeout · cancel<br/>RAM use independent of file size"]
+        TRANSCODE -->|"can't run: no disk /<br/>odd codec / cancelled"| FALLBACK["Fallback: keep original only"]
+    end
+
+    TRANSCODE --> ORIG["Keep ORIGINAL untouched"]
+    TRANSCODE --> LADDER
+    FALLBACK --> ORIG
+
+    subgraph CACHE["RENDITION LADDER — additive cache (keyed by res+codec)"]
+        LADDER["• projector-native HIGH-quality<br/>• low-power LIGHT rendition"]
+        EVICT["LRU eviction to a disk budget<br/>(never fills a small SSD)"]
+        LADDER --- EVICT
+    end
+
+    subgraph SHOWTIME["SHOW TIME — adapt, don't punish"]
+        CAPS["Capability probe (startup):<br/>GPU · RAM · HW-decode · quick benchmark<br/>→ tier Low / Standard / High<br/>(operator override in Settings)"]
+        PICK{"Pick = f(tier, projector res, source)<br/>clamp to projector, never upscale"}
+        STRONG["Strong box + 4K projector →<br/>HIGH rendition + full GPU effects"]
+        WEAK["15-yr-old box →<br/>LIGHT rendition + conservative effects"]
+        NOOPT["No rendition available →<br/>stream ORIGINAL, GPU-downscaled"]
+        CAPS --> PICK
+        PICK --> STRONG
+        PICK --> WEAK
+        PICK --> NOOPT
+    end
+
+    ORIG --> PICK
+    LADDER --> PICK
+    STRONG --> SERVE["app-media:// serves CHOSEN rendition<br/>(range-streamed; fail-safe to BLACK on error)"]
+    WEAK --> SERVE
+    NOOPT --> SERVE
+
+    classDef guard fill:#5a4a00,stroke:#e0b000,color:#fff;
+    classDef safe fill:#1f5e3a,stroke:#4ade80,color:#fff;
+    class PRE,REFUSE,QUEUE,TRANSCODE,FALLBACK,EVICT guard;
+    class CAPS,PICK,STRONG,WEAK,NOOPT,SERVE safe;

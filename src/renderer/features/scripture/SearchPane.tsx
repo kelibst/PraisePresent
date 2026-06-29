@@ -1,10 +1,9 @@
 import { useEffect, useState } from 'react';
 import { Grid3x3, Search, Type } from 'lucide-react';
 import { cn } from '@/renderer/lib/utils';
-import { PaneHeader } from '@/renderer/components/common';
 import type { BibleBook, BibleTranslation, BibleVerse } from '@/shared/schemas/scripture';
 import { referenceLabel, rangeLabel, verseId } from './scriptureDeck';
-import type { StagedPassage } from './useScripturePresenter';
+import type { StagedPassage } from '@/renderer/features/present/usePresentDeck';
 import ReferenceMode from './ReferenceMode';
 import CardPickerMode from './CardPickerMode';
 import KeywordMode from './KeywordMode';
@@ -53,36 +52,39 @@ export default function SearchPane({ staged, onStage, onStageIndex, onSendLive }
   const abbr = translation?.abbreviation ?? 'WEB';
 
   return (
-    <section className="flex h-full min-h-0 flex-col rounded-lg border border-pp-border-soft bg-pp-surface-1">
-      <PaneHeader label="Scripture" meta={translation ? `${abbr} · ${translation.name}` : abbr} />
-
+    <section className="flex h-full min-h-0 flex-col">
       <div className="flex min-h-0 flex-1 flex-col gap-3 p-3">
-        {/* Mode toggle. */}
-        <div
-          className="inline-flex shrink-0 gap-1 rounded-md bg-pp-surface-2 p-1"
-          role="tablist"
-          aria-label="Scripture mode"
-        >
-          {MODES.map((m) => {
-            const Icon = m.icon;
-            return (
-              <button
-                key={m.id}
-                role="tab"
-                aria-selected={mode === m.id}
-                onClick={() => setMode(m.id)}
-                className={cn(
-                  'inline-flex items-center gap-1.5 rounded px-2.5 py-1 text-xs font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring',
-                  mode === m.id
-                    ? 'bg-pp-surface-1 text-pp-text-primary shadow-sm'
-                    : 'text-pp-text-muted hover:text-pp-text-body',
-                )}
-              >
-                <Icon className="size-3.5" aria-hidden />
-                {m.label}
-              </button>
-            );
-          })}
+        {/* Mode toggle + Bible meta (the design's second header row). */}
+        <div className="flex shrink-0 flex-wrap items-center justify-between gap-2">
+          <div
+            className="inline-flex flex-wrap gap-1 rounded-md bg-pp-surface-2 p-1"
+            role="tablist"
+            aria-label="Scripture mode"
+          >
+            {MODES.map((m) => {
+              const Icon = m.icon;
+              return (
+                <button
+                  key={m.id}
+                  role="tab"
+                  aria-selected={mode === m.id}
+                  onClick={() => setMode(m.id)}
+                  className={cn(
+                    'inline-flex items-center gap-1.5 rounded px-2.5 py-1 text-xs font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring',
+                    mode === m.id
+                      ? 'bg-pp-accent/20 text-pp-accent-light'
+                      : 'text-pp-text-muted hover:text-pp-text-body',
+                  )}
+                >
+                  <Icon className="size-3.5" aria-hidden />
+                  {m.label}
+                </button>
+              );
+            })}
+          </div>
+          <span className="truncate text-[11px] text-pp-text-muted" title="Active Bible translation">
+            {translation ? `${abbr} · ${translation.name} · offline` : `${abbr} · offline`}
+          </span>
         </div>
 
         {/* Segmented reference display + translation note for the staged lead. */}
@@ -121,23 +123,32 @@ function SegmentedReference({
     ? [lead.bookName, String(lead.chapter), String(lead.verse)]
     : ['Book', 'Ch', 'Vs'];
   return (
-    <div className="flex shrink-0 items-center gap-1.5 rounded-md border border-pp-border-soft bg-pp-surface-2/50 px-2 py-1.5">
+    <div
+      className={cn(
+        'flex shrink-0 items-center gap-2 rounded-[11px] border px-2.5 py-2 transition-shadow',
+        lead
+          ? 'border-pp-accent/40 bg-pp-surface-alt shadow-[0_0_0_3px_hsl(var(--pp-accent)/0.18)]'
+          : 'border-pp-border-strong bg-pp-surface-alt',
+      )}
+    >
       {chips.map((c, i) => (
-        <span key={i} className="flex items-center gap-1.5">
-          {i > 0 && <span className="text-pp-text-dim">{i === 1 ? '›' : ':'}</span>}
+        <span key={i} className="flex items-center gap-2">
+          {i > 0 && <span className="text-base text-pp-text-dim">{i === 1 ? '›' : ':'}</span>}
           <span
             className={cn(
-              'rounded px-1.5 py-0.5 text-sm font-medium',
-              lead
-                ? 'bg-pp-surface-1 text-pp-text-body ring-1 ring-pp-accent/30'
-                : 'text-pp-text-dim',
+              'rounded-lg px-2.5 py-1 text-base font-semibold leading-none',
+              i === 0 && lead
+                ? 'bg-pp-accent/20 text-pp-accent-light'
+                : lead
+                  ? 'bg-pp-surface-2 text-pp-text-body'
+                  : 'text-pp-text-dim',
             )}
           >
             {c}
           </span>
         </span>
       ))}
-      <span className="ml-auto rounded bg-pp-surface-1 px-2 py-0.5 text-xs font-semibold text-pp-text-muted">
+      <span className="ml-auto rounded-lg border border-pp-border-strong bg-pp-surface-1 px-2.5 py-1 text-xs font-semibold text-pp-text-muted">
         {abbr}
       </span>
       {count > 1 && <span className="text-xs text-pp-text-dim">· {count} verses</span>}

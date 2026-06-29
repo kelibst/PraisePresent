@@ -1,5 +1,10 @@
 import type { Result } from '@/shared/types/result';
-import type { PresentState, PresentSlide, Transition } from '@/shared/schemas/present';
+import type {
+  PresentState,
+  PresentSlide,
+  Transition,
+  SlideBackground,
+} from '@/shared/schemas/present';
 import type { Song, SongCreate, SongImportText, SongSummary } from '@/shared/schemas/song';
 import type { Plan, PlanCreate, PlanSummary } from '@/shared/schemas/plan';
 import type {
@@ -45,6 +50,22 @@ export interface Api {
     next(): Promise<Result<void>>;
     prev(): Promise<Result<void>>;
     goto(index: number): Promise<Result<void>>;
+    /**
+     * Set (or clear, with `background: null`) a slide's background on the live
+     * deck. `index` omitted → the current slide; `applyToAll` sets every slide.
+     * Main re-validates the color/url and clamps the index (§5.7).
+     */
+    setBackground(
+      background: SlideBackground | null,
+      index?: number,
+      applyToAll?: boolean,
+    ): Promise<Result<void>>;
+    /**
+     * Replace a slide's text `lines` on the live deck. `index` omitted → the
+     * current slide. Main bounds + clamps and REJECTS edits to a `locked`
+     * (scripture) slide — the renderer is never trusted to honor the lock (§5.3).
+     */
+    updateText(lines: string[], index?: number): Promise<Result<void>>;
     black(): Promise<Result<void>>;
     blank(): Promise<Result<void>>;
     clear(): Promise<Result<void>>;

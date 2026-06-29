@@ -17,12 +17,17 @@ export function verseId(v: BibleVerse): string {
   return `${v.bookNumber}-${v.chapter}-${v.verse}`;
 }
 
-/** One projectable slide per verse, each carrying its own reference label. */
+/**
+ * One projectable slide per verse, each carrying its own reference label. Every
+ * scripture slide is `locked: true` — the displayed verse text is read-only
+ * (translation integrity), enforced in both the UI and main (§5.3).
+ */
 export function versesToDeck(verses: BibleVerse[]): PresentSlide[] {
   return verses.map((v) => ({
     id: verseId(v),
     lines: [v.text],
     reference: referenceLabel(v),
+    locked: true,
   }));
 }
 

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { cn } from '@/renderer/lib/utils';
 
 // A pure, presentational, scaled-down twin of the audience output (AudienceView).
@@ -18,6 +18,13 @@ export type SlidePreviewMedia = {
   url: string;
 };
 
+// Optional background, painted BENEATH the media + text layers. Mirrors
+// `SlideBackground` from the present schema but kept local so this atom imports
+// no schema/runtime — it's plain data (validated in main before it ever arrives).
+export type SlidePreviewBackground =
+  | { type: 'color'; color: string }
+  | { type: 'media'; kind: 'image' | 'video'; url: string };
+
 // A small label pinned to the top-left corner, e.g. "Scripture · read-only".
 export type SlidePreviewBadge = {
   label: string;
@@ -36,6 +43,8 @@ export type SlidePreviewProps = {
   reference?: string;
   /** Optional background media. Text overlays it, matching the audience view. */
   media?: SlidePreviewMedia;
+  /** Optional background (color or media), painted beneath media + text. */
+  background?: SlidePreviewBackground;
   /** Optional corner badge chip. */
   badge?: SlidePreviewBadge;
   /** Size variant. Defaults to `lg`. */
@@ -73,6 +82,7 @@ export function SlidePreview({
   lines,
   reference,
   media,
+  background,
   badge,
   variant = 'lg',
   active = false,
@@ -81,9 +91,18 @@ export function SlidePreview({
   // A media file that failed to load (moved/corrupt) fails safe to the gradient
   // backdrop rather than a broken-image icon — the projector never shows junk.
   const [mediaFailed, setMediaFailed] = useState(false);
+  // A background-media load error falls back to the gradient backdrop too (§5.7).
+  const [bgFailed, setBgFailed] = useState(false);
   const t = TYPE[variant];
   const hasText = (lines?.length ?? 0) > 0;
   const showMedia = media && media.kind !== 'audio' && !mediaFailed;
+  const showBg = !!background && !(background.type === 'media' && bgFailed);
+  // Clear the load-error flag when the background source changes, so switching to
+  // a working background recovers from a prior failure.
+  const bgKey = background
+    ? `${background.type}:${'url' in background ? background.url : background.color}`
+    : '';
+  useEffect(() => setBgFailed(false), [bgKey]);
 
   return (
     <div
@@ -100,6 +119,8 @@ export function SlidePreview({
       )}
       data-active={active || undefined}
     >
+      {showBg && <SlideBackgroundLayer background={background} onError={() => setBgFailed(true)} />}
+
       {showMedia && <SlideMediaLayer media={media} onError={() => setMediaFailed(true)} />}
 
       {hasText && (
@@ -166,6 +187,44 @@ function SlideMediaLayer({ media, onError }: { media: SlidePreviewMedia; onError
   return (
     <video
       src={media.url}
+      aria-hidden
+      muted
+      playsInline
+      onError={onError}
+      className="absolute inset-0 h-full w-full object-cover"
+    />
+  );
+}
+
+// Paints the slide background to fill the box, beneath media + text. A color is
+// an inline fill (the value is allow-listed in main before it arrives — §5.7); a
+// media image/video covers the box. onError fails safe to the gradient backdrop.
+function SlideBackgroundLayer({
+  background,
+  onError,
+}: {
+  background: SlidePreviewBackground;
+  onError: () => void;
+}) {
+  if (background.type === 'color') {
+    return (
+      <div className="absolute inset-0" style={{ backgroundColor: background.color }} aria-hidden />
+    );
+  }
+  if (background.kind === 'image') {
+    return (
+      <img
+        src={background.url}
+        alt=""
+        aria-hidden
+        onError={onError}
+        className="absolute inset-0 h-full w-full object-cover"
+      />
+    );
+  }
+  return (
+    <video
+      src={background.url}
       aria-hidden
       muted
       playsInline

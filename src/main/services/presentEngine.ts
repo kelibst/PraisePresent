@@ -1,4 +1,9 @@
-import type { PresentState, PresentSlide, Transition } from '@/shared/schemas/present';
+import type {
+  PresentState,
+  PresentSlide,
+  Transition,
+  SlideBackground,
+} from '@/shared/schemas/present';
 import { FAILSAFE, DEFAULT_TRANSITION } from '@/shared/schemas/present';
 
 // Pure live-presentation reducer. Given the current state + an action it returns
@@ -13,6 +18,13 @@ export type PresentAction =
   | { type: 'next' }
   | { type: 'prev' }
   | { type: 'goto'; index: number }
+  | {
+      type: 'setBackground';
+      background: SlideBackground | null;
+      index?: number;
+      applyToAll?: boolean;
+    }
+  | { type: 'updateText'; lines: string[]; index?: number }
   | { type: 'black' }
   | { type: 'blank' }
   | { type: 'clear' };
@@ -52,6 +64,38 @@ export function reduce(state: PresentState, action: PresentAction): PresentState
       };
     case 'goto':
       return { ...state, mode: slideOr(state), index: clampIndex(action.index, state.deck.length) };
+    case 'setBackground': {
+      // Set (or clear, when background === null) the background on one slide or
+      // all of them. Never changes mode/index — purely a per-slide layer edit.
+      // An empty deck is a no-op (nothing to paint); never throws (§5.7).
+      if (state.deck.length === 0) return state;
+      const next = action.background ?? undefined;
+      const target = action.applyToAll
+        ? null // all slides
+        : clampIndex(action.index ?? state.index, state.deck.length);
+      const deck = state.deck.map((slide, i) => {
+        if (target !== null && i !== target) return slide;
+        if (next) return { ...slide, background: next };
+        // Drop the key entirely when clearing so the slide stays back-compatible.
+        const cleared = { ...slide };
+        delete cleared.background;
+        return cleared;
+      });
+      return { ...state, deck };
+    }
+    case 'updateText': {
+      // Replace one slide's text lines on the live deck. Never moves the
+      // audience (mode/index untouched). Defense-in-depth: a `locked` slide
+      // (scripture) is read-only and this is a hard no-op even when the renderer
+      // asks for an edit (§5.3). An empty deck is a no-op; never throws (§5.7).
+      if (state.deck.length === 0) return state;
+      const target = clampIndex(action.index ?? state.index, state.deck.length);
+      if (state.deck[target].locked) return state;
+      const deck = state.deck.map((slide, i) =>
+        i === target ? { ...slide, lines: action.lines } : slide,
+      );
+      return { ...state, deck };
+    }
     case 'black':
       // Hard fail-safe: forget the deck entirely so nothing can leak back.
       return { ...FAILSAFE, transition: state.transition };

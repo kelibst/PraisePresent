@@ -22,6 +22,9 @@ const api: Api = {
     next: () => ipcRenderer.invoke(CHANNELS.present.next),
     prev: () => ipcRenderer.invoke(CHANNELS.present.prev),
     goto: (index) => ipcRenderer.invoke(CHANNELS.present.goto, { index }),
+    setBackground: (background, index, applyToAll) =>
+      ipcRenderer.invoke(CHANNELS.present.setBackground, { background, index, applyToAll }),
+    updateText: (lines, index) => ipcRenderer.invoke(CHANNELS.present.updateText, { lines, index }),
     black: () => ipcRenderer.invoke(CHANNELS.present.black),
     blank: () => ipcRenderer.invoke(CHANNELS.present.blank),
     clear: () => ipcRenderer.invoke(CHANNELS.present.clear),

@@ -3,7 +3,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { SlidePreview } from './SlidePreview';
 import { PaneHeader } from './PaneHeader';
 import { ScheduleRow } from './ScheduleRow';
-import { MiniSlideThumb } from './MiniSlideThumb';
+import { DeckStripThumb } from './DeckStripThumb';
 
 // These atoms are pure presentational components — we assert the load-bearing
 // markup they emit from plain-data props (text, reference, badge, blank
@@ -85,22 +85,23 @@ describe('ScheduleRow', () => {
   });
 });
 
-describe('MiniSlideThumb', () => {
-  it('renders the index and first line', () => {
-    const out = html(<MiniSlideThumb index={4} firstLine="Holy holy holy" reference="Rev 4:8" />);
-    expect(out).toContain('4');
+describe('DeckStripThumb', () => {
+  it('renders the first line and reference', () => {
+    const out = html(<DeckStripThumb firstLine="Holy holy holy" reference="Rev 4:8" />);
     expect(out).toContain('Holy holy holy');
     expect(out).toContain('Rev 4:8');
   });
 
   it('falls back to (blank) when first line is empty', () => {
-    const out = html(<MiniSlideThumb index={1} firstLine="   " />);
+    const out = html(<DeckStripThumb firstLine="   " />);
     expect(out).toContain('(blank)');
   });
 
-  it('is a button when interactive and marks live state', () => {
-    const out = html(<MiniSlideThumb index={2} firstLine="x" live onClick={() => {}} />);
+  it('is a button that shows the LIVE badge and sage accent when live', () => {
+    const out = html(<DeckStripThumb firstLine="x" reference="Jn 3:16" live onClick={() => {}} />);
     expect(out).toContain('<button');
-    expect(out).toContain('ring-pp-success');
+    expect(out).toContain('Live');
+    expect(out).toContain('aria-current="true"');
+    expect(out).toContain('border-pp-accent/60');
   });
 });

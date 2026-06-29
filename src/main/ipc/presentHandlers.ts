@@ -1,7 +1,18 @@
 import { z } from 'zod';
 import { CHANNELS } from '@/shared/constants/channels';
-import { setDeckInput, gotoInput } from '@/shared/schemas/present';
-import { dispatchPresent, setDeck, getLiveState } from '../windows/windowManager';
+import {
+  setDeckInput,
+  gotoInput,
+  setBackgroundInput,
+  updateTextInput,
+} from '@/shared/schemas/present';
+import {
+  dispatchPresent,
+  setDeck,
+  setBackground,
+  updateText,
+  getLiveState,
+} from '../windows/windowManager';
 import { handle } from './registry';
 import type { PresentState } from '@/shared/schemas/present';
 
@@ -15,6 +26,25 @@ export function registerPresentHandlers(): void {
 
   handle(CHANNELS.present.goto, gotoInput, ({ index }): void => {
     dispatchPresent({ type: 'goto', index });
+  });
+
+  // Set/clear a slide background on the live deck. The schema has already
+  // re-validated the color (safe-form allow-list) / url; the reducer clamps the
+  // index and never changes mode — the audience can only fail safe (§5.7).
+  handle(
+    CHANNELS.present.setBackground,
+    setBackgroundInput,
+    ({ index, background, applyToAll }): void => {
+      setBackground(background, index, applyToAll);
+    },
+  );
+
+  // Replace a slide's text on the live deck. The schema has bounded the line
+  // count/length; the reducer clamps the index AND hard-rejects the edit when the
+  // target slide is `locked` (scripture) — the renderer can never edit scripture
+  // text even via a crafted call (§5.3). Mode/index are never changed (§5.7).
+  handle(CHANNELS.present.updateText, updateTextInput, ({ index, lines }): void => {
+    updateText(lines, index);
   });
 
   // No-input controls.

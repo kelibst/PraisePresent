@@ -5,6 +5,11 @@ import { z } from 'zod';
 // chapter + a verse range; search returns flat verse rows. Every payload that
 // crosses IPC is validated against these.
 
+// Persisted settings key (truth in SQLite, §1.5) for the default translation —
+// shared here so every consumer (Settings, the Scripture browser) reads one
+// constant rather than re-declaring the string.
+export const DEFAULT_TRANSLATION_KEY = 'scripture.defaultTranslation';
+
 export const bibleTranslation = z.object({
   id: z.number().int().positive(),
   abbreviation: z.string(),

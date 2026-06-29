@@ -112,17 +112,22 @@ test('presenter UI: preview, thumbnails, and keyboard live controls', async () =
     window.location.hash = '#/present';
   });
   await expect(presenter.getByRole('heading', { name: 'Presentation' })).toBeVisible();
-  await expect(presenter.getByText(/Slide 1 \/ 3/)).toBeVisible();
 
-  // Keyboard: ArrowRight advances; the audience and the live counter follow.
+  // The relocated horizontal Live Deck strip marks the current slide with the
+  // LIVE badge (aria-current). Slide 1 is live initially.
+  const deckGroup = presenter.getByRole('group', { name: 'Live deck slides' });
+  const deckCard = (name: RegExp) => deckGroup.getByRole('button', { name });
+  await expect(deckCard(/First slide line one/)).toHaveAttribute('aria-current', 'true');
+
+  // Keyboard: ArrowRight advances; the audience and the deck's LIVE marker follow.
   await presenter.locator('body').click();
   await presenter.keyboard.press('ArrowRight');
-  await expect(presenter.getByText(/Slide 2 \/ 3/)).toBeVisible();
+  await expect(deckCard(/Second slide/)).toHaveAttribute('aria-current', 'true');
   await expect(audience.getByText('Second slide')).toBeVisible();
 
   // ArrowLeft goes back.
   await presenter.keyboard.press('ArrowLeft');
-  await expect(presenter.getByText(/Slide 1 \/ 3/)).toBeVisible();
+  await expect(deckCard(/First slide line one/)).toHaveAttribute('aria-current', 'true');
 
   // 'b' blacks out.
   await presenter.keyboard.press('b');

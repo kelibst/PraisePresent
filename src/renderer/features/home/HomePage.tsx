@@ -29,7 +29,7 @@ import type { DisplayInfo } from '@/shared/schemas/display';
 const CHURCH_NAME = 'PraisePresent';
 
 const QUICK_JUMP: ReadonlyArray<{ label: string; to: string; icon: LucideIcon }> = [
-  { label: 'Scripture', to: '/scripture', icon: BookOpen },
+  { label: 'Scripture', to: '/present', icon: BookOpen },
   { label: 'Songs', to: '/songs', icon: Music },
   { label: 'Media', to: '/media', icon: ImageIcon },
 ];
