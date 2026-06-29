@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { PresentState, PresentSlide, SlideMedia } from '@/shared/schemas/present';
 import { FAILSAFE } from '@/shared/schemas/present';
+import { SAFE_AREA_KEY, parseSafeAreaPct } from '@/shared/schemas/display';
 
 // Full-screen projector view. Subscribes to main's live state and renders the
 // current slide, failing safe to black on anything unexpected — never a stack
@@ -22,9 +23,26 @@ export default function AudienceView() {
   const [visible, setVisible] = useState(true);
   // A media file that failed to load (moved/corrupt) — fail safe to black (§5.7).
   const [mediaErrorId, setMediaErrorId] = useState<string | null>(null);
+  // Overscan / TV safe-area inset (% per edge). Read once on mount from settings;
+  // 0 = no inset. Garbage/missing values fall back to 0 (never breaks the view).
+  const [safeAreaPct, setSafeAreaPct] = useState(0);
   const lastSlideId = useRef<string | null>(null);
 
   useEffect(() => window.api.present.onState(setState), []);
+
+  useEffect(() => {
+    let active = true;
+    void window.api.settings.get(SAFE_AREA_KEY).then((res) => {
+      if (active && res.ok) setSafeAreaPct(parseSafeAreaPct(res.data));
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  // Padding applied to the content layer so text/media stay inside the safe area
+  // while the black backdrop always fills the screen edge-to-edge (§5.7).
+  const safeAreaStyle = safeAreaPct > 0 ? { padding: `${safeAreaPct}%` } : undefined;
 
   const slide = activeSlide(state);
   const slideId = slide?.id ?? null;
@@ -52,30 +70,47 @@ export default function AudienceView() {
     const durationMs = state.transition.type === 'cut' ? 0 : state.transition.durationMs;
     const showMedia = slide.media && mediaErrorId !== slide.id;
     return (
-      <div className="relative flex h-screen w-screen items-center justify-center overflow-hidden bg-black text-white">
+      // Outermost layer is always solid black: the edge-to-edge fail-safe backdrop
+      // (§5.7). The radial-gradient slide surface — the full-screen twin of the
+      // SlidePreview atom — paints on top, inside the safe area.
+      <div className="relative h-screen w-screen overflow-hidden bg-black text-white">
         <div
           className="absolute inset-0 will-change-[opacity]"
-          style={{ opacity: visible ? 1 : 0, transition: `opacity ${durationMs}ms ease-in-out` }}
+          style={{
+            opacity: visible ? 1 : 0,
+            transition: `opacity ${durationMs}ms ease-in-out`,
+            ...safeAreaStyle,
+          }}
         >
-          {showMedia && (
-            <MediaLayer media={slide.media!} onError={() => setMediaErrorId(slide.id)} />
-          )}
-          {slide.lines.length > 0 && (
-            <div className="absolute inset-0 flex flex-col items-center justify-center gap-6 px-16 text-center">
-              <div className="flex flex-col gap-2">
-                {slide.lines.map((line, i) => (
-                  <p key={i} className="text-5xl font-semibold leading-tight drop-shadow-lg">
-                    {line}
-                  </p>
-                ))}
+          {/* Deep radial-gradient slide surface, matching SlidePreview. */}
+          <div className="relative h-full w-full overflow-hidden bg-pp-surface-live bg-[radial-gradient(circle_at_50%_38%,hsl(var(--pp-accent-deep)/0.55),transparent_62%),radial-gradient(circle_at_50%_120%,hsl(var(--background)/0.9),hsl(var(--pp-surface-live)))]">
+            {showMedia && (
+              <MediaLayer media={slide.media!} onError={() => setMediaErrorId(slide.id)} />
+            )}
+            {slide.lines.length > 0 && (
+              <div className="absolute inset-0 flex flex-col items-center justify-center px-[7vw] text-center">
+                <div className="flex flex-col gap-[1.2vw]">
+                  {slide.lines.map((line, i) => (
+                    <p
+                      key={i}
+                      className="font-semibold leading-tight drop-shadow-lg [text-wrap:balance]"
+                      style={{ fontSize: '5.2vw' }}
+                    >
+                      {line}
+                    </p>
+                  ))}
+                </div>
               </div>
-              {slide.reference && (
-                <p className="text-3xl font-normal text-white/70 drop-shadow-lg">
-                  {slide.reference}
-                </p>
-              )}
-            </div>
-          )}
+            )}
+            {slide.reference && (
+              <p
+                className="absolute bottom-[3vw] right-[4vw] font-normal text-white/70 drop-shadow-lg"
+                style={{ fontSize: '3.2vw' }}
+              >
+                {slide.reference}
+              </p>
+            )}
+          </div>
         </div>
       </div>
     );
@@ -94,7 +129,7 @@ function MediaLayer({ media, onError }: { media: SlideMedia; onError: () => void
         src={media.url}
         alt=""
         onError={onError}
-        className="h-full w-full object-contain"
+        className="absolute inset-0 h-full w-full object-cover"
         aria-hidden
       />
     );
@@ -107,7 +142,7 @@ function MediaLayer({ media, onError }: { media: SlideMedia; onError: () => void
         autoPlay
         loop
         playsInline
-        className="h-full w-full object-contain"
+        className="absolute inset-0 h-full w-full object-cover"
         aria-hidden
       />
     );

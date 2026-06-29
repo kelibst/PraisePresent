@@ -2,6 +2,7 @@ import { contextBridge, ipcRenderer } from 'electron';
 import { CHANNELS } from '@/shared/constants/channels';
 import type { Api } from './api';
 import type { PresentState } from '@/shared/schemas/present';
+import type { AiCandidate, TranscriptSegment } from '@/shared/schemas/ai';
 
 // Minimal typed bridge — NO business logic (CLAUDE.md §5.2). Each method just
 // forwards to a zod-validated main-process handler over a FIXED channel.
@@ -49,12 +50,43 @@ const api: Api = {
   },
   ai: {
     submitText: (text) => ipcRenderer.invoke(CHANNELS.ai.submitText, { text }),
+    listAgents: () => ipcRenderer.invoke(CHANNELS.ai.listAgents),
+    listSources: (sources) => ipcRenderer.invoke(CHANNELS.ai.listSources, { sources }),
+    setSource: (sourceId) => ipcRenderer.invoke(CHANNELS.ai.setSource, { sourceId }),
+    modelStatus: (agentId) => ipcRenderer.invoke(CHANNELS.ai.modelStatus, { agentId }),
+    downloadModel: (agentId) => ipcRenderer.invoke(CHANNELS.ai.downloadModel, { agentId }),
+    status: () => ipcRenderer.invoke(CHANNELS.ai.status),
+    setMode: (mode) => ipcRenderer.invoke(CHANNELS.ai.setMode, { mode }),
+    setEnabled: (enabled) => ipcRenderer.invoke(CHANNELS.ai.setEnabled, { enabled }),
+    setAgent: (agentId) => ipcRenderer.invoke(CHANNELS.ai.setAgent, { agentId }),
+    setOnline: (online) => ipcRenderer.invoke(CHANNELS.ai.setOnline, { online }),
+    setAutoProject: (config) => ipcRenderer.invoke(CHANNELS.ai.setAutoProject, config),
+    setTranscriptOnly: (transcriptOnly) =>
+      ipcRenderer.invoke(CHANNELS.ai.setTranscriptOnly, { transcriptOnly }),
+    startListening: () => ipcRenderer.invoke(CHANNELS.ai.startListening),
+    stopListening: () => ipcRenderer.invoke(CHANNELS.ai.stopListening),
+    setApiKey: (agentId, apiKey) => ipcRenderer.invoke(CHANNELS.ai.setApiKey, { agentId, apiKey }),
+    hasKey: (agentId) => ipcRenderer.invoke(CHANNELS.ai.hasKey, { agentId }),
+    clearApiKey: (agentId) => ipcRenderer.invoke(CHANNELS.ai.clearApiKey, { agentId }),
+    onCandidates: (callback) => {
+      const listener = (_event: unknown, candidates: AiCandidate[]) => callback(candidates);
+      ipcRenderer.on(CHANNELS.ai.candidates, listener);
+      return () => ipcRenderer.removeListener(CHANNELS.ai.candidates, listener);
+    },
+    onTranscript: (callback) => {
+      const listener = (_event: unknown, segment: TranscriptSegment) => callback(segment);
+      ipcRenderer.on(CHANNELS.ai.transcript, listener);
+      return () => ipcRenderer.removeListener(CHANNELS.ai.transcript, listener);
+    },
   },
   media: {
     list: () => ipcRenderer.invoke(CHANNELS.media.list),
     import: () => ipcRenderer.invoke(CHANNELS.media.import),
     add: (paths) => ipcRenderer.invoke(CHANNELS.media.add, { paths }),
     remove: (id) => ipcRenderer.invoke(CHANNELS.media.remove, { id }),
+  },
+  search: {
+    query: (query, limit) => ipcRenderer.invoke(CHANNELS.search.query, { query, limit }),
   },
   scripture: {
     listTranslations: () => ipcRenderer.invoke(CHANNELS.scripture.listTranslations),

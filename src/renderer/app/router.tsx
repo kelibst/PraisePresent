@@ -24,13 +24,14 @@ const AppRouter: React.FC = () => (
     <Routes>
       {/* Audience/projector window — full-screen, no presenter chrome. */}
       <Route path="/audience" element={<AudienceView />} />
-      <Route path="/" element={<HomePage />} />
+      {/* Every operator screen sits inside the persistent shell (AppLayout). */}
       <Route element={<AppLayout />}>
+        <Route path="/" element={<HomePage />} />
         <Route path="/scripture" element={<ScripturePage />} />
         <Route path="/songs" element={<SongsPage />} />
         <Route path="/media" element={<MediaPage />} />
-        <Route path="/present" element={<PresentationPage />} />
         <Route path="/detect" element={<LiveDetectPage />} />
+        <Route path="/present" element={<PresentationPage />} />
         <Route path="/services" element={<ServicesPage />}>
           <Route index element={null} />
           <Route path=":id" element={<ServiceDetail />} />

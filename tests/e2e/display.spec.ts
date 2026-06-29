@@ -58,7 +58,7 @@ test('enumerate displays, choose the audience screen, persist across restart', a
   await w2.getByRole('button', { name: 'Display' }).click();
   await expect(w2.getByRole('heading', { name: 'Audience display' })).toBeVisible();
   await w2.getByRole('radio', { name: /Auto/ }).click();
-  await expect(w2.getByRole('status')).toHaveText(/Saved/);
+  await expect(w2.getByRole('status', { name: /Saved/ })).toBeVisible();
   const reset = await w2.evaluate(() => window.api.display.getAudience());
   expect(reset).toMatchObject({ ok: true, data: { displayId: null } });
 

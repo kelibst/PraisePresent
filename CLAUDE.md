@@ -149,7 +149,7 @@ A task file contains:
 - Use parameterized queries always (no string interpolation into SQL).
 
 ### 5.6 Styling
-- Tailwind + shadcn/ui. **One** global stylesheet (`src/renderer/styles/globals.css`). Use design tokens/CSS variables for theme; no hard-coded hex in components (brand primary is Deep Purple `#5E3B9E` — use the token).
+- Tailwind + shadcn/ui. **One** global stylesheet (`src/renderer/styles/globals.css`). Use design tokens/CSS variables for theme; no hard-coded hex in components (brand primary is **Sage Green `#6E9559`** with the lighter accent `#9CBE82` — use the token). *(Changed 2026-06-28 from Deep Purple `#5E3B9E` to match the approved `PraisePresent.dc.html` design; see `tasks/completed/` Stage-0 brand task.)*
 - No competing component variants; extend the existing `ui/` primitives.
 
 ### 5.7 Errors, logging, resilience

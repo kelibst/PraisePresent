@@ -1,15 +1,23 @@
 import { useCallback, useEffect, useState } from 'react';
-import { useNavigate, useLocation, Outlet } from 'react-router-dom';
-import { FiUser } from 'react-icons/fi';
+import { useNavigate, useParams, Outlet } from 'react-router-dom';
+import { Plus } from 'lucide-react';
 import type { PlanSummary } from '@/shared/schemas/plan';
+import { PaneHeader, ScheduleRow } from '@/renderer/components/common';
+import { useActiveService } from './useActiveService';
 
-// Service plans, persisted in SQLite (CLAUDE.md §1.5) — read through window.api,
-// not seed data. The static servicesData fixture was retired in P3-D5.
+// Plans workspace (CLAUDE.md §5.4): a full-height 3-pane row inside the app
+// shell's scrollable main. Pane 1 (this file) is the persistent Services list;
+// Panes 2+3 (the builder + item preview) render through <Outlet/> as the
+// /services/:id child (ServiceDetail). Selecting a service routes to it AND sets
+// it active via useActiveService so the TopBar selector and Scripture schedule
+// stay in sync. Service plans are SQLite truth read through window.api (§1.3/§1.5)
+// — the static fixture was retired in P3-D5.
 export default function ServicesPage() {
   const [plans, setPlans] = useState<PlanSummary[]>([]);
-  const [name, setName] = useState('');
   const navigate = useNavigate();
-  const location = useLocation();
+  const { id } = useParams();
+  const selectedId = id ? Number(id) : null;
+  const { setActiveService } = useActiveService();
 
   const refresh = useCallback(async () => {
     const res = await window.api.plans.list();
@@ -18,64 +26,85 @@ export default function ServicesPage() {
 
   useEffect(() => {
     void refresh();
-  }, [refresh, location.pathname]);
+  }, [refresh]);
 
+  // Create a new (empty) service, set it active, and open its builder.
   const createPlan = async () => {
-    if (!name.trim()) return;
-    const res = await window.api.plans.create({ name, scheduledFor: null, notes: '', items: [] });
+    const res = await window.api.plans.create({
+      name: 'New service',
+      scheduledFor: null,
+      notes: '',
+      items: [],
+    });
     if (res.ok) {
-      setName('');
       await refresh();
+      await setActiveService(res.data);
       navigate(`/services/${res.data}`);
     }
   };
 
+  // Opening a service makes it the active service (TopBar / Scripture follow it).
+  const openPlan = async (planId: number) => {
+    await setActiveService(planId);
+    navigate(`/services/${planId}`);
+  };
+
   return (
-    <div className="flex min-h-screen">
-      <main className="flex flex-1 flex-col bg-background p-12">
-        <h2 className="mb-8 text-2xl font-bold text-foreground">Services</h2>
-        <Outlet />
-        {location.pathname === '/services' && (
-          <div className="flex flex-col gap-6">
-            <div className="flex gap-2">
-              <input
-                aria-label="New service name"
-                className="flex-1 rounded border bg-background px-3 py-2 text-sm"
-                placeholder="New service name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && createPlan()}
-              />
-              <button
-                onClick={createPlan}
-                className="rounded bg-primary px-4 py-2 font-medium text-primary-foreground hover:opacity-90"
-              >
-                New service
-              </button>
-            </div>
-            <div className="flex flex-col gap-4">
-              {plans.map((p) => (
-                <button
-                  key={p.id}
-                  className="flex items-center justify-between rounded-lg border p-6 text-left transition hover:bg-accent"
-                  onClick={() => navigate(`/services/${p.id}`)}
-                >
-                  <div className="text-lg font-semibold text-foreground">{p.name}</div>
-                  <div className="flex items-center gap-2 text-muted-foreground">
-                    <FiUser />
-                    <span className="text-sm text-muted-foreground">
-                      {p.scheduledFor ?? 'Unscheduled'}
-                    </span>
-                  </div>
-                </button>
-              ))}
-              {plans.length === 0 && (
-                <p className="text-sm text-muted-foreground">No services yet — create one above.</p>
-              )}
-            </div>
-          </div>
-        )}
-      </main>
+    <div className="grid h-full min-h-0 grid-cols-[1fr_1.35fr_1fr] gap-3 bg-background p-3">
+      {/* Pane 1 — Services list. */}
+      <section className="flex min-h-0 flex-col rounded-lg border border-pp-border-soft bg-pp-surface-1">
+        <PaneHeader
+          label="Services"
+          actions={
+            <button
+              type="button"
+              onClick={createPlan}
+              className="inline-flex items-center gap-1 rounded-md bg-pp-accent px-2.5 py-1 text-xs font-medium text-primary-foreground transition-colors hover:bg-pp-accent-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring"
+            >
+              <Plus className="size-3.5" aria-hidden /> New
+            </button>
+          }
+        />
+        <div className="flex min-h-0 flex-1 flex-col gap-1.5 overflow-y-auto p-3">
+          {plans.map((p) => (
+            <ScheduleRow
+              key={p.id}
+              type="announcement"
+              title={p.name}
+              meta={planMeta(p)}
+              selected={selectedId === p.id}
+              onClick={() => void openPlan(p.id)}
+            />
+          ))}
+          {plans.length === 0 && (
+            <p className="px-1 py-2 text-sm text-pp-text-muted">
+              No services yet — create one with “New”.
+            </p>
+          )}
+        </div>
+      </section>
+
+      {/* Panes 2 + 3 — builder + preview (ServiceDetail), or an empty prompt. */}
+      <Outlet />
+      {selectedId === null && <EmptyBuilder />}
     </div>
+  );
+}
+
+// Secondary line for a service row: scheduled date · item-count placeholder. The
+// summary has no item count (that needs the full plan), so we show the schedule.
+function planMeta(p: PlanSummary): string {
+  return p.scheduledFor ?? 'Unscheduled';
+}
+
+// Index state (/services with no id): the builder + preview columns prompt the
+// operator to pick a service. Spans the two right columns of the parent grid.
+function EmptyBuilder() {
+  return (
+    <section className="col-span-2 flex min-h-0 items-center justify-center rounded-lg border border-pp-border-soft bg-pp-surface-1">
+      <p className="px-6 text-center text-sm text-pp-text-muted">
+        Select a service to build its order, or create a new one.
+      </p>
+    </section>
   );
 }

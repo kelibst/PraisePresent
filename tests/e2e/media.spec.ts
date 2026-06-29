@@ -55,8 +55,7 @@ test('add media, present it via app-media://, and fail safe on a missing file', 
   await presenter.evaluate(() => {
     window.location.hash = '#/media';
   });
-  await expect(presenter.getByRole('heading', { name: 'Media' })).toBeVisible();
-  await expect(presenter.getByText('background.png')).toBeVisible();
+  await expect(presenter.getByRole('button', { name: /background\.png/ })).toBeVisible();
 
   // Present it; the audience renders an <img> served over app-media://.
   await presenter.evaluate(

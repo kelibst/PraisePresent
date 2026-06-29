@@ -8,6 +8,8 @@ import { displayService } from './services/displayService';
 import { openWindows, createPresenterWindow, hasPresenterWindow } from './windows/windowManager';
 import { registerMediaScheme, handleMediaProtocol } from './windows/mediaProtocol';
 import { buildCsp } from './infra/csp';
+import { allowConnectSource } from './infra/config';
+import { ANTHROPIC_API_HOST } from './services/onlineScriptureExtractor';
 
 // Handle creating/removing shortcuts on Windows when installing/uninstalling.
 if (started) {
@@ -23,6 +25,9 @@ app.on('ready', () => {
   log.info('App ready; initializing.');
   initDatabase();
   hydrateScripture();
+  // Online scripture extraction (main only) reaches the Anthropic API; widen the
+  // CSP connect-src to exactly that host before headers are set (§1.4, spec §6).
+  allowConnectSource(ANTHROPIC_API_HOST);
   registerIpcHandlers();
   handleMediaProtocol();
   session.defaultSession.webRequest.onHeadersReceived((details, callback) => {

@@ -1,139 +1,104 @@
-import { useCallback, useEffect, useState } from 'react';
-import type { Song, SongSummary } from '@/shared/schemas/song';
-import { blocksToDeck } from '@/shared/lib/buildDeck';
+import { useState } from 'react';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/renderer/components/ui/dialog';
+import { Button } from '@/renderer/components/ui/button';
+import LibraryPane from './LibraryPane';
+import SectionsPane from './SectionsPane';
+import SongLivePane from './SongLivePane';
+import SongEditorDialog from './SongEditorDialog';
+import { useSongsPresenter } from './useSongsPresenter';
 
-// Songs feature: list, import (plain text), and project a song's sections to the
-// audience window via the Phase 2 present:* broadcast. Business logic lives in
-// main behind window.api (CLAUDE.md §5.4) — this only renders + calls the API.
+// Songs workspace (CLAUDE.md §5.4): a full-height 3-pane row inside the app
+// shell's scrollable main. Pane 1 library + search + category filters → opens a
+// song; Pane 2 its sections (click presents one); Pane 3 mirrors the live output.
+// Unlike scripture, songs ARE editable — New / Import / Edit / Delete are wired
+// through window.api via the presenter hook (§1.3). One songs UI (§1.9): the old
+// single-column import form is folded into the New-song dialog.
+
 export default function SongsPage() {
-  const [songs, setSongs] = useState<SongSummary[]>([]);
-  const [selected, setSelected] = useState<Song | null>(null);
-  const [title, setTitle] = useState('');
-  const [text, setText] = useState('');
-  const [error, setError] = useState<string | null>(null);
-
-  const refresh = useCallback(async () => {
-    const res = await window.api.songs.list();
-    if (res.ok) setSongs(res.data);
-    else setError(res.error);
-  }, []);
-
-  useEffect(() => {
-    void refresh();
-  }, [refresh]);
-
-  const openSong = async (id: number) => {
-    const res = await window.api.songs.get(id);
-    if (res.ok) setSelected(res.data);
-    else setError(res.error);
-  };
-
-  const importSong = async () => {
-    if (!title.trim()) return;
-    const res = await window.api.songs.importText({ title, author: '', text });
-    if (res.ok) {
-      setTitle('');
-      setText('');
-      await refresh();
-      await openSong(res.data);
-    } else {
-      setError(res.error);
-    }
-  };
-
-  // Present the whole song as a deck (one slide per section), starting at the
-  // clicked section. Live next/prev then walk the song.
-  const presentSong = (startIndex: number) => {
-    if (!selected) return;
-    const deck = blocksToDeck(
-      selected.sections.map((sec) => ({ text: sec.content, label: sec.label })),
-      `song-${selected.id}`,
-    );
-    void window.api.present.setDeck(deck, startIndex);
-  };
-  const black = () => window.api.present.black();
+  const p = useSongsPresenter();
+  const [editorMode, setEditorMode] = useState<'create' | 'edit' | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
   return (
-    <div className="flex min-h-screen gap-6 bg-background p-8">
-      {/* Left: import + library */}
-      <div className="flex w-80 flex-col gap-4">
-        <h1 className="text-2xl font-bold text-foreground">Songs</h1>
-        <div className="flex flex-col gap-2 rounded-lg border p-4">
-          <input
-            aria-label="Song title"
-            className="rounded border bg-background px-3 py-2 text-sm"
-            placeholder="Song title"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-          />
-          <textarea
-            aria-label="Song lyrics"
-            className="h-32 rounded border bg-background px-3 py-2 font-mono text-sm"
-            placeholder={'[Verse 1]\nAmazing grace...\n\n[Chorus]\n...'}
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-          />
-          <button
-            onClick={importSong}
-            className="rounded bg-primary px-4 py-2 font-medium text-primary-foreground hover:opacity-90"
-          >
-            Import song
-          </button>
-        </div>
-        <ul className="flex flex-col gap-1">
-          {songs.map((s) => (
-            <li key={s.id}>
-              <button
-                onClick={() => openSong(s.id)}
-                className={`w-full rounded px-3 py-2 text-left hover:bg-accent ${
-                  selected?.id === s.id ? 'bg-accent text-primary' : 'text-foreground'
-                }`}
-              >
-                <span className="font-medium">{s.title}</span>
-                {s.author && <span className="ml-2 text-sm text-muted-foreground">{s.author}</span>}
-              </button>
-            </li>
-          ))}
-          {songs.length === 0 && <li className="text-sm text-muted-foreground">No songs yet.</li>}
-        </ul>
-      </div>
+    <div className="grid h-full min-h-0 grid-cols-[1.15fr_1.1fr_1fr] gap-3 bg-background p-3">
+      <LibraryPane
+        songs={p.songs}
+        selectedId={p.selected?.id ?? null}
+        onSelect={(id) => void p.open(id)}
+        onNew={() => setEditorMode('create')}
+      />
 
-      {/* Right: selected song sections + live controls */}
-      <div className="flex-1">
-        {error && <p className="mb-4 text-sm text-destructive">{error}</p>}
-        {!selected && <p className="text-muted-foreground">Select or import a song to present.</p>}
-        {selected && (
-          <div className="flex flex-col gap-4">
-            <div className="flex items-center justify-between">
-              <h2 className="text-2xl font-bold text-foreground">{selected.title}</h2>
-              <button
-                onClick={black}
-                className="rounded bg-black px-4 py-2 font-medium text-white hover:opacity-80"
-              >
-                Black
-              </button>
-            </div>
-            <div className="flex flex-col gap-3">
-              {selected.sections.map((sec, i) => (
-                <div key={i} className="rounded-lg border p-4">
-                  <div className="mb-2 flex items-center justify-between">
-                    <span className="text-sm font-semibold uppercase text-muted-foreground">
-                      {sec.label}
-                    </span>
-                    <button
-                      onClick={() => presentSong(i)}
-                      className="rounded bg-primary px-3 py-1 text-sm font-medium text-primary-foreground hover:opacity-90"
-                    >
-                      Present
-                    </button>
-                  </div>
-                  <pre className="whitespace-pre-wrap font-sans text-foreground">{sec.content}</pre>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-      </div>
+      <SectionsPane
+        song={p.selected}
+        live={p.live}
+        onPresent={p.presentSection}
+        onEdit={() => p.selected && setEditorMode('edit')}
+        onDelete={() => p.selected && setConfirmDelete(true)}
+        onNew={() => setEditorMode('create')}
+      />
+
+      <SongLivePane live={p.live} onNext={p.next} onBlack={p.black} onClear={p.clear} />
+
+      {p.error && (
+        <p role="alert" className="fixed bottom-4 left-4 z-50 text-sm text-pp-error">
+          {p.error}
+        </p>
+      )}
+
+      {/* New-song dialog. */}
+      <SongEditorDialog
+        mode="create"
+        open={editorMode === 'create'}
+        onOpenChange={(o) => setEditorMode(o ? 'create' : null)}
+        onCreate={p.importText}
+      />
+
+      {/* Edit-lyrics dialog (only when a song is open). */}
+      {p.selected && (
+        <SongEditorDialog
+          mode="edit"
+          open={editorMode === 'edit'}
+          onOpenChange={(o) => setEditorMode(o ? 'edit' : null)}
+          song={p.selected}
+          onSave={p.update}
+        />
+      )}
+
+      {/* Delete confirmation. */}
+      <Dialog open={confirmDelete} onOpenChange={setConfirmDelete}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Delete song?</DialogTitle>
+            <DialogDescription>
+              {p.selected
+                ? `“${p.selected.title}” will be removed from the library. This can't be undone.`
+                : ''}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setConfirmDelete(false)}>
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => {
+                const id = p.selected?.id;
+                setConfirmDelete(false);
+                if (id != null) void p.remove(id);
+              }}
+            >
+              Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

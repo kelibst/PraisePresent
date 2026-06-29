@@ -4,6 +4,8 @@ import log from '../infra/logger';
 import { CHANNELS } from '@/shared/constants/channels';
 import type { PresentState, PresentSlide, Transition } from '@/shared/schemas/present';
 import { FAILSAFE } from '@/shared/schemas/present';
+import { BLACK_ON_DISCONNECT_KEY, parseBlackOnDisconnect } from '@/shared/schemas/display';
+import { settingsRepository } from '../db/repositories/settingsRepository';
 import { reduce, type PresentAction } from '../services/presentEngine';
 
 const PRESENTER_SIZE = { width: 1280, height: 800 };
@@ -147,6 +149,15 @@ function broadcastState() {
   }
 }
 
+// Push an AI orchestrator event (candidates / transcript) to the PRESENTER
+// window only — the operator reviews there; the audience never sees unconfirmed
+// AI output (R8). Fails safe: a destroyed window is skipped, never throws.
+export function sendToPresenter(channel: string, payload: unknown): void {
+  if (presenterWindow && !presenterWindow.isDestroyed()) {
+    presenterWindow.webContents.send(channel, payload);
+  }
+}
+
 // Apply a live-presentation action through the pure reducer, then broadcast.
 // Main is the single source of truth (§5.3) and clamps every index (§5.7).
 export function dispatchPresent(action: PresentAction): void {
@@ -167,11 +178,33 @@ export function blackout() {
   dispatchPresent({ type: 'black' });
 }
 
+// Whether the operator wants the audience blacked out on a display unplug.
+// Defaults ON (fail safe — §5.7); a DB hiccup never throws here.
+function blackOnDisconnectEnabled(): boolean {
+  try {
+    return parseBlackOnDisconnect(settingsRepository.get(BLACK_ON_DISCONNECT_KEY));
+  } catch (e) {
+    log.warn('Could not read black-on-disconnect setting; defaulting ON:', e);
+    return true;
+  }
+}
+
+// A display was unplugged. If black-on-disconnect is on, force the audience to
+// black FIRST (so a lost projector never strands a half-shown slide on whatever
+// screen the window lands on — §5.7), then re-place onto the surviving display.
+function onDisplayRemoved() {
+  if (blackOnDisconnectEnabled()) {
+    log.info('Display removed; blacking out the audience (black-on-disconnect).');
+    blackout();
+  }
+  placeAudience();
+}
+
 // Re-place / recreate the audience window when displays change, without
 // crashing the live service (R4).
 export function watchDisplays() {
   screen.on('display-added', placeAudience);
-  screen.on('display-removed', placeAudience);
+  screen.on('display-removed', onDisplayRemoved);
   screen.on('display-metrics-changed', placeAudience);
 }
 

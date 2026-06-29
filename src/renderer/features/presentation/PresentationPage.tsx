@@ -1,47 +1,24 @@
 import { useEffect, useState } from 'react';
-import type { PresentState, PresentSlide, TransitionType } from '@/shared/schemas/present';
+import type { PresentState, TransitionType } from '@/shared/schemas/present';
 import { FAILSAFE } from '@/shared/schemas/present';
+import { MiniSlideThumb, PaneHeader, SlidePreview } from '@/renderer/components/common';
+import { cn } from '@/renderer/lib/utils';
 
-// Presenter live-control surface. It is a VIEW of main's live state (§5.4):
-// subscribes to onState, renders the current + next slide, a thumbnail list, a
-// transition picker, and live controls — all calling window.api.present.* only.
-// Operated LIVE UNDER PRESSURE, so keyboard paths are first-class (§5.4).
+// Presenter live-control cockpit. It is a VIEW of main's live state (§5.4):
+// subscribes to onState, renders a left deck rail + a right cockpit (LIVE badge,
+// big on-screen-now + next previews, transport + transition picker) — all calling
+// window.api.present.* only (§1.3). Operated LIVE UNDER PRESSURE, so keyboard
+// paths are first-class (§5.4). Tokens/atoms only, no hard-coded hex (§5.6/§1.9).
 
-const TRANSITIONS: TransitionType[] = ['cut', 'fade', 'dissolve'];
+const TRANSITIONS: { type: TransitionType; label: string }[] = [
+  { type: 'cut', label: 'Cut' },
+  { type: 'fade', label: 'Fade' },
+  { type: 'dissolve', label: 'Dissolve' },
+];
 
-function SlidePreview({
-  slide,
-  label,
-  dim,
-}: {
-  slide: PresentSlide | null;
-  label: string;
-  dim?: boolean;
-}) {
-  return (
-    <div className="flex flex-1 flex-col gap-2">
-      <span className="text-sm font-semibold uppercase text-muted-foreground">{label}</span>
-      <div
-        className={`flex aspect-video items-center justify-center rounded-lg border bg-black p-4 text-center ${
-          dim ? 'opacity-50' : ''
-        }`}
-      >
-        {slide ? (
-          <div className="flex flex-col items-center gap-2">
-            {slide.lines.map((line, i) => (
-              <p key={i} className="text-lg font-semibold leading-tight text-white">
-                {line}
-              </p>
-            ))}
-            {slide.reference && <p className="text-sm text-white/60">{slide.reference}</p>}
-          </div>
-        ) : (
-          <span className="text-sm text-white/40">—</span>
-        )}
-      </div>
-    </div>
-  );
-}
+// Display/output status line. Static today (single audience window at 1080p60);
+// the transition portion is live from state so the operator sees the active mode.
+const DISPLAY_STATUS = 'Display 2 · 1920×1080 · 60fps';
 
 export default function PresentationPage() {
   const [state, setState] = useState<PresentState>(FAILSAFE);
@@ -99,7 +76,8 @@ export default function PresentationPage() {
     return () => window.removeEventListener('keydown', onKey);
   }, []);
 
-  const current = state.mode === 'slide' ? (state.deck[state.index] ?? null) : null;
+  const isLive = state.mode === 'slide' && state.deck.length > 0;
+  const current = isLive ? (state.deck[state.index] ?? null) : null;
   const next = state.deck[state.index + 1] ?? null;
 
   const setTransition = (type: TransitionType) => {
@@ -110,116 +88,207 @@ export default function PresentationPage() {
     });
   };
 
-  const btn =
-    'rounded px-4 py-2 text-sm font-medium focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring';
+  const slideStatus =
+    state.mode === 'slide'
+      ? `Slide ${state.deck.length === 0 ? 0 : state.index + 1} / ${state.deck.length}`
+      : `Mode: ${state.mode}`;
+
+  const activeTransitionLabel =
+    TRANSITIONS.find((t) => t.type === state.transition.type)?.label ?? 'Fade';
 
   return (
-    <div className="flex min-h-screen flex-col gap-6 bg-background p-8">
-      <header className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-foreground">Presentation</h1>
-        <span className="text-sm text-muted-foreground" aria-live="polite">
-          {state.mode === 'slide'
-            ? `Slide ${state.deck.length === 0 ? 0 : state.index + 1} / ${state.deck.length}`
-            : `Mode: ${state.mode}`}
-        </span>
-      </header>
+    <div className="flex h-full min-h-0 bg-pp-surface-1 text-pp-text-body">
+      {/* ── LEFT: deck rail (~262px) ─────────────────────────────────────── */}
+      <aside className="flex w-[262px] shrink-0 flex-col border-r border-pp-border-soft bg-pp-surface-2">
+        <PaneHeader label="Deck" meta={`${state.deck.length} slides`} />
+        <section aria-label="Slides" className="min-h-0 flex-1 overflow-y-auto p-3">
+          {state.deck.length === 0 ? (
+            <p className="px-1 py-2 text-xs text-pp-text-muted">
+              No deck loaded. Present a song or scripture passage to build one.
+            </p>
+          ) : (
+            <ol className="flex flex-col gap-2">
+              {state.deck.map((slide, i) => {
+                const live = isLive && i === state.index;
+                return (
+                  <li key={slide.id}>
+                    <MiniSlideThumb
+                      index={i + 1}
+                      firstLine={slide.lines[0] ?? ''}
+                      reference={slide.reference}
+                      selected={live}
+                      live={live}
+                      onClick={() => window.api.present.goto(i)}
+                    />
+                  </li>
+                );
+              })}
+            </ol>
+          )}
+        </section>
+      </aside>
 
-      {/* Current + next preview (§5.4 — presenter sees what is and what's next). */}
-      <div className="flex gap-6">
-        <SlidePreview slide={current} label="Live" dim={state.mode !== 'slide'} />
-        <SlidePreview slide={next} label="Next" />
-      </div>
+      {/* ── RIGHT: cockpit ───────────────────────────────────────────────── */}
+      <main className="flex min-w-0 flex-1 flex-col">
+        {/* Heading kept for accessibility + e2e (role=heading "Presentation"). */}
+        <h1 className="sr-only">Presentation</h1>
 
-      {/* Live controls. */}
-      <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Live controls">
-        <button
-          onClick={() => window.api.present.prev()}
-          className={`${btn} bg-secondary text-foreground hover:bg-accent`}
-        >
-          ◀ Prev
-        </button>
-        <button
-          onClick={() => window.api.present.next()}
-          className={`${btn} bg-primary text-primary-foreground hover:opacity-90`}
-        >
-          Next ▶
-        </button>
-        <button
-          onClick={() => window.api.present.black()}
-          className={`${btn} bg-black text-white hover:opacity-80`}
-        >
-          Black
-        </button>
-        <button
-          onClick={() => window.api.present.blank()}
-          className={`${btn} bg-secondary text-foreground hover:bg-accent`}
-        >
-          Blank
-        </button>
-        <button
-          onClick={() => window.api.present.clear()}
-          className={`${btn} bg-secondary text-foreground hover:bg-accent`}
-        >
-          Clear
-        </button>
+        {/* State-badge bar. */}
+        <header className="flex h-12 shrink-0 items-center gap-3 border-b border-pp-border-soft px-4">
+          <span
+            className={cn(
+              'inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold uppercase tracking-wider',
+              isLive ? 'bg-pp-success/15 text-pp-success' : 'bg-pp-surface-1 text-pp-text-dim',
+            )}
+          >
+            <span
+              className={cn(
+                'inline-block size-2 rounded-full',
+                isLive ? 'animate-pp-pulse bg-pp-success' : 'bg-pp-text-dim',
+              )}
+              aria-hidden
+            />
+            {isLive ? 'LIVE' : state.mode === 'slide' ? 'STANDBY' : state.mode.toUpperCase()}
+          </span>
+          <span className="text-xs text-pp-text-muted" aria-live="polite">
+            {DISPLAY_STATUS} · {activeTransitionLabel} {state.transition.durationMs}ms
+          </span>
+          <span className="ml-auto text-xs tabular-nums text-pp-text-dim" aria-live="polite">
+            {slideStatus}
+          </span>
+        </header>
 
-        {/* Transition picker. */}
-        <div className="ml-auto flex items-center gap-2" role="group" aria-label="Transition">
-          <span className="text-sm text-muted-foreground">Transition:</span>
-          {TRANSITIONS.map((t) => (
-            <button
-              key={t}
-              onClick={() => setTransition(t)}
-              aria-pressed={state.transition.type === t}
-              className={`${btn} ${
-                state.transition.type === t
-                  ? 'bg-primary text-primary-foreground'
-                  : 'bg-secondary text-foreground hover:bg-accent'
-              }`}
-            >
-              {t}
-            </button>
-          ))}
+        {/* Previews — on-screen-now (lg) + next (sm). */}
+        <div className="flex min-h-0 flex-1 items-center justify-center gap-6 overflow-y-auto p-6">
+          <div className="flex w-full max-w-[640px] flex-col gap-2">
+            <span className="text-xs font-semibold uppercase tracking-wider text-pp-text-label">
+              On screen now
+            </span>
+            <SlidePreview
+              variant="lg"
+              active={isLive}
+              lines={current?.lines}
+              reference={current?.reference}
+              media={current?.media}
+              badge={isLive ? { label: 'LIVE', tone: 'live' } : undefined}
+            />
+          </div>
+          <div className="flex w-full max-w-[300px] flex-col gap-2">
+            <span className="text-xs font-semibold uppercase tracking-wider text-pp-text-label">
+              Next →
+            </span>
+            <SlidePreview
+              variant="sm"
+              lines={next?.lines}
+              reference={next?.reference}
+              media={next?.media}
+            />
+          </div>
         </div>
-      </div>
 
-      <p className="text-xs text-muted-foreground">
-        Keys: →/Space next · ← prev · B black · . / Esc clear · Home/End first/last
-      </p>
+        {/* Transport bar. */}
+        <footer className="flex shrink-0 flex-wrap items-center gap-2 border-t border-pp-border-soft px-4 py-3">
+          <div className="flex items-center gap-2" role="group" aria-label="Live controls">
+            <TransportButton
+              label="◀ Prev"
+              onClick={() => window.api.present.prev()}
+              tone="secondary"
+            />
+            <TransportButton
+              label="Next ▶"
+              kbd="Space"
+              onClick={() => window.api.present.next()}
+              tone="primary"
+            />
+            <TransportButton
+              label="Black"
+              kbd="B"
+              onClick={() => window.api.present.black()}
+              tone="secondary"
+            />
+            <TransportButton
+              label="Blank"
+              onClick={() => window.api.present.blank()}
+              tone="secondary"
+            />
+            <TransportButton
+              label="Clear"
+              kbd="Esc"
+              onClick={() => window.api.present.clear()}
+              tone="secondary"
+            />
+          </div>
 
-      {/* Slide thumbnails — click to jump (goto). */}
-      <section aria-label="Slides" className="flex flex-col gap-2">
-        <h2 className="text-sm font-semibold uppercase text-muted-foreground">
-          Deck ({state.deck.length})
-        </h2>
-        {state.deck.length === 0 ? (
-          <p className="text-sm text-muted-foreground">
-            No deck loaded. Present a song or scripture passage to build one.
-          </p>
-        ) : (
-          <ol className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4">
-            {state.deck.map((slide, i) => (
-              <li key={slide.id}>
-                <button
-                  onClick={() => window.api.present.goto(i)}
-                  aria-current={state.mode === 'slide' && i === state.index ? 'true' : undefined}
-                  className={`flex h-24 w-full flex-col gap-1 overflow-hidden rounded border p-2 text-left text-xs hover:bg-accent ${
-                    state.mode === 'slide' && i === state.index
-                      ? 'border-primary ring-2 ring-primary'
-                      : ''
-                  }`}
-                >
-                  <span className="font-semibold text-muted-foreground">{i + 1}</span>
-                  <span className="line-clamp-2 text-foreground">{slide.lines[0] ?? ''}</span>
-                  {slide.reference && (
-                    <span className="mt-auto text-primary">{slide.reference}</span>
-                  )}
-                </button>
-              </li>
-            ))}
-          </ol>
-        )}
-      </section>
+          {/* Transition selector — wired to the present transition param. */}
+          <div className="ml-auto flex items-center gap-2" role="group" aria-label="Transition">
+            <span className="text-xs text-pp-text-muted">Transition</span>
+            <div className="inline-flex overflow-hidden rounded-md ring-1 ring-inset ring-pp-border-strong/60">
+              {TRANSITIONS.map((t) => {
+                const selected = state.transition.type === t.type;
+                return (
+                  <button
+                    key={t.type}
+                    type="button"
+                    onClick={() => setTransition(t.type)}
+                    aria-pressed={selected}
+                    className={cn(
+                      'px-3 py-1.5 text-sm font-medium transition-colors',
+                      'focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring',
+                      selected
+                        ? 'bg-pp-success/20 text-pp-success'
+                        : 'bg-pp-surface-2 text-pp-text-body hover:bg-pp-surface-alt',
+                    )}
+                  >
+                    {t.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </footer>
+      </main>
     </div>
+  );
+}
+
+// One transport button. `primary` is the big sage Next; `secondary` is the muted
+// surface variant. `kbd` renders a small key hint chip (§5.4 — keyboard-first).
+function TransportButton({
+  label,
+  kbd,
+  tone,
+  onClick,
+}: {
+  label: string;
+  kbd?: string;
+  tone: 'primary' | 'secondary';
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        'inline-flex items-center gap-2 rounded-md px-4 py-2 text-sm font-semibold',
+        'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring',
+        tone === 'primary'
+          ? 'bg-pp-success text-pp-surface-live hover:bg-pp-success/90'
+          : 'bg-pp-surface-2 text-pp-text-body ring-1 ring-inset ring-pp-border-strong/60 hover:bg-pp-surface-alt',
+      )}
+    >
+      {label}
+      {kbd && (
+        <kbd
+          className={cn(
+            'rounded px-1.5 py-0.5 text-[10px] font-medium leading-none',
+            tone === 'primary'
+              ? 'bg-pp-surface-live/25 text-pp-surface-live'
+              : 'bg-pp-surface-1 text-pp-text-muted',
+          )}
+        >
+          {kbd}
+        </kbd>
+      )}
+    </button>
   );
 }

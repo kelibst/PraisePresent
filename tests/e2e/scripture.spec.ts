@@ -95,24 +95,31 @@ test('hydrate WEB offline, search by reference + keyword, and present a verse', 
   });
   await expect(audience.getByText(/For God so loved the world/)).toBeVisible();
 
-  // The ScripturePage UI renders; the Browse tab is the default and is NOT blank
-  // — it lands on John 1 with readable verses, and a verse projects on click.
+  // The ScripturePage 3-pane workspace renders. Reference mode is the default and
+  // is NOT blank — its field is prefilled with "John 3:16"; resolving it stages
+  // the verse and sending it live mirrors it to the audience.
   await presenter.evaluate(() => {
     window.location.hash = '#/scripture';
   });
-  await expect(presenter.getByRole('heading', { name: 'Scripture' })).toBeVisible();
-  await expect(presenter.getByRole('heading', { name: 'John 1' })).toBeVisible();
-  await presenter
-    .getByRole('button', { name: 'In the beginning was the Word', exact: false })
-    .click();
-  await expect(audience.getByText(/In the beginning was the Word/)).toBeVisible();
+  await expect(presenter.getByText('Scripture').first()).toBeVisible();
+  // Resolve the prefilled reference (Enter) → the staged verse appears in Pane 1.
+  await presenter.getByLabel('Scripture reference').press('Enter');
+  await expect(presenter.getByText(/For God so loved the world/).first()).toBeVisible();
+  // Send the staged verse live; the audience window mirrors it.
+  await presenter.getByRole('button', { name: 'Send to Live' }).click();
+  await expect(audience.getByText(/For God so loved the world/)).toBeVisible();
 
-  // The Search tab still drives a reference lookup.
-  await presenter.getByRole('tab', { name: 'search' }).click();
+  // The reference field still drives an arbitrary lookup (Psalm 23).
   await presenter.getByLabel('Scripture reference').fill('Psalm 23');
-  await presenter.getByRole('button', { name: 'Search', exact: true }).click();
+  await presenter.getByLabel('Scripture reference').press('Enter');
   // WEB renders the divine name as "Yahweh" (Psalm 23:1).
-  await expect(presenter.getByText(/Yahweh is my shepherd/)).toBeVisible();
+  await expect(presenter.getByText(/Yahweh is my shepherd/).first()).toBeVisible();
+
+  // Keyword mode marks hits via FTS5 search.
+  await presenter.getByRole('tab', { name: 'Keyword' }).click();
+  await presenter.getByLabel('Keyword search').fill('love your enemies');
+  await presenter.getByRole('button', { name: 'Search', exact: true }).click();
+  await expect(presenter.getByText(/containing/).first()).toBeVisible();
 
   await app.close();
   fs.rmSync(userDataDir, { recursive: true, force: true });
