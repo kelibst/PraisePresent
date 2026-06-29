@@ -106,9 +106,18 @@ test('hydrate WEB offline, search by reference + keyword, and present a verse', 
   // Resolve the prefilled reference (Enter) → the staged verse appears in Pane 1.
   await presenter.getByLabel('Scripture reference').press('Enter');
   await expect(presenter.getByText(/For God so loved the world/).first()).toBeVisible();
-  // Send the staged verse live; the audience window mirrors it.
+  // Send the staged verse live; the audience window mirrors it. Use `.first()`:
+  // the true double-buffer cross-fade (B2) briefly shows BOTH the outgoing and the
+  // incoming slide layers, and here both happen to carry the same verse text (it was
+  // already projected once above), so two transient copies are expected mid-fade.
   await presenter.getByRole('button', { name: 'Send to Live' }).click();
-  await expect(audience.getByText(/For God so loved the world/)).toBeVisible();
+  await expect(audience.getByText(/For God so loved the world/).first()).toBeVisible();
+  // Regression (§5.8): once the cross-fade settles, the outgoing layer must unmount,
+  // leaving exactly ONE copy of the text — proving the layer cleanup timer fires and
+  // layers never accumulate (the B2 double-buffer is bounded to a single live slide).
+  await expect(async () => {
+    expect(await audience.getByText(/For God so loved the world/).count()).toBe(1);
+  }).toPass({ timeout: 3000 });
 
   // The live deck renders as a horizontal strip in the cockpit's right pane, with
   // a LIVE badge on the slide currently on the projector (design: deck moved under

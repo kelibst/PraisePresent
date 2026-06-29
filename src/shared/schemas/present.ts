@@ -95,10 +95,32 @@ export const transition = z.object({
 
 // The full live deck + cursor. The audience renders deck[index]; the presenter
 // renders deck[index] (current) and deck[index+1] (next). Both are views (§5.4).
+//
+// `rev` is a monotonic deck-revision id, bumped by the reducer whenever the deck
+// CONTENTS change (setDeck/setBackground/updateText/black). Transport actions
+// (next/prev/goto/blank/clear/setTransition) leave `rev` untouched. The split
+// broadcast (B1) uses it to send the deck only when `rev` changes, and the client
+// reconciler uses it to ignore a cursor that belongs to a superseded deck.
 export const presentState = z.object({
   mode: presentMode,
   deck: z.array(presentSlide),
   index: z.number().int().min(0),
+  transition,
+  rev: z.number().int().min(0).default(0),
+});
+
+// Split broadcast payloads (main -> windows). `deck` carries the slides + rev and
+// is sent only on deck-changing actions; `cursor` carries the hot, tiny cursor and
+// is sent on every transport action. The reconciler merges them into PresentState.
+export const presentDeckPayload = z.object({
+  rev: z.number().int().min(0),
+  deck: z.array(presentSlide),
+});
+
+export const presentCursorPayload = z.object({
+  rev: z.number().int().min(0),
+  index: z.number().int().min(0),
+  mode: presentMode,
   transition,
 });
 
@@ -131,6 +153,12 @@ export const updateTextInput = z.object({
   lines: z.array(z.string().max(MAX_SLIDE_LINE_LENGTH)).max(MAX_SLIDE_LINES),
 });
 
+// Change ONLY the transition (no deck change → cursor-only broadcast). Replaces
+// the old pattern of re-sending the whole deck just to swap the transition type.
+export const setTransitionInput = z.object({
+  transition,
+});
+
 export type PresentMode = z.infer<typeof presentMode>;
 export type SlideMediaKind = z.infer<typeof slideMediaKind>;
 export type SlideMedia = z.infer<typeof slideMedia>;
@@ -139,10 +167,13 @@ export type PresentSlide = z.infer<typeof presentSlide>;
 export type TransitionType = z.infer<typeof transitionType>;
 export type Transition = z.infer<typeof transition>;
 export type PresentState = z.infer<typeof presentState>;
+export type PresentDeckPayload = z.infer<typeof presentDeckPayload>;
+export type PresentCursorPayload = z.infer<typeof presentCursorPayload>;
 export type SetDeckInput = z.infer<typeof setDeckInput>;
 export type GotoInput = z.infer<typeof gotoInput>;
 export type SetBackgroundInput = z.infer<typeof setBackgroundInput>;
 export type UpdateTextInput = z.infer<typeof updateTextInput>;
+export type SetTransitionInput = z.infer<typeof setTransitionInput>;
 
 // The default transition (compositor fade). Exported so both sides agree.
 export const DEFAULT_TRANSITION: Transition = { type: 'fade', durationMs: 400 };
@@ -154,4 +185,5 @@ export const FAILSAFE: PresentState = {
   deck: [],
   index: 0,
   transition: DEFAULT_TRANSITION,
+  rev: 0,
 };

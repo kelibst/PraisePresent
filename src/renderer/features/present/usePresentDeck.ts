@@ -131,15 +131,16 @@ export function usePresentDeck(): PresentDeck {
   const blank = useCallback(() => void window.api.present.blank(), []);
   const clear = useCallback(() => void window.api.present.clear(), []);
 
-  // Re-broadcast the same deck with the new transition (main is the source).
+  // Change the transition only — a cursor-only action (no full-deck round-trip).
+  // Main is the source of truth and pushes the new transition on the cursor (B1).
   const setTransition = useCallback(
     (type: TransitionType) => {
-      void window.api.present.setDeck(live.deck, live.index, {
+      void window.api.present.setTransition({
         type,
         durationMs: live.transition.durationMs,
       });
     },
-    [live.deck, live.index, live.transition.durationMs],
+    [live.transition.durationMs],
   );
 
   // Set/clear the live slide background. Targets the current live index (main

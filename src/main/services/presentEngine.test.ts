@@ -10,7 +10,7 @@ function slide(id: string): PresentSlide {
 const deck3 = [slide('a'), slide('b'), slide('c')];
 
 function withDeck(index = 0): PresentState {
-  return { mode: 'slide', deck: deck3, index, transition: DEFAULT_TRANSITION };
+  return { mode: 'slide', deck: deck3, index, transition: DEFAULT_TRANSITION, rev: 5 };
 }
 
 describe('presentEngine reducer', () => {
@@ -177,6 +177,7 @@ describe('presentEngine reducer', () => {
         deck: [{ id: 'v', lines: ['John 3:16'], locked: true }],
         index: 0,
         transition: DEFAULT_TRANSITION,
+        rev: 0,
       };
       const s = reduce(locked, { type: 'updateText', lines: ['tampered'] });
       expect(s.deck[0].lines).toEqual(['John 3:16']); // unchanged
@@ -200,6 +201,61 @@ describe('presentEngine reducer', () => {
       expect('locked' in deck3[0]).toBe(false);
       const s = reduce(withDeck(0), { type: 'updateText', lines: ['ok'] });
       expect(s.deck[0].lines).toEqual(['ok']);
+    });
+  });
+
+  // The `rev` revision id is what lets the split broadcast send the deck ONLY when
+  // its contents change (B1). Deck-changing actions bump it; transport actions leave
+  // it untouched, so they become cursor-only pushes.
+  describe('rev (deck-revision id)', () => {
+    const color = { type: 'color', color: '#112233' } as const;
+
+    it('setDeck bumps rev', () => {
+      expect(reduce(FAILSAFE, { type: 'setDeck', deck: deck3 }).rev).toBe(FAILSAFE.rev + 1);
+    });
+
+    it('setBackground / updateText / black bump rev (deck contents changed)', () => {
+      expect(reduce(withDeck(0), { type: 'setBackground', background: color }).rev).toBe(6);
+      expect(reduce(withDeck(0), { type: 'updateText', lines: ['x'] }).rev).toBe(6);
+      expect(reduce(withDeck(1), { type: 'black' }).rev).toBe(6);
+    });
+
+    it('next / prev / goto / blank / clear / setTransition leave rev unchanged (cursor-only)', () => {
+      expect(reduce(withDeck(0), { type: 'next' }).rev).toBe(5);
+      expect(reduce(withDeck(1), { type: 'prev' }).rev).toBe(5);
+      expect(reduce(withDeck(0), { type: 'goto', index: 2 }).rev).toBe(5);
+      expect(reduce(withDeck(1), { type: 'blank' }).rev).toBe(5);
+      expect(reduce(withDeck(2), { type: 'clear' }).rev).toBe(5);
+      expect(
+        reduce(withDeck(0), { type: 'setTransition', transition: { type: 'cut', durationMs: 0 } })
+          .rev,
+      ).toBe(5);
+    });
+
+    it('a no-op (locked updateText / empty-deck setBackground) does not bump rev', () => {
+      const locked: PresentState = {
+        mode: 'slide',
+        deck: [{ id: 'v', lines: ['John 3:16'], locked: true }],
+        index: 0,
+        transition: DEFAULT_TRANSITION,
+        rev: 9,
+      };
+      expect(reduce(locked, { type: 'updateText', lines: ['tampered'] }).rev).toBe(9);
+      expect(reduce(FAILSAFE, { type: 'setBackground', background: color }).rev).toBe(FAILSAFE.rev);
+    });
+  });
+
+  describe('setTransition', () => {
+    it('changes only the transition; mode/index/deck/rev untouched', () => {
+      const s = reduce(withDeck(1), {
+        type: 'setTransition',
+        transition: { type: 'dissolve', durationMs: 250 },
+      });
+      expect(s.transition).toEqual({ type: 'dissolve', durationMs: 250 });
+      expect(s.mode).toBe('slide');
+      expect(s.index).toBe(1);
+      expect(s.deck).toBe(deck3); // same reference — deck not rebuilt
+      expect(s.rev).toBe(5);
     });
   });
 });

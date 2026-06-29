@@ -87,18 +87,20 @@ describe('ScheduleRow', () => {
 
 describe('DeckStripThumb', () => {
   it('renders the first line and reference', () => {
-    const out = html(<DeckStripThumb firstLine="Holy holy holy" reference="Rev 4:8" />);
+    const out = html(<DeckStripThumb index={0} firstLine="Holy holy holy" reference="Rev 4:8" />);
     expect(out).toContain('Holy holy holy');
     expect(out).toContain('Rev 4:8');
   });
 
   it('falls back to (blank) when first line is empty', () => {
-    const out = html(<DeckStripThumb firstLine="   " />);
+    const out = html(<DeckStripThumb index={0} firstLine="   " />);
     expect(out).toContain('(blank)');
   });
 
   it('is a button that shows the LIVE badge and sage accent when live', () => {
-    const out = html(<DeckStripThumb firstLine="x" reference="Jn 3:16" live onClick={() => {}} />);
+    const out = html(
+      <DeckStripThumb index={0} firstLine="x" reference="Jn 3:16" live onSelect={() => {}} />,
+    );
     expect(out).toContain('<button');
     expect(out).toContain('Live');
     expect(out).toContain('aria-current="true"');

@@ -25,6 +25,7 @@ export type PresentAction =
       applyToAll?: boolean;
     }
   | { type: 'updateText'; lines: string[]; index?: number }
+  | { type: 'setTransition'; transition: Transition }
   | { type: 'black' }
   | { type: 'blank' }
   | { type: 'clear' };
@@ -43,14 +44,18 @@ export function reduce(state: PresentState, action: PresentAction): PresentState
       const index = clampIndex(action.index ?? 0, action.deck.length);
       // An empty deck can never be in `slide` mode — fall back to black (§5.7).
       const mode = action.deck.length > 0 ? 'slide' : 'black';
+      // Deck contents changed → bump `rev` so the split broadcast ships the deck
+      // (not just a cursor) and the reconciler invalidates any older cursor (B1).
       return {
         mode,
         deck: action.deck,
         index,
         transition: action.transition ?? state.transition ?? DEFAULT_TRANSITION,
+        rev: state.rev + 1,
       };
     }
     case 'next':
+      // Cursor-only: deck unchanged, `rev` preserved via spread.
       return {
         ...state,
         mode: slideOr(state),
@@ -81,7 +86,8 @@ export function reduce(state: PresentState, action: PresentAction): PresentState
         delete cleared.background;
         return cleared;
       });
-      return { ...state, deck };
+      // Deck contents changed → bump `rev` (B1).
+      return { ...state, deck, rev: state.rev + 1 };
     }
     case 'updateText': {
       // Replace one slide's text lines on the live deck. Never moves the
@@ -94,13 +100,19 @@ export function reduce(state: PresentState, action: PresentAction): PresentState
       const deck = state.deck.map((slide, i) =>
         i === target ? { ...slide, lines: action.lines } : slide,
       );
-      return { ...state, deck };
+      // Deck contents changed → bump `rev` (B1).
+      return { ...state, deck, rev: state.rev + 1 };
     }
+    case 'setTransition':
+      // Cursor-only: the transition rides the cursor payload, so changing it never
+      // re-sends the deck (fixes the old full-deck round-trip). `rev` preserved.
+      return { ...state, transition: action.transition };
     case 'black':
-      // Hard fail-safe: forget the deck entirely so nothing can leak back.
-      return { ...FAILSAFE, transition: state.transition };
+      // Hard fail-safe: forget the deck entirely so nothing can leak back. The deck
+      // changed (now empty) → bump `rev` so the reconciler clears its cached deck.
+      return { ...FAILSAFE, transition: state.transition, rev: state.rev + 1 };
     case 'blank':
-      // Keep the deck/index (so resume is instant) but stop showing it.
+      // Keep the deck/index (so resume is instant) but stop showing it. Cursor-only.
       return { ...state, mode: 'blank' };
     case 'clear':
       // Clear the slide but keep the deck/index for resume; audience shows black.

@@ -132,3 +132,29 @@
       -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
   }
 }
+
+/*
+  Audience double-buffer cross-fade (B2). Opacity-only so the compositor can run it
+  on the GPU at ≥60fps even on weak integrated GPUs — no layout/paint thrash. Two
+  layers animate: the incoming slide fades IN, the outgoing slide fades OUT, over a
+  permanent black backdrop (fail-safe — §5.7).
+    • dissolve → both run together (a true cross-dissolve).
+    • fade     → outgoing runs first half, incoming second half (through black).
+  Used by AudienceView via inline `animation` shorthand with per-slide durations.
+*/
+@keyframes ppLayerIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes ppLayerOut {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}

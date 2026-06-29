@@ -1,8 +1,53 @@
 import { contextBridge, ipcRenderer } from 'electron';
 import { CHANNELS } from '@/shared/constants/channels';
 import type { Api } from './api';
-import type { PresentState } from '@/shared/schemas/present';
+import type {
+  PresentState,
+  PresentDeckPayload,
+  PresentCursorPayload,
+} from '@/shared/schemas/present';
+import { createPresentReconciler } from '@/shared/present/reconciler';
 import type { AiCandidate, TranscriptSegment } from '@/shared/schemas/ai';
+
+// The split present broadcast (B1) arrives on two channels — `present:deck` (rare)
+// and `present:cursor` (hot). One reconciler per preload instance (i.e. per window)
+// merges them into the single `PresentState` every renderer consumer expects, and
+// fans it out to all `onState` subscribers. This is pure transport glue, not
+// business logic — it does no DB/network/validation (§5.2).
+function createPresentStateBridge() {
+  const reconciler = createPresentReconciler();
+  const subscribers = new Set<(state: PresentState) => void>();
+
+  const emit = (state: PresentState | null) => {
+    if (!state) return;
+    for (const cb of subscribers) cb(state);
+  };
+
+  ipcRenderer.on(CHANNELS.present.deck, (_event, payload: PresentDeckPayload) =>
+    emit(reconciler.applyDeck(payload)),
+  );
+  ipcRenderer.on(CHANNELS.present.cursor, (_event, payload: PresentCursorPayload) =>
+    emit(reconciler.applyCursor(payload)),
+  );
+
+  return (callback: (state: PresentState) => void): (() => void) => {
+    subscribers.add(callback);
+    // Seed the new subscriber immediately. If a deck has already arrived, use it;
+    // otherwise pull current state from main once (covers a consumer that mounts
+    // after the initial load push — §5.4) without waiting for the next action.
+    const current = reconciler.current();
+    if (current) {
+      callback(current);
+    } else {
+      void ipcRenderer.invoke(CHANNELS.present.getState).then((res) => {
+        if (res?.ok && !reconciler.current()) callback(reconciler.seed(res.data));
+      });
+    }
+    return () => subscribers.delete(callback);
+  };
+}
+
+const onPresentState = createPresentStateBridge();
 
 // Minimal typed bridge — NO business logic (CLAUDE.md §5.2). Each method just
 // forwards to a zod-validated main-process handler over a FIXED channel.
@@ -25,15 +70,14 @@ const api: Api = {
     setBackground: (background, index, applyToAll) =>
       ipcRenderer.invoke(CHANNELS.present.setBackground, { background, index, applyToAll }),
     updateText: (lines, index) => ipcRenderer.invoke(CHANNELS.present.updateText, { lines, index }),
+    setTransition: (transition) =>
+      ipcRenderer.invoke(CHANNELS.present.setTransition, { transition }),
     black: () => ipcRenderer.invoke(CHANNELS.present.black),
     blank: () => ipcRenderer.invoke(CHANNELS.present.blank),
     clear: () => ipcRenderer.invoke(CHANNELS.present.clear),
     getState: () => ipcRenderer.invoke(CHANNELS.present.getState),
-    onState: (callback) => {
-      const listener = (_event: unknown, state: PresentState) => callback(state);
-      ipcRenderer.on(CHANNELS.present.state, listener);
-      return () => ipcRenderer.removeListener(CHANNELS.present.state, listener);
-    },
+    // Merged deck+cursor pushes, re-exposed as the unified PresentState stream.
+    onState: (callback) => onPresentState(callback),
   },
   songs: {
     list: () => ipcRenderer.invoke(CHANNELS.songs.list),

@@ -2,7 +2,10 @@ import { describe, it, expect } from 'vitest';
 import {
   presentState,
   presentSlide,
+  presentDeckPayload,
+  presentCursorPayload,
   setDeckInput,
+  setTransitionInput,
   gotoInput,
   setBackgroundInput,
   slideBackground,
@@ -14,6 +17,58 @@ import {
 describe('present schemas', () => {
   it('FAILSAFE is a valid present state', () => {
     expect(presentState.safeParse(FAILSAFE).success).toBe(true);
+  });
+
+  it('presentState defaults rev to 0 when omitted (back-compat)', () => {
+    const parsed = presentState.parse({
+      mode: 'black',
+      deck: [],
+      index: 0,
+      transition: { type: 'fade', durationMs: 400 },
+    });
+    expect(parsed.rev).toBe(0);
+  });
+
+  describe('split broadcast payloads (B1)', () => {
+    it('deck payload requires rev + deck', () => {
+      expect(presentDeckPayload.safeParse({ rev: 3, deck: [{ id: 's1', lines: ['hi'] }] }).success).toBe(
+        true,
+      );
+      expect(presentDeckPayload.safeParse({ deck: [] }).success).toBe(false); // missing rev
+    });
+
+    it('cursor payload carries rev/index/mode/transition', () => {
+      const p = presentCursorPayload.safeParse({
+        rev: 2,
+        index: 1,
+        mode: 'slide',
+        transition: { type: 'dissolve', durationMs: 300 },
+      });
+      expect(p.success).toBe(true);
+    });
+
+    it('cursor payload rejects a bad mode / negative index', () => {
+      expect(
+        presentCursorPayload.safeParse({ rev: 0, index: -1, mode: 'slide', transition: {} }).success,
+      ).toBe(false);
+      expect(
+        presentCursorPayload.safeParse({ rev: 0, index: 0, mode: 'nope', transition: {} }).success,
+      ).toBe(false);
+    });
+  });
+
+  describe('setTransitionInput (B1 — cursor-only transition change)', () => {
+    it('accepts a valid transition and applies defaults', () => {
+      const p = setTransitionInput.parse({ transition: { type: 'cut' } });
+      expect(p.transition.type).toBe('cut');
+      expect(p.transition.durationMs).toBe(400); // schema default
+    });
+
+    it('rejects an out-of-bounds duration across the boundary', () => {
+      expect(
+        setTransitionInput.safeParse({ transition: { type: 'fade', durationMs: 99999 } }).success,
+      ).toBe(false);
+    });
   });
 
   it('transition applies sane defaults', () => {

@@ -144,14 +144,37 @@ export function createAudienceWindow(): BrowserWindow {
   return audienceWindow;
 }
 
-// Broadcast the live state to BOTH windows: the audience renders it, the
-// presenter mirrors it so the preview tracks the live index/mode (§5.4).
+function liveWindows(): BrowserWindow[] {
+  return [presenterWindow, audienceWindow].filter(
+    (w): w is BrowserWindow => w !== null && !w.isDestroyed(),
+  );
+}
+
+// Send the rarely-changing deck (slides + rev) to BOTH windows. Called only on
+// deck-changing actions (rev bumped) and on a fresh window load (B1).
+function broadcastDeck() {
+  const payload = { rev: liveState.rev, deck: liveState.deck };
+  for (const win of liveWindows()) win.webContents.send(CHANNELS.present.deck, payload);
+}
+
+// Send the frequently-changing cursor (rev + index + mode + transition) to BOTH
+// windows. Tiny payload — the hot path. The audience renders it, the presenter
+// mirrors it so the preview tracks the live index/mode (§5.4).
+function broadcastCursor() {
+  const payload = {
+    rev: liveState.rev,
+    index: liveState.index,
+    mode: liveState.mode,
+    transition: liveState.transition,
+  };
+  for (const win of liveWindows()) win.webContents.send(CHANNELS.present.cursor, payload);
+}
+
+// Seed a freshly-loaded window with the full current state: deck first, then cursor
+// (the reconciler needs the matching deck before the cursor — B1 ordering).
 function broadcastState() {
-  for (const win of [presenterWindow, audienceWindow]) {
-    if (win && !win.isDestroyed()) {
-      win.webContents.send(CHANNELS.present.state, liveState);
-    }
-  }
+  broadcastDeck();
+  broadcastCursor();
 }
 
 // Push an AI orchestrator event (candidates / transcript) to the PRESENTER
@@ -165,9 +188,16 @@ export function sendToPresenter(channel: string, payload: unknown): void {
 
 // Apply a live-presentation action through the pure reducer, then broadcast.
 // Main is the single source of truth (§5.3) and clamps every index (§5.7).
+//
+// Split broadcast (B1): when the deck CONTENTS change the reducer bumps `rev`, so
+// we ship the deck (then the cursor). Pure transport actions leave `rev` untouched
+// and send the cursor only — O(cursor), not O(whole deck). Deck-before-cursor keeps
+// the reconciler's `rev` invariant (it must have the matching deck first).
 export function dispatchPresent(action: PresentAction): void {
+  const prevRev = liveState.rev;
   liveState = reduce(liveState, action);
-  broadcastState();
+  if (liveState.rev !== prevRev) broadcastDeck();
+  broadcastCursor();
 }
 
 export function setDeck(deck: PresentSlide[], index?: number, transition?: Transition): void {

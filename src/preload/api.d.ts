@@ -66,6 +66,11 @@ export interface Api {
      * (scripture) slide — the renderer is never trusted to honor the lock (§5.3).
      */
     updateText(lines: string[], index?: number): Promise<Result<void>>;
+    /**
+     * Change ONLY the transition for the live deck. Cursor-only — does not re-send
+     * the deck (the transition rides the cursor payload). Main re-validates (§5.3).
+     */
+    setTransition(transition: Transition): Promise<Result<void>>;
     black(): Promise<Result<void>>;
     blank(): Promise<Result<void>>;
     clear(): Promise<Result<void>>;

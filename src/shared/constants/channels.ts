@@ -18,11 +18,17 @@ export const CHANNELS = {
     goto: 'present:goto', // renderer -> main: jump to an index (clamped)
     setBackground: 'present:set-background', // renderer -> main: set/clear a slide background (clamped)
     updateText: 'present:update-text', // renderer -> main: replace a slide's text (clamped; locked rejected)
+    setTransition: 'present:set-transition', // renderer -> main: change the transition only (cursor-only)
     black: 'present:black', // renderer -> main: fail-safe black
     blank: 'present:blank', // renderer -> main: dim/blank, keep deck
     clear: 'present:clear', // renderer -> main: clear slide, keep deck
     getState: 'present:get-state', // renderer -> main: current live state (on mount)
-    state: 'present:state', // main -> presenter + audience windows (event push)
+    // main -> windows (event pushes). The state is split so transport actions are
+    // O(cursor), not O(whole deck): `deck` is the rarely-changing slides + a `rev`
+    // revision; `cursor` is the frequently-changing {rev,index,mode,transition}.
+    // The preload reconciler merges them back into one PresentState (B1).
+    deck: 'present:deck', // main -> windows: full deck + rev (on deck-changing actions only)
+    cursor: 'present:cursor', // main -> windows: {rev,index,mode,transition} (every transport action)
   },
   songs: {
     list: 'songs:list',

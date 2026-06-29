@@ -209,11 +209,12 @@ export default function LiveCockpit({
                 return (
                   <DeckStripThumb
                     key={slide.id}
+                    index={i}
                     firstLine={slide.lines[0] ?? ''}
                     reference={slide.reference}
                     live={live}
                     selected={!isLive && i === state.index}
-                    onClick={() => onGoto(i)}
+                    onSelect={onGoto}
                   />
                 );
               })}

@@ -1,12 +1,19 @@
+import { memo, useCallback } from 'react';
 import { cn } from '@/renderer/lib/utils';
 
 // A card in Present's horizontal Live Deck strip (design `PraisePresent.dc.html`
 // lines 512–523): a 16:9 thumbnail showing the slide's first line, a reference
 // label beneath, and a LIVE badge on the slide currently on the projector.
 // Presentational atom — plain data, no fetching (§1.3). Renders as a focusable
-// <button> when `onClick` is set for keyboard nav (§5.4). Tokens only (§5.6).
+// <button> when `onSelect` is set for keyboard nav (§5.4). Tokens only (§5.6).
+//
+// `React.memo`'d with an `index` + a stable `onSelect(index)` (B4): the rail can
+// pass ONE handler shared by every card instead of a per-row closure, so a cursor
+// move only re-renders the cards whose `live`/`selected` actually changed.
 
 export type DeckStripThumbProps = {
+  /** Position in the deck — passed back to `onSelect` so the rail needs one handler. */
+  index: number;
   /** The slide's first/representative line, shown inside the thumbnail. */
   firstLine?: string;
   /** Reference label beneath the thumbnail, e.g. "John 3:16". */
@@ -16,23 +23,25 @@ export type DeckStripThumbProps = {
   /** Highlights the card as the current selection (deck loaded, not yet live). */
   selected?: boolean;
   /** Jump-to-slide handler. When set, the card is a focusable button (§5.4). */
-  onClick?: () => void;
+  onSelect?: (index: number) => void;
   className?: string;
 };
 
-export function DeckStripThumb({
+export const DeckStripThumb = memo(function DeckStripThumb({
+  index,
   firstLine,
   reference,
   live = false,
   selected = false,
-  onClick,
+  onSelect,
   className,
 }: DeckStripThumbProps) {
   const active = live || selected;
+  const handleClick = useCallback(() => onSelect?.(index), [onSelect, index]);
   return (
     <button
       type="button"
-      onClick={onClick}
+      onClick={handleClick}
       aria-pressed={active}
       aria-current={live ? true : undefined}
       className={cn(
@@ -71,6 +80,6 @@ export function DeckStripThumb({
       )}
     </button>
   );
-}
+});
 
 export default DeckStripThumb;

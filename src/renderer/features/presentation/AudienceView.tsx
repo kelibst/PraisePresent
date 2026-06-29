@@ -1,9 +1,10 @@
-import { useEffect, useRef, useState } from 'react';
+import { memo, useEffect, useRef, useState } from 'react';
 import type {
   PresentState,
   PresentSlide,
   SlideMedia,
   SlideBackground,
+  TransitionType,
 } from '@/shared/schemas/present';
 import { FAILSAFE } from '@/shared/schemas/present';
 import { SAFE_AREA_KEY, parseSafeAreaPct } from '@/shared/schemas/display';
@@ -12,8 +13,12 @@ import { SAFE_AREA_KEY, parseSafeAreaPct } from '@/shared/schemas/display';
 // current slide, failing safe to black on anything unexpected — never a stack
 // trace on the projector (CLAUDE.md §5.7).
 //
-// Transitions are GPU-composited: we cross-fade by toggling `opacity` (no layout
-// thrash), so fade/dissolve run on the compositor at ≥60fps. `cut` = 0ms.
+// Transitions are a true double-buffer cross-fade (B2): two opacity layers over a
+// permanent black backdrop. `dissolve` blends the layers together; `fade` runs the
+// outgoing layer out then the incoming layer in (through black); `cut` is instant.
+// Opacity-only animation so the compositor runs it on the GPU at ≥60fps on weak
+// integrated GPUs. Each slide layer is `React.memo`'d and its media is keyed by url,
+// so a cursor-only move never remounts/restarts a `<video>` (B3).
 
 // The currently-projectable slide, or null when we must show black/blank/empty.
 function activeSlide(state: PresentState): PresentSlide | null {
@@ -22,18 +27,38 @@ function activeSlide(state: PresentState): PresentSlide | null {
   return slide ?? null; // out-of-range / empty deck -> black (fail-safe)
 }
 
+// Build the opacity-animation shorthand for one layer. `cut` → no animation
+// (instant). `fade` → each layer uses half the duration so the outgoing fades out
+// (first half) before the incoming fades in (second half) — a moment of black
+// between them. `dissolve` → both run the full duration together (cross-dissolve).
+function layerAnimation(
+  role: 'in' | 'out',
+  type: TransitionType,
+  durationMs: number,
+): string | undefined {
+  if (type === 'cut' || durationMs <= 0) return undefined;
+  if (type === 'fade') {
+    const half = Math.max(1, Math.round(durationMs / 2));
+    return role === 'in'
+      ? `ppLayerIn ${half}ms ease-in-out ${half}ms both`
+      : `ppLayerOut ${half}ms ease-in-out forwards`;
+  }
+  // dissolve (and any unexpected value): a simultaneous cross-fade.
+  return role === 'in'
+    ? `ppLayerIn ${durationMs}ms ease-in-out both`
+    : `ppLayerOut ${durationMs}ms ease-in-out forwards`;
+}
+
 export default function AudienceView() {
   const [state, setState] = useState<PresentState>(FAILSAFE);
-  // Drives the opacity cross-fade: drop to 0 on a slide change, then to 1.
-  const [visible, setVisible] = useState(true);
-  // A media file that failed to load (moved/corrupt) — fail safe to black (§5.7).
-  const [mediaErrorId, setMediaErrorId] = useState<string | null>(null);
-  // A background media file that failed to load — fall back to the gradient (§5.7).
-  const [bgErrorId, setBgErrorId] = useState<string | null>(null);
+  // The slide currently fading away (a frozen snapshot of the slide we left), or
+  // null when nothing is transitioning out. The incoming/current layer is always
+  // derived from live state so in-place edits (background/text) show immediately.
+  const [outgoing, setOutgoing] = useState<{ id: string; slide: PresentSlide } | null>(null);
   // Overscan / TV safe-area inset (% per edge). Read once on mount from settings;
   // 0 = no inset. Garbage/missing values fall back to 0 (never breaks the view).
   const [safeAreaPct, setSafeAreaPct] = useState(0);
-  const lastSlideId = useRef<string | null>(null);
+  const prevSlideRef = useRef<PresentSlide | null>(null);
 
   useEffect(() => window.api.present.onState(setState), []);
 
@@ -47,101 +72,140 @@ export default function AudienceView() {
     };
   }, []);
 
-  // Padding applied to the content layer so text/media stay inside the safe area
-  // while the black backdrop always fills the screen edge-to-edge (§5.7).
-  const safeAreaStyle = safeAreaPct > 0 ? { padding: `${safeAreaPct}%` } : undefined;
-
   const slide = activeSlide(state);
   const slideId = slide?.id ?? null;
+  const transitionType = state.transition.type;
+  // `cut` and going-to-black are immediate (operator safety); only a slide→slide
+  // change with a non-zero duration drives a cross-fade.
+  const durationMs = transitionType === 'cut' ? 0 : state.transition.durationMs;
 
-  // Re-trigger the fade (and clear any prior media error) on a slide change.
+  // Drive the cross-fade: when the visible slide changes, freeze the slide we left
+  // as the outgoing layer and schedule its removal. A same-slide re-render (a
+  // background/text edit) is a no-op here — no re-fade.
   useEffect(() => {
-    if (slideId === lastSlideId.current) return;
-    lastSlideId.current = slideId;
-    setMediaErrorId(null);
-    setBgErrorId(null);
-    if (state.transition.type === 'cut' || slideId === null) {
-      setVisible(true);
+    const prev = prevSlideRef.current;
+    prevSlideRef.current = slide;
+
+    // First slide, going to black/blank/clear, or same slide on screen: no fade-out.
+    if (!prev || !slide || prev.id === slide.id || durationMs <= 0) {
+      setOutgoing(null);
       return;
     }
-    setVisible(false);
-    const raf = requestAnimationFrame(() => setVisible(true));
-    return () => cancelAnimationFrame(raf);
-  }, [slideId, state.transition.type]);
+
+    setOutgoing({ id: prev.id, slide: prev });
+    const timer = window.setTimeout(() => setOutgoing(null), durationMs + 60);
+    return () => window.clearTimeout(timer);
+    // `slideId` is the real trigger; `durationMs` lets a transition-type toggle be a
+    // clean no-op (it hits the same-slide branch above).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [slideId, durationMs]);
 
   // blank dims the screen but keeps it "on" for a smooth resume.
   if (state.mode === 'blank') {
     return <div className="h-screen w-screen bg-neutral-900" aria-hidden />;
   }
 
-  if (slide) {
-    const durationMs = state.transition.type === 'cut' ? 0 : state.transition.durationMs;
-    const showMedia = slide.media && mediaErrorId !== slide.id;
-    const showBg =
-      slide.background && !(slide.background.type === 'media' && bgErrorId === slide.id);
-    return (
-      // Outermost layer is always solid black: the edge-to-edge fail-safe backdrop
-      // (§5.7). The radial-gradient slide surface — the full-screen twin of the
-      // SlidePreview atom — paints on top, inside the safe area.
-      <div className="relative h-screen w-screen overflow-hidden bg-black text-white">
-        <div
-          className="absolute inset-0 will-change-[opacity]"
-          style={{
-            opacity: visible ? 1 : 0,
-            transition: `opacity ${durationMs}ms ease-in-out`,
-            ...safeAreaStyle,
-          }}
-        >
-          {/* Deep radial-gradient slide surface, matching SlidePreview. */}
-          <div className="relative h-full w-full overflow-hidden bg-pp-surface-live bg-[radial-gradient(circle_at_50%_38%,hsl(var(--pp-accent-deep)/0.55),transparent_62%),radial-gradient(circle_at_50%_120%,hsl(var(--background)/0.9),hsl(var(--pp-surface-live)))]">
-            {showBg && (
-              <BackgroundLayer
-                background={slide.background!}
-                onError={() => setBgErrorId(slide.id)}
-              />
-            )}
-            {showMedia && (
-              <MediaLayer media={slide.media!} onError={() => setMediaErrorId(slide.id)} />
-            )}
-            {slide.lines.length > 0 && (
-              <div className="absolute inset-0 flex flex-col items-center justify-center px-[7vw] text-center">
-                <div className="flex flex-col gap-[1.2vw]">
-                  {slide.lines.map((line, i) => (
-                    <p
-                      key={i}
-                      className="font-semibold leading-tight drop-shadow-lg [text-wrap:balance]"
-                      style={{ fontSize: '5.2vw' }}
-                    >
-                      {line}
-                    </p>
-                  ))}
-                </div>
-              </div>
-            )}
-            {slide.reference && (
-              <p
-                className="absolute bottom-[3vw] right-[4vw] font-normal text-white/70 drop-shadow-lg"
-                style={{ fontSize: '3.2vw' }}
-              >
-                {slide.reference}
-              </p>
-            )}
-          </div>
-        </div>
-      </div>
-    );
-  }
+  // Never render the outgoing layer for the slide that is currently incoming: when
+  // the operator navigates BACK to the slide that is still fading out, the two
+  // layers would share a React key (slide id) and React would desync, orphaning a
+  // DOM node that never unmounts. Excluding it here also avoids a pointless
+  // same-slide cross-fade. Guarantees the two layer keys are always distinct.
+  const renderedOutgoing = outgoing && outgoing.id !== slideId ? outgoing : null;
 
-  // black, clear, empty deck, out-of-range index, any unexpected state -> black.
-  return <div className="h-screen w-screen bg-black" aria-hidden />;
+  // Outermost layer is always solid black: the edge-to-edge fail-safe backdrop
+  // (§5.7). Up to two slide layers cross-fade on top of it. When there is no slide
+  // (black/clear/empty/out-of-range) neither layer renders → pure black.
+  return (
+    <div className="relative h-screen w-screen overflow-hidden bg-black text-white">
+      {renderedOutgoing && (
+        <SlideLayer
+          key={renderedOutgoing.id}
+          slide={renderedOutgoing.slide}
+          animation={layerAnimation('out', transitionType, durationMs)}
+          safeAreaPct={safeAreaPct}
+        />
+      )}
+      {slide && (
+        <SlideLayer
+          key={slide.id}
+          slide={slide}
+          animation={layerAnimation('in', transitionType, durationMs)}
+          safeAreaPct={safeAreaPct}
+        />
+      )}
+    </div>
+  );
 }
 
-// Renders one media element full-screen. onError bubbles up so a moved/corrupt
-// file fails safe to black instead of showing a broken-image icon (§5.7).
+// One full-screen slide layer: the deep radial-gradient surface (the full-screen
+// twin of the SlidePreview atom) with its background → media → text → reference,
+// painted inside the safe area. Memoized so a re-render that doesn't change this
+// slide leaves its `<video>`/`<img>` mounted (B3). Media/background load errors are
+// handled locally so a moved/corrupt file fails safe to the gradient/black (§5.7).
+const SlideLayer = memo(function SlideLayer({
+  slide,
+  animation,
+  safeAreaPct,
+}: {
+  slide: PresentSlide;
+  animation: string | undefined;
+  safeAreaPct: number;
+}) {
+  const [mediaFailed, setMediaFailed] = useState(false);
+  const [bgFailed, setBgFailed] = useState(false);
+  // Capture the entrance/exit animation once, at mount. Toggling the NEXT transition
+  // type must not re-fire the animation on a slide that's already on screen.
+  const [anim] = useState(animation);
+
+  const showMedia = slide.media && !mediaFailed;
+  const showBg = slide.background && !(slide.background.type === 'media' && bgFailed);
+  const padding = safeAreaPct > 0 ? `${safeAreaPct}%` : undefined;
+
+  return (
+    <div
+      className="absolute inset-0 will-change-[opacity]"
+      style={{ animation: anim, padding }}
+      aria-hidden={undefined}
+    >
+      <div className="relative h-full w-full overflow-hidden bg-pp-surface-live bg-[radial-gradient(circle_at_50%_38%,hsl(var(--pp-accent-deep)/0.55),transparent_62%),radial-gradient(circle_at_50%_120%,hsl(var(--background)/0.9),hsl(var(--pp-surface-live)))]">
+        {showBg && <BackgroundLayer background={slide.background!} onError={() => setBgFailed(true)} />}
+        {showMedia && <MediaLayer media={slide.media!} onError={() => setMediaFailed(true)} />}
+        {slide.lines.length > 0 && (
+          <div className="absolute inset-0 flex flex-col items-center justify-center px-[7vw] text-center">
+            <div className="flex flex-col gap-[1.2vw]">
+              {slide.lines.map((line, i) => (
+                <p
+                  key={i}
+                  className="font-semibold leading-tight drop-shadow-lg [text-wrap:balance]"
+                  style={{ fontSize: '5.2vw' }}
+                >
+                  {line}
+                </p>
+              ))}
+            </div>
+          </div>
+        )}
+        {slide.reference && (
+          <p
+            className="absolute bottom-[3vw] right-[4vw] font-normal text-white/70 drop-shadow-lg"
+            style={{ fontSize: '3.2vw' }}
+          >
+            {slide.reference}
+          </p>
+        )}
+      </div>
+    </div>
+  );
+});
+
+// Renders one media element full-screen. Keyed by url by the caller so identical
+// media never remounts (B3). onError bubbles up so a moved/corrupt file fails safe
+// to the gradient/black instead of showing a broken-image icon (§5.7).
 function MediaLayer({ media, onError }: { media: SlideMedia; onError: () => void }) {
   if (media.kind === 'image') {
     return (
       <img
+        key={media.url}
         src={media.url}
         alt=""
         onError={onError}
@@ -153,6 +217,7 @@ function MediaLayer({ media, onError }: { media: SlideMedia; onError: () => void
   if (media.kind === 'video') {
     return (
       <video
+        key={media.url}
         src={media.url}
         onError={onError}
         autoPlay
@@ -164,7 +229,7 @@ function MediaLayer({ media, onError }: { media: SlideMedia; onError: () => void
     );
   }
   // audio: no visual element; the file plays over a black background.
-  return <audio src={media.url} onError={onError} autoPlay loop aria-hidden />;
+  return <audio key={media.url} src={media.url} onError={onError} autoPlay loop aria-hidden />;
 }
 
 // Renders the slide background full-screen, beneath the media + text layers. A
@@ -186,6 +251,7 @@ function BackgroundLayer({
   if (background.kind === 'image') {
     return (
       <img
+        key={background.url}
         src={background.url}
         alt=""
         aria-hidden
@@ -196,6 +262,7 @@ function BackgroundLayer({
   }
   return (
     <video
+      key={background.url}
       src={background.url}
       aria-hidden
       autoPlay

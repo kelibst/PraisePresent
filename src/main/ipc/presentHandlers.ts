@@ -5,6 +5,7 @@ import {
   gotoInput,
   setBackgroundInput,
   updateTextInput,
+  setTransitionInput,
 } from '@/shared/schemas/present';
 import {
   dispatchPresent,
@@ -45,6 +46,13 @@ export function registerPresentHandlers(): void {
   // text even via a crafted call (§5.3). Mode/index are never changed (§5.7).
   handle(CHANNELS.present.updateText, updateTextInput, ({ index, lines }): void => {
     updateText(lines, index);
+  });
+
+  // Change ONLY the transition. The transition rides the cursor payload, so this is
+  // a cursor-only broadcast — no full-deck round-trip (B1, fixes the old pattern of
+  // re-sending the whole deck just to swap the transition type).
+  handle(CHANNELS.present.setTransition, setTransitionInput, ({ transition }): void => {
+    dispatchPresent({ type: 'setTransition', transition });
   });
 
   // No-input controls.
