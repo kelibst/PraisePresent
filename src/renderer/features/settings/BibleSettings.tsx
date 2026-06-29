@@ -25,11 +25,12 @@ import {
 // import affordance. All access is through `window.api` (§1.3); the default key
 // lives in the shared schema so there is one source (§1.9).
 //
-// Importing a new translation is DEFERRED: this build bundles only the offline
-// WEB text and no public-domain download source is wired. Rather than fake a
-// success (§1), the "Add translation" control is clearly disabled with an
-// explanatory tooltip — an honest, renderer-only affordance (no stub IPC channel
-// is introduced, keeping the main/preload surface unchanged).
+// Importing a new translation is DEFERRED: this build bundles several offline
+// public-domain translations (WEB, KJV, ASV, YLT, BBE, WBT) and no in-app
+// download source is wired for additional ones. Rather than fake a success
+// (§1), the "Add translation" control is clearly disabled with an explanatory
+// tooltip — an honest, renderer-only affordance (no stub IPC channel is
+// introduced, keeping the main/preload surface unchanged).
 
 export default function BibleSettings() {
   const [translations, setTranslations] = useState<BibleTranslation[]>([]);
@@ -169,7 +170,7 @@ export default function BibleSettings() {
             </TooltipTrigger>
             <TooltipContent>
               Importing more translations is not available in this build. PraisePresent ships with
-              the offline WEB text only.
+              several offline public-domain translations (WEB, KJV, ASV, YLT, BBE, WBT).
             </TooltipContent>
           </Tooltip>
         </TooltipProvider>

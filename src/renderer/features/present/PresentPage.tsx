@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import { BookOpen, Sparkles } from 'lucide-react';
 import { useActiveService } from '@/renderer/features/planning/useActiveService';
 import SearchPane from '@/renderer/features/scripture/SearchPane';
 import PreviewSchedulePane from '@/renderer/features/scripture/PreviewSchedulePane';
+import { rangeLabel, referenceLabel } from '@/renderer/features/scripture/scriptureDeck';
 import { cn } from '@/renderer/lib/utils';
 import { usePresentDeck } from './usePresentDeck';
 import LiveCockpit from './LiveCockpit';
@@ -29,8 +30,28 @@ const SOURCE_TABS: { id: SourceTab; label: string; icon: typeof BookOpen }[] = [
 
 export default function PresentPage() {
   const deck = usePresentDeck();
-  const { plan, loading: planLoading } = useActiveService();
+  const { plan, loading: planLoading, refresh } = useActiveService();
   const [tab, setTab] = useState<SourceTab>('scripture');
+
+  // Add the staged passage to the active service as one scripture item, then
+  // refresh the schedule. Reuses plans.update (full-plan write); scripture is an
+  // existing plan-item kind, so no new IPC/schema (§1.9). Verse text is locked.
+  const addStagedToPlan = useCallback(async () => {
+    const staged = deck.staged;
+    if (!plan || !staged || staged.verses.length === 0) return;
+    const verses = staged.verses;
+    const title = verses.length > 1 ? rangeLabel(verses) : referenceLabel(verses[0]);
+    const content = verses.map((v) => `${v.verse} ${v.text}`).join('\n');
+    const next = {
+      ...plan,
+      items: [
+        ...plan.items,
+        { kind: 'scripture' as const, refId: null, title, content, sortOrder: plan.items.length },
+      ],
+    };
+    const res = await window.api.plans.update(next);
+    if (res.ok) await refresh();
+  }, [deck.staged, plan, refresh]);
 
   return (
     <div className="grid h-full min-h-0 grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)_minmax(0,1.15fr)] bg-background">
@@ -86,6 +107,7 @@ export default function PresentPage() {
         planLoading={planLoading}
         onSendLive={deck.sendLive}
         onSetNext={deck.setAsNext}
+        onAddToPlan={addStagedToPlan}
         liveBackground={deck.live.deck[deck.live.index]?.background ?? null}
         hasDeck={deck.live.deck.length > 0}
         onSetBackground={deck.setBackground}

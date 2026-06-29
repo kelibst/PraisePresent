@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Grid3x3, Search, Type } from 'lucide-react';
 import { cn } from '@/renderer/lib/utils';
+import { DEFAULT_TRANSLATION_KEY } from '@/shared/schemas/scripture';
 import type { BibleBook, BibleTranslation, BibleVerse } from '@/shared/schemas/scripture';
 import { referenceLabel, rangeLabel, verseId } from './scriptureDeck';
 import type { StagedPassage } from '@/renderer/features/present/usePresentDeck';
@@ -32,18 +33,59 @@ type Props = {
 export default function SearchPane({ staged, onStage, onStageIndex, onSendLive }: Props) {
   const [mode, setMode] = useState<Mode>('reference');
   const [books, setBooks] = useState<BibleBook[]>([]);
+  const [translations, setTranslations] = useState<BibleTranslation[]>([]);
   const [translation, setTranslation] = useState<BibleTranslation | null>(null);
 
   useEffect(() => {
     void (async () => {
-      const [bookRes, transRes] = await Promise.all([
+      const [bookRes, transRes, defRes] = await Promise.all([
         window.api.scripture.listBooks(),
         window.api.scripture.listTranslations(),
+        window.api.settings.get(DEFAULT_TRANSLATION_KEY),
       ]);
       if (bookRes.ok) setBooks(bookRes.data);
-      if (transRes.ok && transRes.data[0]) setTranslation(transRes.data[0]);
+      if (transRes.ok) {
+        setTranslations(transRes.data);
+        // Reflect the persisted default (Settings → Bible), else the first.
+        const stored = defRes.ok ? defRes.data : null;
+        const active =
+          (stored && transRes.data.find((t) => t.abbreviation === stored)) ?? transRes.data[0];
+        if (active) setTranslation(active);
+      }
     })();
   }, []);
+
+  // Switch the active translation: persist the shared default key, then
+  // re-resolve the currently staged passage in the new translation so what's on
+  // screen (and headed to Live) updates immediately.
+  const changeTranslation = useCallback(
+    async (abbreviation: string) => {
+      const next = translations.find((t) => t.abbreviation === abbreviation);
+      if (!next) return;
+      setTranslation(next);
+      await window.api.settings.set(DEFAULT_TRANSLATION_KEY, abbreviation);
+      if (staged && staged.verses.length > 0) {
+        const first = staged.verses[0];
+        const last = staged.verses[staged.verses.length - 1];
+        const query =
+          staged.verses.length > 1
+            ? `${first.bookName} ${first.chapter}:${first.verse}-${last.verse}`
+            : `${first.bookName} ${first.chapter}:${first.verse}`;
+        const res = await window.api.scripture.lookupReference(query);
+        if (res.ok && res.data.length > 0) {
+          onStage(res.data, Math.min(staged.index, res.data.length - 1));
+        }
+      }
+    },
+    [translations, staged, onStage],
+  );
+
+  // Stable callback so ReferenceMode's debounced live-resolve isn't re-armed by
+  // unrelated parent re-renders (reviewer finding).
+  const handleReferenceResolve = useCallback(
+    (verses: BibleVerse[]) => onStage(verses, 0),
+    [onStage],
+  );
 
   const lead = staged ? staged.verses[staged.index] : null;
   const stagedActiveVerse =
@@ -82,9 +124,29 @@ export default function SearchPane({ staged, onStage, onStageIndex, onSendLive }
               );
             })}
           </div>
-          <span className="truncate text-[11px] text-pp-text-muted" title="Active Bible translation">
-            {translation ? `${abbr} · ${translation.name} · offline` : `${abbr} · offline`}
-          </span>
+          {/* Active translation switcher — persists the shared default key and
+              re-resolves the staged passage. One source of truth with Settings
+              → Bible (CLAUDE.md §1.9). */}
+          <label className="flex items-center gap-1.5 text-[11px] text-pp-text-muted">
+            <span className="sr-only">Bible translation</span>
+            <select
+              aria-label="Bible translation"
+              title="Active Bible translation"
+              value={abbr}
+              onChange={(e) => void changeTranslation(e.target.value)}
+              className="rounded-md border border-pp-border-strong bg-pp-surface-1 px-2 py-1 text-[11px] font-semibold text-pp-text-body focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring"
+            >
+              {translations.length === 0 ? (
+                <option value={abbr}>{abbr}</option>
+              ) : (
+                translations.map((t) => (
+                  <option key={t.id} value={t.abbreviation}>
+                    {t.abbreviation} · {t.name}
+                  </option>
+                ))
+              )}
+            </select>
+          </label>
         </div>
 
         {/* Segmented reference display + translation note for the staged lead. */}
@@ -93,7 +155,7 @@ export default function SearchPane({ staged, onStage, onStageIndex, onSendLive }
         {/* Active mode body. */}
         <div className="flex min-h-0 flex-1 flex-col">
           {mode === 'reference' && (
-            <ReferenceMode books={books} onResolve={(verses) => onStage(verses, 0)} />
+            <ReferenceMode books={books} onResolve={handleReferenceResolve} />
           )}
           {mode === 'picker' && <CardPickerMode onPick={onStage} activeVerse={stagedActiveVerse} />}
           {mode === 'keyword' && (

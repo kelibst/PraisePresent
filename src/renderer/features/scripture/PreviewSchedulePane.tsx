@@ -28,6 +28,8 @@ type Props = {
   planLoading: boolean;
   onSendLive: () => void;
   onSetNext: () => void;
+  /** Append the staged passage to the active service as a scripture item. */
+  onAddToPlan: () => void;
   /** The current live slide's background, so the editor + preview reflect it. */
   liveBackground: SlideBackground | null;
   /** Whether a live deck exists — gates the background editor. */
@@ -42,6 +44,7 @@ export default function PreviewSchedulePane({
   planLoading,
   onSendLive,
   onSetNext,
+  onAddToPlan,
   liveBackground,
   hasDeck,
   onSetBackground,
@@ -104,7 +107,11 @@ export default function PreviewSchedulePane({
             </button>
           </div>
           {showBg && (
-            <BackgroundEditor current={liveBackground} hasDeck={hasDeck} onApply={onSetBackground} />
+            <BackgroundEditor
+              current={liveBackground}
+              hasDeck={hasDeck}
+              onApply={onSetBackground}
+            />
           )}
         </div>
       </section>
@@ -136,11 +143,18 @@ export default function PreviewSchedulePane({
 
           <button
             type="button"
-            disabled
-            title="Adding scripture to the plan lands with the Plans builder"
-            className="mt-1 flex items-center justify-center gap-1.5 rounded-md border border-dashed border-pp-border-strong px-3 py-2 text-xs font-medium text-pp-text-dim disabled:cursor-not-allowed"
+            onClick={onAddToPlan}
+            disabled={!plan || !lead}
+            title={
+              !plan
+                ? 'Pick an active service to add scripture'
+                : !lead
+                  ? 'Stage a verse to add it'
+                  : `Add ${referenceLabel(lead)} to ${plan.name}`
+            }
+            className="mt-1 flex items-center justify-center gap-1.5 rounded-md border border-dashed border-pp-border-strong px-3 py-2 text-xs font-medium text-pp-text-muted transition-colors hover:border-pp-accent/50 hover:bg-pp-accent/10 hover:text-pp-accent-light disabled:cursor-not-allowed disabled:text-pp-text-dim disabled:hover:border-pp-border-strong disabled:hover:bg-transparent disabled:hover:text-pp-text-dim focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring"
           >
-            <Plus className="size-3.5" aria-hidden /> Add item
+            <Plus className="size-3.5" aria-hidden /> {lead ? 'Add to service' : 'Add item'}
           </button>
         </div>
       </section>

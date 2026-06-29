@@ -1,12 +1,17 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { cn } from '@/renderer/lib/utils';
 import type { BibleBook, BibleVerse } from '@/shared/schemas/scripture';
+import { bookFragmentOf, matchBooks, nearestBook, normalizeFragment } from './bookMatch';
 
-// Reference mode: a single free-text reference field ("John 3:16", "Gen 1:1-3")
-// that resolves through scripture.lookupReference, plus a live book-autocomplete
-// dropdown so the operator can type "joh" and pick John. Resolving a reference
-// reports the verses up to the parent, which stages them. window.api only (§1.3);
-// keyboard-operable under pressure (§5.4): Enter resolves, ↑/↓/Enter pick a book.
+// Reference mode — the EasyWorship-style reference field. One free-text input
+// that is NEVER empty (defaults to Genesis 1:1; clearing it restores the last
+// valid reference), with single-keystroke nearest-book selection ("j" → the
+// nearest J book), Space to complete the book and move to chapter/verse, and
+// live resolution as the reference becomes complete (no Enter required). Invalid
+// complete references show a quiet inline hint rather than going blank.
+// window.api only (§1.3); keyboard-operable under pressure (§5.4).
+
+const DEFAULT_REFERENCE = 'Genesis 1:1';
 
 type Props = {
   /** The book list (loaded by the parent once and shared across modes). */
@@ -16,62 +21,90 @@ type Props = {
 };
 
 export default function ReferenceMode({ books, onResolve }: Props) {
-  const [query, setQuery] = useState('John 3:16');
-  const [error, setError] = useState<string | null>(null);
+  const [query, setQuery] = useState(DEFAULT_REFERENCE);
+  const [hint, setHint] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
   const [highlight, setHighlight] = useState(0);
-  // True once the operator has arrowed into the suggestion list; only then does
-  // Enter pick a book. Otherwise Enter resolves the typed reference (so a
-  // complete "John 3:16" looks up directly without the dropdown stealing Enter).
+  // True once the operator has arrowed into the list; only then does Enter pick
+  // a book (otherwise Enter resolves the typed reference directly).
   const [navigating, setNavigating] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const lastValid = useRef(DEFAULT_REFERENCE);
+  const reqId = useRef(0);
 
-  // The leading word of the query drives the book autocomplete suggestions.
-  const bookFragment = useMemo(() => query.trim().split(/[\s\d:]/)[0] ?? '', [query]);
-  const suggestions = useMemo(() => {
-    const frag = bookFragment.toLowerCase();
-    if (frag.length < 2) return [];
-    return books
-      .filter(
-        (b) =>
-          b.name.toLowerCase().startsWith(frag) || b.abbreviation.toLowerCase().startsWith(frag),
-      )
-      .slice(0, 6);
-  }, [books, bookFragment]);
+  // The book portion drives the autocomplete; once a chapter digit is typed we
+  // leave the book segment and hide the dropdown.
+  const fragment = useMemo(() => bookFragmentOf(query), [query]);
+  const inBookSegment = useMemo(() => !/\d/.test(query.replace(/^\s*\d\s/, '')), [query]);
+  const suggestions = useMemo(
+    () => (fragment ? matchBooks(books, fragment).slice(0, 7) : []),
+    [books, fragment],
+  );
+  const showList = open && inBookSegment && suggestions.length > 0;
 
+  // Auto-highlight the nearest match (index 0) whenever the fragment changes.
   useEffect(() => {
     setHighlight(0);
     setNavigating(false);
-  }, [bookFragment]);
+  }, [fragment]);
 
-  const resolve = async (raw: string) => {
-    setError(null);
-    setOpen(false);
-    const q = raw.trim();
-    if (!q) return;
-    const res = await window.api.scripture.lookupReference(q);
-    if (res.ok) {
-      if (res.data.length === 0) {
-        setError(`No match for "${q}"`);
-        onResolve([]);
-      } else {
-        onResolve(res.data);
+  // Resolve a reference → stage it. Stale (superseded) responses are ignored so
+  // fast typing always shows the latest. `quiet` suppresses the not-found hint
+  // (used for the initial default resolve).
+  const resolve = useCallback(
+    async (raw: string, opts: { quiet?: boolean } = {}) => {
+      const q = raw.trim();
+      if (!q) return;
+      const id = ++reqId.current;
+      const res = await window.api.scripture.lookupReference(q);
+      if (id !== reqId.current) return; // a newer keystroke superseded this one
+      if (!res.ok) {
+        setHint(res.error);
+        return;
       }
-    } else {
-      setError(res.error);
-    }
-  };
+      if (res.data.length > 0) {
+        lastValid.current = q;
+        setHint(null);
+        onResolve(res.data);
+        return;
+      }
+      // Zero verses: only complain once the input is complete enough (has a
+      // chapter number) so we don't nag mid-type (T3 validation UX).
+      if (!opts.quiet && /\d/.test(q)) {
+        const known = nearestBook(books, bookFragmentOf(q));
+        setHint(
+          known
+            ? `No verses for “${q}” — check the chapter and verse.`
+            : `Unknown book “${bookFragmentOf(q)}”.`,
+        );
+      }
+    },
+    [books, onResolve],
+  );
 
-  // Picking a book replaces the leading book fragment, keeping any chapter:verse.
-  const pickBook = (b: BibleBook) => {
-    const rest = query.replace(/^\s*[^\d:]+/, '').trimStart();
-    setQuery(rest ? `${b.name} ${rest}` : `${b.name} `);
+  // Resolve the default on mount so the pane is never blank (never-empty rule).
+  useEffect(() => {
+    void resolve(DEFAULT_REFERENCE, { quiet: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Debounced live resolution on each edit.
+  useEffect(() => {
+    if (!query.trim()) return;
+    const t = setTimeout(() => void resolve(query), 160);
+    return () => clearTimeout(t);
+  }, [query, resolve]);
+
+  // Replace the book portion with a chosen book, keeping any chapter:verse tail.
+  const applyBook = (b: BibleBook) => {
+    const tail = query.replace(/^\s*\d?\s*[^\d]*/, '').trimStart();
+    setQuery(tail ? `${b.name} ${tail}` : `${b.name} `);
     setOpen(false);
     inputRef.current?.focus();
   };
 
   const onKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (open && suggestions.length > 0) {
+    if (showList) {
       if (e.key === 'ArrowDown') {
         e.preventDefault();
         setNavigating(true);
@@ -84,16 +117,24 @@ export default function ReferenceMode({ books, onResolve }: Props) {
         setHighlight((h) => (h - 1 + suggestions.length) % suggestions.length);
         return;
       }
-      // Enter picks a book only while actively navigating the list; otherwise it
-      // falls through to resolve the typed reference.
       if (e.key === 'Enter' && navigating) {
         e.preventDefault();
-        pickBook(suggestions[highlight]);
+        applyBook(suggestions[highlight]);
         return;
       }
       if (e.key === 'Escape') {
         setOpen(false);
         return;
+      }
+      // Space completes the nearest book and advances to the chapter segment —
+      // unless what's typed already IS the book name (then let space through).
+      if (e.key === ' ') {
+        const near = suggestions[highlight] ?? suggestions[0];
+        if (near && normalizeFragment(fragment) !== normalizeFragment(near.name)) {
+          e.preventDefault();
+          applyBook(near);
+          return;
+        }
       }
     }
     if (e.key === 'Enter') void resolve(query);
@@ -114,21 +155,27 @@ export default function ReferenceMode({ books, onResolve }: Props) {
             setOpen(true);
           }}
           onFocus={() => setOpen(true)}
+          onBlur={() => {
+            setOpen(false);
+            // Never-empty: a cleared field restores the last valid reference.
+            if (!query.trim()) setQuery(lastValid.current);
+          }}
           onKeyDown={onKeyDown}
         />
 
-        {open && suggestions.length > 0 && (
+        {showList && (
           <div className="absolute z-20 mt-1 w-full overflow-hidden rounded-md border border-pp-border-soft bg-pp-surface-1 shadow-lg">
             <p className="border-b border-pp-border-soft px-3 py-1.5 text-[11px] text-pp-text-muted">
-              Books matching “{bookFragment}”
+              Books matching “{fragment}”
             </p>
             <ul role="listbox" aria-label="Book suggestions">
               {suggestions.map((b, i) => (
                 <li key={b.number} role="option" aria-selected={i === highlight}>
                   <button
                     type="button"
+                    onMouseDown={(e) => e.preventDefault()}
                     onMouseEnter={() => setHighlight(i)}
-                    onClick={() => pickBook(b)}
+                    onClick={() => applyBook(b)}
                     className={cn(
                       'flex w-full items-center justify-between px-3 py-1.5 text-left text-sm',
                       i === highlight
@@ -147,21 +194,14 @@ export default function ReferenceMode({ books, onResolve }: Props) {
       </div>
 
       <p className="text-xs text-pp-text-muted">
-        Type a reference and press{' '}
+        Type a book, then{' '}
         <kbd className="rounded border border-pp-border-soft bg-pp-surface-2 px-1 font-mono text-[10px]">
-          Enter
+          Space
         </kbd>{' '}
-        to look it up. Use{' '}
-        <kbd className="rounded border border-pp-border-soft bg-pp-surface-2 px-1 font-mono text-[10px]">
-          ↑
-        </kbd>{' '}
-        <kbd className="rounded border border-pp-border-soft bg-pp-surface-2 px-1 font-mono text-[10px]">
-          ↓
-        </kbd>{' '}
-        to pick a book.
+        for the chapter and verse — e.g. John 3 16. The field always keeps a valid reference.
       </p>
 
-      {error && <p className="text-sm text-pp-error">{error}</p>}
+      {hint && <p className="text-sm text-pp-text-muted">{hint}</p>}
     </div>
   );
 }

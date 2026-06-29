@@ -83,7 +83,9 @@ export default function LiveCockpit({
     ]);
     const isTextEntry = (el: HTMLElement | null): boolean => {
       if (!el) return false;
-      if (el.isContentEditable || el.tagName === 'TEXTAREA') return true;
+      // A focused <select> (e.g. the translation switcher) also swallows keys —
+      // never let a transport shortcut ('b' → black) fire while one has focus.
+      if (el.isContentEditable || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT') return true;
       if (el.tagName !== 'INPUT') return false;
       // A bare <input> defaults to type=text; only text-entry types swallow keys.
       const type = (el as HTMLInputElement).type || 'text';

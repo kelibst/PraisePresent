@@ -97,13 +97,13 @@ test('hydrate WEB offline, search by reference + keyword, and present a verse', 
 
   // The unified Present screen renders. Its left Source panel defaults to the
   // Scripture tab, where Reference mode is the default and is NOT blank — its
-  // field is prefilled with "John 3:16"; resolving it stages the verse and
-  // sending it live mirrors it to the audience.
+  // field defaults to "Genesis 1:1" (never blank); typing John 3:16 stages the
+  // verse and sending it live mirrors it to the audience.
   await presenter.evaluate(() => {
     window.location.hash = '#/present';
   });
   await expect(presenter.getByText('Scripture').first()).toBeVisible();
-  // Resolve the prefilled reference (Enter) → the staged verse appears in Pane 1.
+  await presenter.getByLabel('Scripture reference').fill('John 3:16');
   await presenter.getByLabel('Scripture reference').press('Enter');
   await expect(presenter.getByText(/For God so loved the world/).first()).toBeVisible();
   // Send the staged verse live; the audience window mirrors it. Use `.first()`:
@@ -153,6 +153,94 @@ test('hydrate WEB offline, search by reference + keyword, and present a verse', 
   await presenter.getByLabel('Keyword search').fill('love your enemies');
   await presenter.getByRole('button', { name: 'Search', exact: true }).click();
   await expect(presenter.getByText(/containing/).first()).toBeVisible();
+
+  await app.close();
+  fs.rmSync(userDataDir, { recursive: true, force: true });
+});
+
+// Multiple public-domain translations hydrate side by side; every read is scoped
+// to the active translation (set via the shared default-translation setting), so
+// switching changes the text and never returns cross-translation duplicates.
+test('multiple translations hydrate, scope reads, and switch by setting', async () => {
+  const userDataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'pp-scripture-multi-'));
+  const app = await electron.launch({
+    args: [mainPath, '--no-sandbox', `--user-data-dir=${userDataDir}`],
+    env: launchEnv(),
+  });
+  const presenter = await app.firstWindow();
+  await presenter.waitForLoadState('domcontentloaded');
+
+  // Wait for hydration of the bundled set.
+  await expect
+    .poll(
+      async () => {
+        const res = await presenter.evaluate(() => window.api.scripture.listTranslations());
+        return res.ok ? res.data.length : 0;
+      },
+      { timeout: 30_000 },
+    )
+    .toBeGreaterThanOrEqual(6);
+
+  const trans = await presenter.evaluate(() => window.api.scripture.listTranslations());
+  const abbrs = trans.ok ? trans.data.map((t) => t.abbreviation) : [];
+  expect(abbrs).toEqual(expect.arrayContaining(['WEB', 'KJV', 'ASV', 'YLT', 'BBE', 'WBT']));
+
+  // Default (WEB) — scoped to exactly one verse, with WEB's wording.
+  const web = await presenter.evaluate(() => window.api.scripture.lookupReference('John 3:16'));
+  expect(web.ok && web.data).toHaveLength(1);
+  expect(web.data[0].text).toContain('one and only Son');
+
+  // Switch the active translation via the shared setting, then re-query: KJV
+  // wording, still exactly one verse (no cross-translation duplication).
+  await presenter.evaluate(() => window.api.settings.set('scripture.defaultTranslation', 'KJV'));
+  const kjv = await presenter.evaluate(() => window.api.scripture.lookupReference('John 3:16'));
+  expect(kjv.ok && kjv.data).toHaveLength(1);
+  expect(kjv.data[0].text).toContain('only begotten Son');
+  expect(kjv.data[0].text).not.toContain('one and only Son');
+
+  await app.close();
+  fs.rmSync(userDataDir, { recursive: true, force: true });
+});
+
+// EasyWorship-style reference field: never blank (defaults to Genesis 1:1),
+// nearest-book on type, Space completes the book, and the space form resolves —
+// all with no Enter required.
+test('reference field defaults to Genesis 1:1 and resolves the EasyWorship space form', async () => {
+  const userDataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'pp-scripture-ew-'));
+  const app = await electron.launch({
+    args: [mainPath, '--no-sandbox', `--user-data-dir=${userDataDir}`],
+    env: launchEnv(),
+  });
+  const pages: Page[] = [await app.firstWindow()];
+  while (pages.length < 2) pages.push(await app.waitForEvent('window'));
+  for (const p of pages) await p.waitForLoadState('domcontentloaded');
+  const presenter = pages.find((p) => !p.url().includes('/audience'))!;
+
+  // Navigate to the Present screen (app opens on Home).
+  await presenter.evaluate(() => {
+    window.location.hash = '#/present';
+  });
+  await expect(presenter.getByText('Scripture').first()).toBeVisible();
+
+  const field = presenter.getByLabel('Scripture reference');
+
+  // Never-empty: the field starts at Genesis 1:1 and the verse is already staged.
+  await expect(field).toHaveValue('Genesis 1:1');
+  await expect(presenter.getByText(/In the beginning/).first()).toBeVisible({
+    timeout: 30_000,
+  });
+
+  // Type a book fragment, Space to complete it to the nearest book, then the
+  // space form "3 16" — no colon, no Enter — resolves John 3:16 live.
+  await field.click();
+  await field.fill('');
+  await field.pressSequentially('joh', { delay: 40 });
+  await field.press(' ');
+  await expect(field).toHaveValue('John ');
+  await field.pressSequentially('3 16', { delay: 40 });
+  await expect(presenter.getByText(/For God so loved the world/).first()).toBeVisible({
+    timeout: 10_000,
+  });
 
   await app.close();
   fs.rmSync(userDataDir, { recursive: true, force: true });

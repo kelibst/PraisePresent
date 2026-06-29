@@ -64,6 +64,33 @@ describe('parseReference', () => {
     });
   });
 
+  it('parses the EasyWorship space form "John 3 16"', () => {
+    expect(parseReference('John 3 16')).toEqual({
+      bookNumber: 43,
+      chapter: 3,
+      verseStart: 16,
+      verseEnd: 16,
+    });
+  });
+
+  it('parses a space-form numbered book "1 John 2 5"', () => {
+    expect(parseReference('1 John 2 5')).toEqual({
+      bookNumber: 62,
+      chapter: 2,
+      verseStart: 5,
+      verseEnd: 5,
+    });
+  });
+
+  it('parses a space-form range "Gen 1 1-3"', () => {
+    expect(parseReference('Gen 1 1-3')).toEqual({
+      bookNumber: 1,
+      chapter: 1,
+      verseStart: 1,
+      verseEnd: 3,
+    });
+  });
+
   it('returns null for an unknown book', () => {
     expect(parseReference('Hezekiah 1:1')).toBeNull();
   });
