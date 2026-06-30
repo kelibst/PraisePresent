@@ -7,7 +7,7 @@ import type {
   PresentCursorPayload,
 } from '@/shared/schemas/present';
 import { createPresentReconciler } from '@/shared/present/reconciler';
-import type { AiCandidate, TranscriptSegment } from '@/shared/schemas/ai';
+import type { AiCandidate, AiStatus, TranscriptSegment } from '@/shared/schemas/ai';
 
 // The split present broadcast (B1) arrives on two channels — `present:deck` (rare)
 // and `present:cursor` (hot). One reconciler per preload instance (i.e. per window)
@@ -63,8 +63,7 @@ const api: Api = {
   },
   capability: {
     get: () => ipcRenderer.invoke(CHANNELS.capability.get),
-    setOverride: (override) =>
-      ipcRenderer.invoke(CHANNELS.capability.setOverride, { override }),
+    setOverride: (override) => ipcRenderer.invoke(CHANNELS.capability.setOverride, { override }),
   },
   present: {
     setDeck: (deck, index, transition) =>
@@ -74,6 +73,8 @@ const api: Api = {
     goto: (index) => ipcRenderer.invoke(CHANNELS.present.goto, { index }),
     setBackground: (background, index, applyToAll) =>
       ipcRenderer.invoke(CHANNELS.present.setBackground, { background, index, applyToAll }),
+    setDefaultBackground: (background) =>
+      ipcRenderer.invoke(CHANNELS.present.setDefaultBackground, { background }),
     updateText: (lines, index) => ipcRenderer.invoke(CHANNELS.present.updateText, { lines, index }),
     setTransition: (transition) =>
       ipcRenderer.invoke(CHANNELS.present.setTransition, { transition }),
@@ -117,6 +118,11 @@ const api: Api = {
       ipcRenderer.invoke(CHANNELS.ai.setTranscriptOnly, { transcriptOnly }),
     startListening: () => ipcRenderer.invoke(CHANNELS.ai.startListening),
     stopListening: () => ipcRenderer.invoke(CHANNELS.ai.stopListening),
+    // Fire-and-forget PCM stream (renderer → main) — NOT an invoke. Each frame is
+    // 16 kHz mono 16-bit PCM the renderer captured; main routes it to the active
+    // ASR session. No business logic here — just transport (§5.2).
+    sendAudioFrame: (pcm, sampleRate) =>
+      ipcRenderer.send(CHANNELS.ai.audioFrame, { pcm, sampleRate }),
     setApiKey: (agentId, apiKey) => ipcRenderer.invoke(CHANNELS.ai.setApiKey, { agentId, apiKey }),
     hasKey: (agentId) => ipcRenderer.invoke(CHANNELS.ai.hasKey, { agentId }),
     clearApiKey: (agentId) => ipcRenderer.invoke(CHANNELS.ai.clearApiKey, { agentId }),
@@ -129,6 +135,11 @@ const api: Api = {
       const listener = (_event: unknown, segment: TranscriptSegment) => callback(segment);
       ipcRenderer.on(CHANNELS.ai.transcript, listener);
       return () => ipcRenderer.removeListener(CHANNELS.ai.transcript, listener);
+    },
+    onStatus: (callback) => {
+      const listener = (_event: unknown, status: AiStatus) => callback(status);
+      ipcRenderer.on(CHANNELS.ai.statusChanged, listener);
+      return () => ipcRenderer.removeListener(CHANNELS.ai.statusChanged, listener);
     },
   },
   media: {

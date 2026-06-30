@@ -24,3 +24,6 @@ transcription or crashing (§5.7). The model-download manager is surfaced via `a
 child process, no native dep ships yet. **Still blocked** on the actual whisper.cpp sidecar/binding +
 GGUF weights and the observed-audio accuracy/latency bars — when those land, swap the concrete `localAsr`
 export for the real backend; nothing downstream (orchestrator, IPC, UI) needs to change.
+
+## Update (2026-06-29 — whisper sidecar + model manager landed)
+The real backend landed under `2026-06-29_p4-whisper-sidecar-model-manager`: `WhisperLocalAsr` over a whisper-cli sidecar + an `AsrSession` adapter (capped rolling-window buffer), and a real GGUF download manager (progress, verify, atomic install) wired to `ai:model-status`/`ai:download-model` + a Settings download UI. Binary via `PRAISEPRESENT_WHISPER_BIN`/resources. Still pending: live verify with a real binary + zero-egress assertion + offline accuracy bars.

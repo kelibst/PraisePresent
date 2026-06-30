@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { cn } from '@/renderer/lib/utils';
 import type { BibleBook, BibleVerse } from '@/shared/schemas/scripture';
-import { isExactBook, matchBooks, nearestBook } from './bookMatch';
+import { findExactBook, isExactBook, matchBooks, nearestBook } from './bookMatch';
+import { parseVerseRange, type VerseRange } from './scriptureDeck';
 
 // Reference mode — the EasyWorship-style reference field, rendered as ONE
 // segmented control the operator types straight into: three chips
@@ -29,23 +30,43 @@ type Props = {
   books: BibleBook[];
   /** The active translation abbreviation, shown as the trailing chip. */
   abbr: string;
+  /**
+   * The currently staged passage as a reference draft, so the field reflects it
+   * on (re)mount — switching mode tabs and coming back keeps the reference the
+   * operator was on rather than resetting to the default. `null` → nothing staged
+   * yet, so seed (and resolve) the Genesis 1:1 default.
+   */
+  initial: { book: string; chapter: string; verse: string } | null;
   /** Report the resolved passage so the parent can stage it. */
   onResolve: (verses: BibleVerse[]) => void;
 };
 
-export default function ReferenceMode({ books, abbr, onResolve }: Props) {
-  const [book, setBook] = useState(DEFAULT.book);
-  const [chapter, setChapter] = useState(DEFAULT.chapter);
-  const [verse, setVerse] = useState(DEFAULT.verse);
+export default function ReferenceMode({ books, abbr, initial, onResolve }: Props) {
+  // Seed the zones from the staged passage (if any) so the field is consistent
+  // across the mode tabs; only read at mount (a later staged change while this is
+  // mounted comes from the field itself, so it must not reset the inputs).
+  const seed = initial ?? DEFAULT;
+  const [book, setBook] = useState(seed.book);
+  const [chapter, setChapter] = useState(seed.chapter);
+  const [verse, setVerse] = useState(seed.verse);
   const [open, setOpen] = useState(false);
   const [highlight, setHighlight] = useState(0);
   const [hint, setHint] = useState<string | null>(null);
+  // The whole chapter for the current book+chapter (the EasyWorship results list),
+  // and which verse(s) the reference currently selects within it (highlighted).
+  const [chapterVerses, setChapterVerses] = useState<BibleVerse[]>([]);
+  const [selected, setSelected] = useState<VerseRange | null>(() => parseVerseRange(seed.verse));
 
   const bookRef = useRef<HTMLInputElement>(null);
   const chapterRef = useRef<HTMLInputElement>(null);
   const verseRef = useRef<HTMLInputElement>(null);
+  const leadRowRef = useRef<HTMLButtonElement>(null);
   const reqId = useRef(0);
-  const lastValid = useRef({ ...DEFAULT });
+  const lastValid = useRef({ ...seed });
+  // True while focus is being moved programmatically (focusSeg), so the
+  // select-on-focus handlers know NOT to re-select and clobber the caret/selection
+  // focusSeg just set (e.g. Backspace-to-previous wants the caret at the end).
+  const programmatic = useRef(false);
 
   const suggestions = useMemo(() => matchBooks(books, book).slice(0, 7), [books, book]);
   // Hide the dropdown once the book zone holds an exact book (nothing to pick).
@@ -64,13 +85,30 @@ export default function ReferenceMode({ books, abbr, onResolve }: Props) {
     const el =
       seg === 'book' ? bookRef.current : seg === 'chapter' ? chapterRef.current : verseRef.current;
     if (!el) return;
-    el.focus();
-    if (select) el.select();
-    else {
-      const len = el.value.length;
-      el.setSelectionRange(len, len);
+    // onFocus fires synchronously inside el.focus(); flag it so the zone's
+    // select-on-focus is suppressed and our explicit selection below wins. The
+    // finally guarantees the flag never leaks `true` (which would permanently
+    // disable select-on-focus) if a DOM call ever throws.
+    programmatic.current = true;
+    try {
+      el.focus();
+      if (select) el.select();
+      else {
+        const len = el.value.length;
+        el.setSelectionRange(len, len);
+      }
+    } finally {
+      programmatic.current = false;
     }
   }, []);
+
+  // Select a zone's text when the operator focuses it themselves (click/Tab) so
+  // typing replaces the segment — the field is never empty, so without this you'd
+  // append to the existing book ("Genesis"+"p" → "pGenesis") and match nothing.
+  // Suppressed during programmatic focus moves (focusSeg owns the caret there).
+  const selectOnFocus = (el: HTMLInputElement | null) => {
+    if (el && !programmatic.current) el.select();
+  };
 
   // Resolve {book, chapter, verse} → stage it. Stale (superseded) responses are
   // ignored so fast typing always reflects the latest. `quiet` suppresses the
@@ -92,6 +130,10 @@ export default function ReferenceMode({ books, abbr, onResolve }: Props) {
       if (res.data.length > 0) {
         lastValid.current = { book: bookName, chapter: ch, verse: tail };
         setHint(null);
+        setSelected({
+          from: res.data[0].verse,
+          to: res.data[res.data.length - 1].verse,
+        });
         onResolve(res.data);
         return;
       }
@@ -100,22 +142,67 @@ export default function ReferenceMode({ books, abbr, onResolve }: Props) {
     [onResolve],
   );
 
-  // Resolve the default on mount so the pane is never blank (never-empty rule).
+  // On first mount with nothing staged, resolve the default so the pane is never
+  // blank. If a passage is already staged, the seeded zones reflect it and it is
+  // already on screen — re-resolving would just re-stage it and reset the lead
+  // index, so skip it.
   useEffect(() => {
-    void resolve(DEFAULT.book, DEFAULT.chapter, DEFAULT.verse, { quiet: true });
+    if (!initial) void resolve(DEFAULT.book, DEFAULT.chapter, DEFAULT.verse, { quiet: true });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Debounced live resolution: only once the book zone holds a real book (so
   // mid-typing "jo" never resolves Joel before the operator picks). A verse zone
   // ending in "-" is an incomplete range ("16-") — wait for the end verse rather
-  // than resolve it and flash a spurious "No verses" hint.
+  // than resolve it and flash a spurious "No verses" hint. When the zones still
+  // equal the staged seed (just (re)mounted, untouched), the passage is already
+  // on screen — skip, so returning to this tab doesn't re-stage / reset the lead.
   useEffect(() => {
     if (!isExactBook(books, book) || !chapter.trim()) return;
     if (/-$/.test(verse.trim())) return;
+    if (
+      initial &&
+      book === initial.book &&
+      chapter === initial.chapter &&
+      verse === initial.verse
+    ) {
+      return;
+    }
     const t = setTimeout(() => void resolve(book, chapter, verse), 160);
     return () => clearTimeout(t);
-  }, [book, chapter, verse, books, resolve]);
+  }, [book, chapter, verse, books, resolve, initial]);
+
+  // Load the WHOLE chapter for the current book+chapter — the EasyWorship results
+  // list the operator browses. Re-runs on book/chapter change and on translation
+  // switch (abbr), since getChapter resolves the active translation in main.
+  useEffect(() => {
+    const b = findExactBook(books, book);
+    const ch = Number(chapter);
+    if (!b || !Number.isInteger(ch) || ch < 1 || ch > b.chapterCount) return;
+    let cancelled = false;
+    void window.api.scripture.getChapter(b.number, ch).then((res) => {
+      if (!cancelled && res.ok) setChapterVerses(res.data);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [books, book, chapter, abbr]);
+
+  // Keep the selected (lead) verse scrolled into view as the reference changes.
+  useEffect(() => {
+    leadRowRef.current?.scrollIntoView({ block: 'nearest' });
+  }, [selected?.from, chapterVerses]);
+
+  // Stage a single verse picked from the chapter list (and reflect it in the
+  // field), so clicking a verse behaves like typing its reference. Updating
+  // lastValid keeps the never-empty blur-restore pointing at the picked verse;
+  // the debounced live-resolve then no-ops (zones already equal what's staged).
+  const pickVerse = (v: BibleVerse) => {
+    setVerse(String(v.verse));
+    setSelected({ from: v.verse, to: v.verse });
+    lastValid.current = { book: v.bookName, chapter: String(v.chapter), verse: String(v.verse) };
+    onResolve([v]);
+  };
 
   // Commit a chosen/nearest book to its canonical name, then (default) advance.
   const commitBook = useCallback(
@@ -174,8 +261,13 @@ export default function ReferenceMode({ books, abbr, onResolve }: Props) {
         requestAnimationFrame(() => {
           const el = chapterRef.current;
           if (!el) return;
-          el.focus();
-          el.setSelectionRange(el.value.length, el.value.length);
+          programmatic.current = true;
+          try {
+            el.focus();
+            el.setSelectionRange(el.value.length, el.value.length);
+          } finally {
+            programmatic.current = false;
+          }
         });
       }
     }
@@ -219,7 +311,7 @@ export default function ReferenceMode({ books, abbr, onResolve }: Props) {
   };
 
   return (
-    <div className="flex flex-col gap-2">
+    <div className="flex min-h-0 flex-1 flex-col gap-2">
       <div className="relative">
         {/* The segmented field: Book › Chapter : Verse, plus the translation chip. */}
         <div
@@ -245,7 +337,10 @@ export default function ReferenceMode({ books, abbr, onResolve }: Props) {
               setBook(e.target.value);
               setOpen(true);
             }}
-            onFocus={() => setOpen(true)}
+            onFocus={(e) => {
+              setOpen(true);
+              selectOnFocus(e.currentTarget);
+            }}
             onBlur={onBookBlur}
             onKeyDown={onBookKeyDown}
           />
@@ -261,6 +356,7 @@ export default function ReferenceMode({ books, abbr, onResolve }: Props) {
             placeholder="Ch"
             value={chapter}
             onChange={(e) => setChapter(e.target.value.replace(/\D/g, ''))}
+            onFocus={(e) => selectOnFocus(e.currentTarget)}
             onKeyDown={onChapterKeyDown}
             onBlur={onChapterBlur}
           />
@@ -276,6 +372,7 @@ export default function ReferenceMode({ books, abbr, onResolve }: Props) {
             placeholder="Vs"
             value={verse}
             onChange={(e) => setVerse(e.target.value.replace(/[^\d-]/g, ''))}
+            onFocus={(e) => selectOnFocus(e.currentTarget)}
             onKeyDown={onVerseKeyDown}
           />
           <span className="shrink-0 rounded-lg border border-pp-border-strong bg-pp-surface-1 px-2.5 py-1 text-xs font-semibold text-pp-text-muted">
@@ -313,7 +410,7 @@ export default function ReferenceMode({ books, abbr, onResolve }: Props) {
         )}
       </div>
 
-      <p className="text-xs text-pp-text-muted">
+      <p className="shrink-0 text-xs text-pp-text-muted">
         Type a book, then{' '}
         <kbd className="rounded border border-pp-border-soft bg-pp-surface-2 px-1 font-mono text-[10px]">
           Space
@@ -321,7 +418,55 @@ export default function ReferenceMode({ books, abbr, onResolve }: Props) {
         for the chapter and verse — e.g. John 3 16. The field always keeps a valid reference.
       </p>
 
-      {hint && <p className="text-sm text-pp-text-muted">{hint}</p>}
+      {hint && <p className="shrink-0 text-sm text-pp-text-muted">{hint}</p>}
+
+      {/* The whole chapter — the EasyWorship results list. The reference's verse(s)
+          are highlighted; clicking a row stages that verse. Fills the pane. */}
+      {chapterVerses.length > 0 && (
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-md border border-pp-border-soft bg-pp-surface-1">
+          <div className="flex shrink-0 items-center justify-between border-b border-pp-border-soft px-2.5 py-1.5">
+            <span className="text-[11px] font-semibold uppercase tracking-wider text-pp-text-label">
+              {chapterVerses[0].bookName} {chapterVerses[0].chapter}
+            </span>
+            <span className="text-[11px] text-pp-text-dim">
+              {chapterVerses.length} verses · click to stage
+            </span>
+          </div>
+          <ul aria-label="Chapter verses" className="min-h-0 flex-1 overflow-y-auto p-1">
+            {chapterVerses.map((v) => {
+              const isSel = selected ? v.verse >= selected.from && v.verse <= selected.to : false;
+              const isLead = selected ? v.verse === selected.from : false;
+              return (
+                <li key={v.verse}>
+                  <button
+                    type="button"
+                    ref={isLead ? leadRowRef : undefined}
+                    onClick={() => pickVerse(v)}
+                    aria-current={isSel || undefined}
+                    className={cn(
+                      'flex w-full items-start gap-2 rounded px-2 py-1.5 text-left text-sm transition-colors',
+                      isSel
+                        ? 'bg-pp-accent/10'
+                        : 'hover:bg-pp-surface-2 focus-visible:bg-pp-surface-2',
+                      isLead && 'ring-1 ring-inset ring-pp-accent/40',
+                    )}
+                  >
+                    <span
+                      className={cn(
+                        'mt-0.5 w-6 shrink-0 text-right text-xs font-semibold',
+                        isSel ? 'text-pp-accent' : 'text-pp-text-dim',
+                      )}
+                    >
+                      {v.verse}
+                    </span>
+                    <span className="min-w-0 flex-1 text-pp-text-body">{v.text}</span>
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      )}
     </div>
   );
 }

@@ -12,10 +12,11 @@ function launchEnv() {
   return env;
 }
 
-// A1 control surface: the orchestrator state machine the Live-Detect / AI-Privacy
-// screens render, driven entirely through window.api.ai.* (the real bridge).
-// Interfaces + in-memory state only — no audio/network/keys (A2/A4).
-test('AI orchestrator: agents, mode, kill-switch, listen stub via the bridge', async () => {
+// AI control surface: the orchestrator state machine the Live-Detect / AI-Privacy
+// screens render, driven entirely through window.api.ai.* (the real bridge). The
+// listening lifecycle now opens a REAL engine, so without a local model or a cloud
+// key + socket nothing can actually listen here — the surface gates it honestly.
+test('AI orchestrator: agents, mode, kill-switch, listen gating via the bridge', async () => {
   const userDataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'pp-ai-ctrl-'));
   const app = await electron.launch({
     args: [mainPath, '--no-sandbox', `--user-data-dir=${userDataDir}`],
@@ -57,15 +58,14 @@ test('AI orchestrator: agents, mode, kill-switch, listen stub via the bridge', a
   const badSrc = await presenter.evaluate(() => window.api.ai.setSource('nope'));
   expect(badSrc.ok && badSrc.data.selectedSourceId).toBe('mic-1'); // unchanged
 
-  // Local model download manager (R6 stub): whisper-local reports absent, and the
-  // download action is a clear no-op — never a fake "ready", never a crash.
+  // Local model download manager: whisper-local reports `absent` until a model is
+  // downloaded. The real download (network fetch → atomic install) is exercised by
+  // modelManager.test.ts with a mock fetch — we deliberately do NOT pull a ~142 MB
+  // model over the network here, and never call downloadModel in e2e.
   const model = await presenter.evaluate(() => window.api.ai.modelStatus('whisper-local'));
   expect(model.ok).toBe(true);
   expect(model.data.installed).toBe(false);
   expect(model.data.state).toBe('absent');
-  const dl = await presenter.evaluate(() => window.api.ai.downloadModel('whisper-local'));
-  expect(dl.ok && dl.data.state).toBe('absent');
-  expect(dl.ok && (dl.data.detail ?? '')).toContain('not available');
 
   // Default status: passive, enabled, not listening, local agent.
   const initial = await presenter.evaluate(() => window.api.ai.status());
@@ -80,11 +80,16 @@ test('AI orchestrator: agents, mode, kill-switch, listen stub via the bridge', a
   expect(drive.ok && drive.data.mode).toBe('drive');
   await presenter.evaluate(() => window.api.ai.setMode('passive'));
 
-  // The bundled local agent is available → startListening succeeds.
-  const listening = await presenter.evaluate(() => window.api.ai.startListening());
-  expect(listening.ok && listening.data.listening).toBe(true);
+  // No local model is installed in e2e, so the on-device engine cannot transcribe →
+  // startListening NO-OPs with a clear reason. It never reports `listening` with no
+  // real backend (a successful live transcribe needs a whisper model or a cloud key
+  // + open socket, neither present here). This is the honest replacement for the
+  // old A1 stub that flipped listening on with nothing behind it.
+  const listenAttempt = await presenter.evaluate(() => window.api.ai.startListening());
+  expect(listenAttempt.ok && listenAttempt.data.listening).toBe(false);
+  expect(listenAttempt.ok && listenAttempt.data.lastError).toBeTruthy();
 
-  // Kill-switch: setEnabled(false) is a hard stop (forces listening off).
+  // Kill-switch: setEnabled(false) is a hard stop (forces listening off + blocks start).
   const killed = await presenter.evaluate(() => window.api.ai.setEnabled(false));
   expect(killed.ok).toBe(true);
   expect(killed.data.enabled).toBe(false);

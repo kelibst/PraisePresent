@@ -4,6 +4,7 @@ import {
   setDeckInput,
   gotoInput,
   setBackgroundInput,
+  setDefaultBackgroundInput,
   updateTextInput,
   setTransitionInput,
 } from '@/shared/schemas/present';
@@ -11,6 +12,7 @@ import {
   dispatchPresent,
   setDeck,
   setBackground,
+  setDefaultBackground,
   updateText,
   getLiveState,
 } from '../windows/windowManager';
@@ -37,6 +39,17 @@ export function registerPresentHandlers(): void {
     setBackgroundInput,
     ({ index, background, applyToAll }): void => {
       setBackground(background, index, applyToAll);
+    },
+  );
+
+  // Set/clear the SERVICE-WIDE default background. The schema re-validated the
+  // color/url; main persists it and applies it to live state so the CURRENT deck
+  // updates immediately (resolved at render time, never baked into slides — §5.7).
+  handle(
+    CHANNELS.present.setDefaultBackground,
+    setDefaultBackgroundInput,
+    ({ background }): void => {
+      setDefaultBackground(background);
     },
   );
 

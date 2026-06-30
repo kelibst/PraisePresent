@@ -1,3 +1,4 @@
+import { shouldAutoProject as shouldAutoProjectGate } from '@/shared/ai/autoProject';
 import type {
   AiModelStatus,
   AiStatus,
@@ -145,13 +146,11 @@ export function initialState(): OrchestratorState {
   };
 }
 
-// Should a candidate of this confidence be auto-projected? FALSE unless the
-// operator explicitly enabled auto-project AND the candidate clears the
-// configured threshold. The default config returns false for everything (R8).
+// Should a candidate of this confidence be auto-projected? Delegates to the SHARED
+// pure gate so main and the renderer apply the exact same rule (R8, §1.9). FALSE
+// unless auto-project is explicitly enabled AND the candidate clears the threshold.
 export function shouldAutoProject(state: OrchestratorState, confidence: number): boolean {
-  if (!state.enabled) return false; // kill-switch wins
-  if (!state.autoProject.enabled) return false; // off by default
-  return confidence >= state.autoProject.minConfidence;
+  return shouldAutoProjectGate(state, confidence);
 }
 
 export function findAgent(agentId: string): TranscriptionAgent | undefined {
@@ -163,11 +162,16 @@ export function findAgent(agentId: string): TranscriptionAgent | undefined {
 // callers (tests) omit it and fall back to the registry value.
 export type HasKeyFor = (agentId: string) => boolean;
 
-// Is an agent actually usable right now? Offline agents need `installed`; online
-// agents need a key (real storage via `hasKeyFor` when provided, else the
-// registry flag) and the operator's cloud opt-in (checked in the reducer).
-export function isAgentAvailable(agent: TranscriptionAgent, hasKeyFor?: HasKeyFor): boolean {
-  if (!agent.online) return agent.installed;
+// Is an agent actually usable right now? Offline agents need `installed` (REAL
+// install state via `isInstalledFor` when provided — e.g. a downloaded whisper
+// model — else the registry flag); online agents need a key (real storage via
+// `hasKeyFor` when provided, else the registry flag) plus the cloud opt-in.
+export function isAgentAvailable(
+  agent: TranscriptionAgent,
+  hasKeyFor?: HasKeyFor,
+  isInstalledFor?: HasKeyFor,
+): boolean {
+  if (!agent.online) return isInstalledFor ? isInstalledFor(agent.id) : agent.installed;
   return hasKeyFor ? hasKeyFor(agent.id) : agent.hasKey;
 }
 
@@ -187,12 +191,16 @@ export type OrchestratorAction =
 
 // Why listening isn't possible right now, or null if it is. Online agents also
 // require the operator's cloud opt-in (`online`). Pure — drives the stub status.
-function listenBlockReason(state: OrchestratorState, hasKeyFor?: HasKeyFor): string | null {
+function listenBlockReason(
+  state: OrchestratorState,
+  hasKeyFor?: HasKeyFor,
+  isInstalledFor?: HasKeyFor,
+): string | null {
   if (!state.enabled) return 'Detection is turned off';
   const agent = findAgent(state.activeAgentId);
   if (!agent) return 'No transcription agent selected';
   if (agent.online && !state.online) return `${agent.name} requires online mode to be enabled`;
-  if (!isAgentAvailable(agent, hasKeyFor)) {
+  if (!isAgentAvailable(agent, hasKeyFor, isInstalledFor)) {
     return agent.online
       ? `${agent.name} is not available — add an API key`
       : `${agent.name} is not available — install it first`;
@@ -208,6 +216,7 @@ export function reduce(
   state: OrchestratorState,
   action: OrchestratorAction,
   hasKeyFor?: HasKeyFor,
+  isInstalledFor?: HasKeyFor,
 ): OrchestratorState {
   switch (action.type) {
     case 'setMode':
@@ -289,7 +298,7 @@ export function reduce(
     }
 
     case 'startListening': {
-      const reason = listenBlockReason(state, hasKeyFor);
+      const reason = listenBlockReason(state, hasKeyFor, isInstalledFor);
       if (reason) {
         // Stub no-op with a clear status — real capture lands in A2/A4 (R8).
         return { ...state, listening: false, lastError: reason };

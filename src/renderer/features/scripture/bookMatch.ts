@@ -29,16 +29,23 @@ export function nearestBook(books: BibleBook[], fragment: string): BibleBook | n
   return matchBooks(books, fragment)[0] ?? null;
 }
 
-// True when `text` is an exact book (its full name or its abbreviation), not just
-// a prefix — e.g. "John"/"jhn" are exact, "joh" is not. The segmented field uses
-// this to know when the Book zone holds a real book and live resolution may run
-// (so "jo" doesn't prematurely resolve to Joel mid-type).
-export function isExactBook(books: BibleBook[], text: string): boolean {
+// The book matching `text` exactly (its full name or its abbreviation), or null —
+// e.g. "John"/"jhn" resolve, "joh" does not. Lets the field both gate live
+// resolution and look up the book number (to load the whole chapter).
+export function findExactBook(books: BibleBook[], text: string): BibleBook | null {
   const t = normalizeFragment(text);
-  if (!t) return false;
-  return books.some(
-    (b) => normalizeFragment(b.name) === t || normalizeFragment(b.abbreviation) === t,
+  if (!t) return null;
+  return (
+    books.find((b) => normalizeFragment(b.name) === t || normalizeFragment(b.abbreviation) === t) ??
+    null
   );
+}
+
+// True when `text` is an exact book (its full name or its abbreviation), not just
+// a prefix. The segmented field uses this to know when the Book zone holds a real
+// book and live resolution may run (so "jo" doesn't prematurely resolve to Joel).
+export function isExactBook(books: BibleBook[], text: string): boolean {
+  return findExactBook(books, text) !== null;
 }
 
 // The leading book portion of a free-text reference: everything before the first

@@ -9,10 +9,22 @@ import {
   type OrchestratorAction,
   type OrchestratorState,
 } from './aiOrchestratorState';
-import { localAsr } from './localAsr';
+import { whisperLocalAsr as localAsr, createWhisperSession } from './whisperAsr';
+import {
+  DEFAULT_WHISPER_MODEL,
+  downloadModel as downloadWhisperModel,
+  isDownloading as isWhisperDownloading,
+  whisperModelStatus,
+} from './modelManager';
 import { secrets } from '../infra/secrets';
+import log from '../infra/logger';
 import { CHANNELS } from '@/shared/constants/channels';
+import { TARGET_SAMPLE_RATE } from '@/shared/schemas/ai';
 import { sendToPresenter } from '../windows/windowManager';
+import type { AsrSession, AsrSessionCallbacks, AsrTranscript } from './asrSession';
+import type { WebSocketCtor } from './cloud/streamingClient';
+import { createDeepgramSession } from './cloud/deepgramAsr';
+import { createAssemblyAiSession } from './cloud/assemblyAiAsr';
 import type {
   AiCandidate,
   AiKeyStatus,
@@ -21,6 +33,7 @@ import type {
   AudioSource,
   AutoProjectConfig,
   DetectionMode,
+  DetectedReference,
   TranscriptionAgent,
   TranscriptSegment,
 } from '@/shared/schemas/ai';
@@ -45,6 +58,25 @@ function agentHasKey(agentId: string): boolean {
   } catch {
     return false;
   }
+}
+
+// REAL install state for an offline agent, injected into the reducer's
+// availability gate. EVERY offline-local engine is whisper-backed, so its
+// availability is the whisper install state (binary + a downloaded model) — not
+// the static registry flag. This is why a local agent becomes listen-eligible the
+// moment a model finishes downloading, and why the default `praisepresent-local`
+// correctly reports "not available — install it first" before a model exists
+// instead of letting the operator press Start on an engine that can't run.
+function agentInstalled(agentId: string): boolean {
+  const agent = BUILTIN_AGENTS.find((a) => a.id === agentId);
+  if (!agent) return false;
+  if (agent.kind === 'offline-local') return localAsr.isInstalled();
+  return agent.installed;
+}
+
+// Whether an agent is one of the whisper-backed offline-local engines.
+function isOfflineLocal(agentId: string): boolean {
+  return BUILTIN_AGENTS.find((a) => a.id === agentId)?.kind === 'offline-local';
 }
 
 // An injectable connectivity check so a fake can drive auto-degrade in tests.
@@ -74,29 +106,197 @@ export function setConnectivityCheck(check: ConnectivityCheck): void {
 // Live orchestrator state, owned by main (§5.3). Mutated only via the reducer.
 let state: OrchestratorState = initialState();
 
+// The open ASR session for the current listening lifetime (null when idle). Owned
+// by main; the renderer only streams PCM frames into it via `pushAudio`.
+let activeSession: AsrSession | null = null;
+let segmentSeq = 0;
+
+// Close + drop the active session. Idempotent; never throws (§5.7).
+function closeSession(): void {
+  if (activeSession) {
+    try {
+      activeSession.close();
+    } catch (e) {
+      log.warn('Closing ASR session failed (ignored):', e);
+    }
+    activeSession = null;
+  }
+}
+
 function apply(action: OrchestratorAction): AiStatus {
   // Inject real key storage so the availability gate reflects safeStorage.
-  state = reduce(state, action, agentHasKey);
+  const wasListening = state.listening;
+  state = reduce(state, action, agentHasKey, agentInstalled);
+  // Any transition that turned listening OFF (kill-switch, agent switch, cloud
+  // opt-out, explicit stop) must also tear down the live engine — the reducer
+  // owns the flag, the session lives here. No orphaned sockets/child processes.
+  if (wasListening && !state.listening) closeSession();
   return toStatus(state);
+}
+
+// Push a main-initiated status change to the operator UI (a session error or an
+// auto-degrade flips listening off without a renderer call — the UI must learn of
+// it without polling). Presenter only — the audience never sees AI control state.
+function pushStatus(): void {
+  sendToPresenter(CHANNELS.ai.statusChanged, toStatus(state));
+}
+
+// Read a cloud agent's stored key without ever throwing (a safeStorage/DB hiccup
+// must not crash the control surface). Returns null when no usable key exists.
+function readKey(agentId: string): string | null {
+  try {
+    return secrets.get(keyName(agentId));
+  } catch (e) {
+    log.warn(`Reading key for ${agentId} failed:`, e);
+    return null;
+  }
+}
+
+// The single source of "audio in → results out" for a chosen agent. Throws a
+// clear, operator-facing message when the engine can't be built; the caller
+// reverts to not-listening with that reason (never a half-open session).
+function buildSession(agentId: string, callbacks: AsrSessionCallbacks): AsrSession {
+  if (agentId === 'deepgram' || agentId === 'assemblyai') {
+    const apiKey = readKey(agentId);
+    if (!apiKey) throw new Error('No API key — add one in Settings → AI & Privacy');
+    const WebSocketImpl = (globalThis as { WebSocket?: WebSocketCtor }).WebSocket;
+    if (!WebSocketImpl) throw new Error('Streaming is unavailable in this runtime');
+    const opts = { apiKey, sampleRate: TARGET_SAMPLE_RATE, callbacks, WebSocketImpl };
+    return agentId === 'deepgram' ? createDeepgramSession(opts) : createAssemblyAiSession(opts);
+  }
+  if (agentId === 'claude') {
+    throw new Error(
+      'Claude transcribes nothing — it is an extraction engine. Pick a cloud STT ' +
+        '(Deepgram/AssemblyAI) or a local model.',
+    );
+  }
+  // Local engines (praisepresent-local, whisper-local) → whisper.cpp sidecar. Needs
+  // both the binary and a downloaded model; otherwise a clear, actionable reason.
+  if (!localAsr.isInstalled()) {
+    throw new Error(
+      'Local transcription isn’t ready — download a model in Settings → AI & Privacy ' +
+        '(and ensure the whisper engine is available).',
+    );
+  }
+  return createWhisperSession({ callbacks });
+}
+
+// The session factory is injectable so unit tests can drive the listening lifecycle
+// (start/stop/degrade) with a fake engine — never opening a real socket / child
+// process. The default is the real `buildSession`; mirrors `setConnectivityCheck`.
+export type SessionFactory = (agentId: string, callbacks: AsrSessionCallbacks) => AsrSession;
+let sessionFactory: SessionFactory = buildSession;
+export function setSessionFactory(factory: SessionFactory): void {
+  sessionFactory = factory;
+}
+
+// The callbacks every session reports through. Transcript → detect + emit;
+// error/close → stop fail-safe and tell the UI.
+function sessionCallbacks(): AsrSessionCallbacks {
+  return {
+    onTranscript: handleTranscript,
+    onError: handleSessionError,
+    onClose: handleSessionClose,
+  };
+}
+
+// A final transcript segment arrived. Emit it for the live transcript view and —
+// unless transcript-only — run the EXISTING deterministic detector + resolver and
+// emit any candidates to the operator review queue (human-in-the-loop, R8). We act
+// on finals only; interim partials churn and would produce flickering candidates.
+function handleTranscript(t: AsrTranscript): void {
+  if (!state.listening || !t.isFinal) return;
+  const candidates = state.transcriptOnly ? [] : detectAndResolve(t.text);
+  const refs: DetectedReference[] = candidates.map((c) => ({
+    reference: c.reference,
+    type: c.type,
+    confidence: c.confidence,
+  }));
+  const segment: TranscriptSegment = {
+    id: `seg-${++segmentSeq}`,
+    text: t.text,
+    at: Date.now(),
+    ...(refs.length > 0 ? { refs } : {}),
+  };
+  sendToPresenter(CHANNELS.ai.transcript, segment);
+  if (candidates.length > 0) sendToPresenter(CHANNELS.ai.candidates, candidates);
+}
+
+// Stop listening fail-safe and carry a reason on the status. The reducer clears
+// lastError on stop, so we re-apply it here — one place for the "stop with reason"
+// shape (used by errors, a failed engine start, and a failed degrade).
+function stopWith(reason: string): void {
+  closeSession();
+  state = {
+    ...reduce(state, { type: 'stopListening' }, agentHasKey, agentInstalled),
+    lastError: reason,
+  };
+}
+
+function isOnlineAgent(agentId: string): boolean {
+  return BUILTIN_AGENTS.find((a) => a.id === agentId)?.online ?? false;
+}
+
+// Silently fall back from a cloud engine to the offline default with NO operator
+// action (spec §7). The cloud socket is torn down FIRST (no more egress), then we
+// switch engines; if we were listening we re-open on the offline engine, else stop
+// fail-safe with the reason (e.g. no local model). Assumes a cloud agent is active.
+function degradeToOffline(reason: string): void {
+  closeSession();
+  state = reduce(state, { type: 'autoDegrade' }, agentHasKey, agentInstalled);
+  if (state.listening) {
+    try {
+      activeSession = sessionFactory(state.activeAgentId, sessionCallbacks());
+    } catch (e) {
+      activeSession = null;
+      const why = e instanceof Error ? e.message : 'offline engine unavailable';
+      stopWith(`${reason} — ${why}`);
+    }
+  }
+}
+
+// A recoverable engine error (bad key, transport fault). Stop listening fail-safe
+// with the reason; never let it bubble into an unhandled rejection (§5.7).
+function handleSessionError(message: string): void {
+  stopWith(message);
+  pushStatus();
+}
+
+// The engine closed unexpectedly while we believed we were listening (our own
+// stop() suppresses this callback, so the far end went away). For a CLOUD engine
+// this IS a mid-service connectivity loss → auto-degrade to the offline default
+// with no operator action (spec §7). A local engine closing just stops.
+function handleSessionClose(): void {
+  if (!state.listening) return;
+  if (isOnlineAgent(state.activeAgentId)) degradeToOffline('Transcription connection closed');
+  else stopWith('Transcription connection closed');
+  pushStatus();
+}
+
+// Detect references in free text and resolve each through the Phase 3 scripture
+// service (reuse, no duplicated Bible logic). References that don't resolve to real
+// verses are dropped — that's the resolution-precision gate. Shared by the typed
+// path (submitText) and the live transcript path (handleTranscript). Pure.
+function detectAndResolve(text: string): AiCandidate[] {
+  const candidates: AiCandidate[] = [];
+  for (const d of detectReferences(text)) {
+    const verses = scriptureService.resolve(d.ref);
+    if (verses.length === 0) continue; // not a real passage → not a candidate
+    candidates.push({
+      reference: d.canonical,
+      type: d.type,
+      confidence: d.confidence,
+      triggerText: d.triggerText,
+      verses,
+    });
+  }
+  return candidates;
 }
 
 export const aiScriptureDetector = {
   // --- text path (unchanged) ----------------------------------------------
   submitText(text: string): AiCandidate[] {
-    const detected = detectReferences(text);
-    const candidates: AiCandidate[] = [];
-    for (const d of detected) {
-      const verses = scriptureService.resolve(d.ref);
-      if (verses.length === 0) continue; // not a real passage → not a candidate
-      candidates.push({
-        reference: d.canonical,
-        type: d.type,
-        confidence: d.confidence,
-        triggerText: d.triggerText,
-        verses,
-      });
-    }
-    return candidates;
+    return detectAndResolve(text);
   },
 
   // --- control surface (A1) -----------------------------------------------
@@ -111,7 +311,7 @@ export const aiScriptureDetector = {
   // pushes them here; main holds them + the selected id in orchestrator state.
   // The built-in default is always preserved so listing never comes back empty.
   setSources(sources: AudioSource[]): readonly AudioSource[] {
-    state = reduce(state, { type: 'setSources', sources }, agentHasKey);
+    state = reduce(state, { type: 'setSources', sources }, agentHasKey, agentInstalled);
     return state.sources;
   },
 
@@ -125,25 +325,28 @@ export const aiScriptureDetector = {
     return apply({ type: 'setSource', sourceId });
   },
 
-  // --- local model download manager (A4 / P4-T3 interface) -----------------
-  // Read the whisper-local model state via the stable ASR interface. Today it is
-  // always `absent` (NullLocalAsr) — the real binary/weights are deferred (R6).
+  // --- local model download manager (P4-T3) --------------------------------
+  // Every offline-local engine is whisper-backed, so its model state comes from the
+  // real download manager (installed / downloading + progress / absent). Non-local
+  // (cloud) agents have no local model.
   modelStatus(agentId: string): AiModelStatus {
-    if (agentId === localAsr.agentId) return localAsr.modelStatus();
+    if (isOfflineLocal(agentId)) return whisperModelStatus(agentId);
     return modelStatusFor(agentId);
   },
 
-  // No-op download stub (R6): returns a clear "not available in this build"
-  // status rather than faking a "ready" model or attempting a network fetch.
-  // The interface is what must be stable; the downloader lands with the binary.
+  // Kick off a whisper model download (default model) in the background and return
+  // the now-`downloading` status immediately; the renderer polls `modelStatus` for
+  // progress. Idempotent: a no-op if already installed or a download is in flight.
+  // Cloud agents have nothing to download.
   downloadModel(agentId: string): AiModelStatus {
-    const status = this.modelStatus(agentId);
-    if (status.installed) return status;
-    return {
-      ...status,
-      state: 'absent',
-      detail: 'Model download is not available in this build',
-    };
+    if (!isOfflineLocal(agentId)) return modelStatusFor(agentId);
+    const status = whisperModelStatus(agentId);
+    if (status.installed || isWhisperDownloading()) return status;
+    // Fire-and-forget; failures are logged and surface as `absent` on the next poll.
+    void downloadWhisperModel(DEFAULT_WHISPER_MODEL).catch((e) => {
+      log.error('Whisper model download failed:', e);
+    });
+    return whisperModelStatus(agentId);
   },
 
   status(): AiStatus {
@@ -182,7 +385,15 @@ export const aiScriptureDetector = {
   // Store a cloud agent's API key in OS secure storage (main only, §1.7). The
   // value never returns over the bridge — callers get a boolean status back.
   setApiKey(agentId: string, apiKey: string): AiKeyStatus {
-    secrets.set(keyName(agentId), apiKey);
+    // Wrap the one mutating secrets call so a safeStorage/DB hiccup surfaces as a
+    // clear failure rather than crashing the control surface (§5.7) — symmetry with
+    // readKey/agentHasKey, which already swallow storage errors.
+    try {
+      secrets.set(keyName(agentId), apiKey);
+    } catch (e) {
+      log.error(`Storing key for ${agentId} failed:`, e);
+      throw new Error('Could not store the API key in secure storage', { cause: e });
+    }
     return { hasKey: true, hint: maskHint(apiKey) };
   },
 
@@ -198,33 +409,47 @@ export const aiScriptureDetector = {
   },
 
   // --- auto-degrade (A3) ---------------------------------------------------
-  // Probe connectivity via the injectable check; if a cloud agent is active and
-  // we've lost connection, silently fall back to the offline default with NO
-  // operator action (spec §7). The offline path makes zero network calls.
+  // Probe connectivity via the injectable check. If we've lost connection AND a
+  // cloud agent is active, silently fall back to the offline default (spec §7). An
+  // offline agent doesn't need the network, so a false reading there is a no-op —
+  // we never stop a working offline session over a connectivity blip. This is the
+  // explicit-probe path; a dropped cloud socket also triggers degrade on its own
+  // (handleSessionClose), so connectivity loss is caught either way.
   checkConnectivity(): AiStatus {
     if (isOnlineCheck()) return toStatus(state);
-    return apply({ type: 'autoDegrade' });
+    if (!isOnlineAgent(state.activeAgentId)) return toStatus(state);
+    degradeToOffline('Lost connection');
+    pushStatus();
+    return toStatus(state);
   },
 
-  // Stub: real audio capture lands in A2/A4. The reducer no-ops with a clear
-  // "agent not available" status when the active agent is uninstalled/keyless or
-  // the kill-switch is off, so the UI can explain why nothing is listening.
+  // Begin a listening session. The reducer gates it (kill-switch, cloud opt-in,
+  // agent availability); only if it allows listening do we actually open the
+  // engine. If the engine can't be built we revert to not-listening with the
+  // reason — the renderer never gets a "listening" status with no backend (§5.7).
   startListening(): AiStatus {
-    return apply({ type: 'startListening' });
+    const gated = apply({ type: 'startListening' });
+    if (!gated.listening) return gated; // blocked — reason already on the status
+    try {
+      closeSession(); // never leak a prior session
+      activeSession = sessionFactory(gated.activeAgentId, sessionCallbacks());
+      return gated;
+    } catch (e) {
+      const reason = e instanceof Error ? e.message : 'Could not start transcription';
+      stopWith(reason);
+      return toStatus(state);
+    }
   },
 
   stopListening(): AiStatus {
+    closeSession();
     return apply({ type: 'stopListening' });
   },
 
-  // --- event push (for A2/A4 audio path) ----------------------------------
-  // Pushed to the PRESENTER window only — the operator reviews; the audience
-  // never sees unconfirmed AI output (R8). No-ops cleanly if no candidates.
-  emitCandidates(candidates: AiCandidate[]): void {
-    sendToPresenter(CHANNELS.ai.candidates, candidates);
-  },
-
-  emitTranscript(segment: TranscriptSegment): void {
-    sendToPresenter(CHANNELS.ai.transcript, segment);
+  // Stream one captured PCM frame into the active engine. No-ops unless we're
+  // genuinely listening with an open session — a stray frame after Stop is dropped.
+  pushAudio(pcm: Int16Array): void {
+    if (!state.listening || !activeSession) return;
+    activeSession.pushAudio(pcm);
   },
 };

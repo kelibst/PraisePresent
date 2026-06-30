@@ -7,6 +7,7 @@ import type {
   TransitionType,
 } from '@/shared/schemas/present';
 import { FAILSAFE } from '@/shared/schemas/present';
+import { effectiveBackground } from '@/shared/present/serviceBackground';
 import { SAFE_AREA_KEY, parseSafeAreaPct } from '@/shared/schemas/display';
 
 // Full-screen projector view. Subscribes to main's live state and renders the
@@ -93,8 +94,7 @@ export default function AudienceView() {
   // `cut` and going-to-black are immediate (operator safety); only a slide→slide
   // change with a non-zero duration drives a cross-fade. On a software-compositing
   // machine we force the cut (durationMs 0) so the projector never CPU-animates (B6a).
-  const durationMs =
-    transitionType === 'cut' || !compositorSafe ? 0 : state.transition.durationMs;
+  const durationMs = transitionType === 'cut' || !compositorSafe ? 0 : state.transition.durationMs;
 
   // Drive the cross-fade: when the visible slide changes, freeze the slide we left
   // as the outgoing layer and schedule its removal. A same-slide re-render (a
@@ -138,6 +138,7 @@ export default function AudienceView() {
         <SlideLayer
           key={renderedOutgoing.id}
           slide={renderedOutgoing.slide}
+          defaultBackground={state.defaultBackground}
           animation={layerAnimation('out', transitionType, durationMs)}
           safeAreaPct={safeAreaPct}
         />
@@ -146,6 +147,7 @@ export default function AudienceView() {
         <SlideLayer
           key={slide.id}
           slide={slide}
+          defaultBackground={state.defaultBackground}
           animation={layerAnimation('in', transitionType, durationMs)}
           safeAreaPct={safeAreaPct}
         />
@@ -161,10 +163,12 @@ export default function AudienceView() {
 // handled locally so a moved/corrupt file fails safe to the gradient/black (§5.7).
 const SlideLayer = memo(function SlideLayer({
   slide,
+  defaultBackground,
   animation,
   safeAreaPct,
 }: {
   slide: PresentSlide;
+  defaultBackground: SlideBackground | null;
   animation: string | undefined;
   safeAreaPct: number;
 }) {
@@ -175,7 +179,10 @@ const SlideLayer = memo(function SlideLayer({
   const [anim] = useState(animation);
 
   const showMedia = slide.media && !mediaFailed;
-  const showBg = slide.background && !(slide.background.type === 'media' && bgFailed);
+  // The painted background is the per-slide override, else the service default —
+  // resolved here so a media slide is skipped and an override always wins (§5.7).
+  const background = effectiveBackground(slide, defaultBackground);
+  const showBg = background && !(background.type === 'media' && bgFailed);
   const padding = safeAreaPct > 0 ? `${safeAreaPct}%` : undefined;
 
   return (
@@ -185,7 +192,7 @@ const SlideLayer = memo(function SlideLayer({
       aria-hidden={undefined}
     >
       <div className="relative h-full w-full overflow-hidden bg-pp-surface-live bg-[radial-gradient(circle_at_50%_38%,hsl(var(--pp-accent-deep)/0.55),transparent_62%),radial-gradient(circle_at_50%_120%,hsl(var(--background)/0.9),hsl(var(--pp-surface-live)))]">
-        {showBg && <BackgroundLayer background={slide.background!} onError={() => setBgFailed(true)} />}
+        {showBg && <BackgroundLayer background={background} onError={() => setBgFailed(true)} />}
         {showMedia && <MediaLayer media={slide.media!} onError={() => setMediaFailed(true)} />}
         {slide.lines.length > 0 && (
           <div className="absolute inset-0 flex flex-col items-center justify-center px-[7vw] text-center">

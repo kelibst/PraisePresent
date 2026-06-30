@@ -21,6 +21,7 @@ export const CHANNELS = {
     prev: 'present:prev', // renderer -> main: go back one slide (clamped)
     goto: 'present:goto', // renderer -> main: jump to an index (clamped)
     setBackground: 'present:set-background', // renderer -> main: set/clear a slide background (clamped)
+    setDefaultBackground: 'present:set-default-background', // renderer -> main: set/clear the service-wide default background (persisted + applied live)
     updateText: 'present:update-text', // renderer -> main: replace a slide's text (clamped; locked rejected)
     setTransition: 'present:set-transition', // renderer -> main: change the transition only (cursor-only)
     black: 'present:black', // renderer -> main: fail-safe black
@@ -64,13 +65,15 @@ export const CHANNELS = {
     setSource: 'ai:set-source', // renderer -> main: choose the active audio source
     modelStatus: 'ai:model-status', // renderer -> main: local-model download manager state
     downloadModel: 'ai:download-model', // renderer -> main: trigger model download (no-op stub, R6)
-    startListening: 'ai:start-listening', // renderer -> main: begin (stub in A1)
+    startListening: 'ai:start-listening', // renderer -> main: begin a listening session
     stopListening: 'ai:stop-listening', // renderer -> main: stop listening
+    audioFrame: 'ai:audio-frame', // renderer -> main (fire-and-forget stream): 16kHz mono PCM frame
     setApiKey: 'ai:set-api-key', // renderer -> main: store a cloud key (safeStorage)
     hasKey: 'ai:has-key', // renderer -> main: boolean key-presence (never the value)
     clearApiKey: 'ai:clear-api-key', // renderer -> main: delete a stored key
     candidates: 'ai:candidates', // main -> presenter (event push): new candidates
     transcript: 'ai:transcript', // main -> presenter (event push): transcript segment
+    statusChanged: 'ai:status-changed', // main -> presenter (event push): orchestrator status changed (e.g. a session error or auto-degrade flipped listening off)
   },
   media: {
     list: 'media:list', // renderer -> main: all library items

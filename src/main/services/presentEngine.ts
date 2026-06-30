@@ -24,6 +24,7 @@ export type PresentAction =
       index?: number;
       applyToAll?: boolean;
     }
+  | { type: 'setDefaultBackground'; background: SlideBackground | null }
   | { type: 'updateText'; lines: string[]; index?: number }
   | { type: 'setTransition'; transition: Transition }
   | { type: 'black' }
@@ -52,6 +53,9 @@ export function reduce(state: PresentState, action: PresentAction): PresentState
         index,
         transition: action.transition ?? state.transition ?? DEFAULT_TRANSITION,
         rev: state.rev + 1,
+        // The service default is a setting, not deck state — carry it across a
+        // deck replacement so a new passage keeps the consistent look.
+        defaultBackground: state.defaultBackground,
       };
     }
     case 'next':
@@ -89,6 +93,13 @@ export function reduce(state: PresentState, action: PresentAction): PresentState
       // Deck contents changed → bump `rev` (B1).
       return { ...state, deck, rev: state.rev + 1 };
     }
+    case 'setDefaultBackground':
+      // Change the service-wide default. It is resolved at render time against
+      // each slide (`effectiveBackground`), so we only need to update the field +
+      // bump `rev` so the deck re-broadcasts and BOTH windows re-render — the
+      // current live deck reflects the new default immediately, not just future
+      // decks. Mode/index/deck contents are untouched.
+      return { ...state, defaultBackground: action.background, rev: state.rev + 1 };
     case 'updateText': {
       // Replace one slide's text lines on the live deck. Never moves the
       // audience (mode/index untouched). Defense-in-depth: a `locked` slide
@@ -110,7 +121,13 @@ export function reduce(state: PresentState, action: PresentAction): PresentState
     case 'black':
       // Hard fail-safe: forget the deck entirely so nothing can leak back. The deck
       // changed (now empty) → bump `rev` so the reconciler clears its cached deck.
-      return { ...FAILSAFE, transition: state.transition, rev: state.rev + 1 };
+      // The service default is a setting (not deck state) → preserve it.
+      return {
+        ...FAILSAFE,
+        transition: state.transition,
+        rev: state.rev + 1,
+        defaultBackground: state.defaultBackground,
+      };
     case 'blank':
       // Keep the deck/index (so resume is instant) but stop showing it. Cursor-only.
       return { ...state, mode: 'blank' };

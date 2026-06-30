@@ -15,3 +15,6 @@ Real STT + Anthropic API keys and a way to exercise them. Read the `claude-api` 
 
 ## Update (2026-06-28)
 The **LLM extraction half** of this task landed under `tasks/active/2026-06-28_a2a3-online-extractor-privacy.md`: `onlineScriptureExtractor.ts` (Claude tool-use behind an injected `AnthropicClient`, model `claude-haiku-4-5`, resolves via `scriptureService`, drops unresolved), safeStorage key channels (`ai:setApiKey`/`ai:hasKey`/`ai:clearApiKey`, value never reaches the renderer), and the Anthropic host on CSP `connect-src`. Still deferred here: real streaming cloud STT **audio capture** (the ASR front-end) and a live API call with a real key.
+
+## Update (2026-06-29 — STT audio capture landed)
+The remaining ASR front-end landed under `2026-06-29_p4-live-audio-cloud-stt`: live mic capture (renderer) → `ai:audio-frame` PCM stream → main `AsrSession` → real Deepgram + AssemblyAI streaming clients → transcript → the existing detector. Keys main-only; sockets main-only. Still pending: live verification with a real key + the T5 accuracy bars.

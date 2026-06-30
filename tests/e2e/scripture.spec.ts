@@ -105,8 +105,8 @@ test('hydrate WEB offline, search by reference + keyword, and present a verse', 
   await expect(presenter.getByText('Scripture').first()).toBeVisible();
   // The segmented field resolves live from its three zones — no Enter required.
   await presenter.getByLabel('Book', { exact: true }).fill('John');
-  await presenter.getByLabel('Chapter').fill('3');
-  await presenter.getByLabel('Verse').fill('16');
+  await presenter.getByLabel('Chapter', { exact: true }).fill('3');
+  await presenter.getByLabel('Verse', { exact: true }).fill('16');
   // Wait on the PREVIEW pane's "Up next · John 3:16" label specifically, so we
   // confirm the field has *staged* John 3:16 (debounced) before sending it live —
   // not the leftover live-cockpit text projected via setDeck above.
@@ -149,8 +149,8 @@ test('hydrate WEB offline, search by reference + keyword, and present a verse', 
 
   // The segmented field still drives an arbitrary lookup (Psalm 23:1).
   await presenter.getByLabel('Book', { exact: true }).fill('Psalms');
-  await presenter.getByLabel('Chapter').fill('23');
-  await presenter.getByLabel('Verse').fill('1');
+  await presenter.getByLabel('Chapter', { exact: true }).fill('23');
+  await presenter.getByLabel('Verse', { exact: true }).fill('1');
   // WEB renders the divine name as "Yahweh" (Psalm 23:1).
   await expect(presenter.getByText(/Yahweh is my shepherd/).first()).toBeVisible();
 
@@ -232,8 +232,8 @@ test('reference field defaults to Genesis 1:1 and resolves the EasyWorship space
 
   // Never-empty: the segmented field starts at Genesis 1:1 and is already staged.
   await expect(bookField).toHaveValue('Genesis');
-  await expect(presenter.getByLabel('Chapter')).toHaveValue('1');
-  await expect(presenter.getByLabel('Verse')).toHaveValue('1');
+  await expect(presenter.getByLabel('Chapter', { exact: true })).toHaveValue('1');
+  await expect(presenter.getByLabel('Verse', { exact: true })).toHaveValue('1');
   await expect(presenter.getByText(/In the beginning/).first()).toBeVisible({
     timeout: 30_000,
   });
@@ -247,15 +247,43 @@ test('reference field defaults to Genesis 1:1 and resolves the EasyWorship space
   await bookField.press(' ');
   await expect(bookField).toHaveValue('John');
   await presenter.keyboard.type('3 16', { delay: 40 });
-  await expect(presenter.getByLabel('Chapter')).toHaveValue('3');
-  await expect(presenter.getByLabel('Verse')).toHaveValue('16');
+  await expect(presenter.getByLabel('Chapter', { exact: true })).toHaveValue('3');
+  await expect(presenter.getByLabel('Verse', { exact: true })).toHaveValue('16');
   await expect(presenter.getByText(/For God so loved the world/).first()).toBeVisible({
     timeout: 10_000,
   });
 
-  // Inline range in the verse zone: "16-18" stages a 3-verse, one-slide-each deck.
-  await presenter.getByLabel('Verse').fill('16-18');
-  await expect(presenter.getByText(/3 verses · one slide each/)).toBeVisible({ timeout: 10_000 });
+  // The WHOLE chapter loads as the EasyWorship-style results list — all 36 verses
+  // of John 3 (not just verse 16), with the typed verse the single selected/lead row.
+  const chapterList = presenter.getByLabel('Chapter verses');
+  await expect(chapterList.getByRole('button')).toHaveCount(36);
+  await expect(chapterList.locator('[aria-current="true"]')).toHaveCount(1);
+
+  // Inline range in the verse zone: "16-18" highlights three rows in the chapter
+  // list (the EasyWorship multi-verse selection) while the whole chapter stays shown.
+  await presenter.getByLabel('Verse', { exact: true }).fill('16-18');
+  await expect(chapterList.locator('[aria-current="true"]')).toHaveCount(3, { timeout: 10_000 });
+  await expect(chapterList.getByRole('button')).toHaveCount(36);
+
+  // State persists across the mode tabs: leave Reference for another mode and come
+  // back — the field still reflects the staged passage, not the Genesis 1:1 reset.
+  await presenter.getByRole('tab', { name: 'Card picker' }).click();
+  await presenter.getByRole('tab', { name: 'Reference' }).click();
+  await expect(presenter.getByLabel('Book', { exact: true })).toHaveValue('John');
+  await expect(presenter.getByLabel('Chapter', { exact: true })).toHaveValue('3');
+  await expect(presenter.getByLabel('Verse', { exact: true })).toHaveValue('16-18');
+
+  // Clicking a verse row stages it (and reflects it in the field) — browse + pick.
+  await presenter.getByLabel('Chapter verses').getByRole('button').first().click();
+  await expect(presenter.getByLabel('Verse', { exact: true })).toHaveValue('1');
+
+  // With a complete book already in the field (never empty), focusing it selects
+  // the book so typing REPLACES it and the matches list — instead of appending
+  // ("John" + "p" → "pJohn") and matching nothing (the "books don't list" bug).
+  await presenter.getByLabel('Book', { exact: true }).click();
+  await presenter.keyboard.type('p');
+  await expect(presenter.getByLabel('Book', { exact: true })).toHaveValue('p');
+  await expect(presenter.getByRole('listbox', { name: 'Book suggestions' })).toBeVisible();
 
   await app.close();
   fs.rmSync(userDataDir, { recursive: true, force: true });

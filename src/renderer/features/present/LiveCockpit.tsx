@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { Lock } from 'lucide-react';
 import type { PresentSlide, PresentState, TransitionType } from '@/shared/schemas/present';
+import { effectiveBackground } from '@/shared/present/serviceBackground';
 import { DeckStripThumb, SlidePreview } from '@/renderer/components/common';
 import { cn } from '@/renderer/lib/utils';
 import SlideTextEditor from './SlideTextEditor';
@@ -179,7 +180,7 @@ export default function LiveCockpit({
             lines={current?.lines}
             reference={current?.reference}
             media={current?.media}
-            background={current?.background}
+            background={current ? effectiveBackground(current, state.defaultBackground) : undefined}
             badge={locked ? { label: 'Scripture · read-only', tone: 'neutral' } : undefined}
           />
           {/* Editable slides (songs/custom) get the inline text editor; for a
@@ -235,7 +236,7 @@ export default function LiveCockpit({
               lines={next?.lines}
               reference={next?.reference}
               media={next?.media}
-              background={next?.background}
+              background={next ? effectiveBackground(next, state.defaultBackground) : undefined}
             />
           </div>
         </div>

@@ -10,7 +10,14 @@ function slide(id: string): PresentSlide {
 const deck3 = [slide('a'), slide('b'), slide('c')];
 
 function withDeck(index = 0): PresentState {
-  return { mode: 'slide', deck: deck3, index, transition: DEFAULT_TRANSITION, rev: 5 };
+  return {
+    mode: 'slide',
+    deck: deck3,
+    index,
+    transition: DEFAULT_TRANSITION,
+    rev: 5,
+    defaultBackground: null,
+  };
 }
 
 describe('presentEngine reducer', () => {
@@ -155,6 +162,39 @@ describe('presentEngine reducer', () => {
     });
   });
 
+  describe('setDefaultBackground (service-wide default)', () => {
+    const color = { type: 'color', color: '#101010' } as const;
+
+    it('sets the default and bumps rev (re-broadcast) without touching the deck', () => {
+      const s = reduce(withDeck(1), { type: 'setDefaultBackground', background: color });
+      expect(s.defaultBackground).toEqual(color);
+      expect(s.rev).toBe(6); // bumped so both windows re-render the live deck
+      expect(s.deck).toBe(deck3); // deck contents untouched (resolved at render)
+      expect(s.index).toBe(1);
+      expect(s.mode).toBe('slide');
+    });
+
+    it('clears the default with null', () => {
+      const withBg = reduce(withDeck(0), { type: 'setDefaultBackground', background: color });
+      const cleared = reduce(withBg, { type: 'setDefaultBackground', background: null });
+      expect(cleared.defaultBackground).toBeNull();
+    });
+
+    it('survives a deck replacement (it is a setting, not deck state)', () => {
+      const withBg = reduce(withDeck(0), { type: 'setDefaultBackground', background: color });
+      const next = reduce(withBg, { type: 'setDeck', deck: deck3 });
+      expect(next.defaultBackground).toEqual(color);
+    });
+
+    it('survives a black-out (fail-safe keeps the setting)', () => {
+      const withBg = reduce(withDeck(0), { type: 'setDefaultBackground', background: color });
+      const black = reduce(withBg, { type: 'black' });
+      expect(black.mode).toBe('black');
+      expect(black.deck).toHaveLength(0);
+      expect(black.defaultBackground).toEqual(color);
+    });
+  });
+
   describe('updateText', () => {
     it('replaces the current slide lines and never moves the audience', () => {
       const s = reduce(withDeck(1), { type: 'updateText', lines: ['edited', 'two'] });
@@ -178,6 +218,7 @@ describe('presentEngine reducer', () => {
         index: 0,
         transition: DEFAULT_TRANSITION,
         rev: 0,
+        defaultBackground: null,
       };
       const s = reduce(locked, { type: 'updateText', lines: ['tampered'] });
       expect(s.deck[0].lines).toEqual(['John 3:16']); // unchanged
@@ -239,6 +280,7 @@ describe('presentEngine reducer', () => {
         index: 0,
         transition: DEFAULT_TRANSITION,
         rev: 9,
+        defaultBackground: null,
       };
       expect(reduce(locked, { type: 'updateText', lines: ['tampered'] }).rev).toBe(9);
       expect(reduce(FAILSAFE, { type: 'setBackground', background: color }).rev).toBe(FAILSAFE.rev);

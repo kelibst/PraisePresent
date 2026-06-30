@@ -25,7 +25,7 @@ vi.mock('../windows/windowManager', () => ({
   sendToPresenter: vi.fn(),
 }));
 
-import { aiScriptureDetector, setConnectivityCheck } from './aiScriptureDetector';
+import { aiScriptureDetector, setConnectivityCheck, setSessionFactory } from './aiScriptureDetector';
 
 beforeEach(() => {
   store.clear();
@@ -34,6 +34,10 @@ beforeEach(() => {
   aiScriptureDetector.setAgent('praisepresent-local');
   aiScriptureDetector.setOnline(false);
   setConnectivityCheck(() => true);
+  // Inject a FAKE ASR session so the listening lifecycle can be driven without a
+  // real socket / child process — these tests exercise the CONTROL surface
+  // (kill-switch, eligibility, auto-degrade), not a real engine.
+  setSessionFactory(() => ({ agentId: 'fake', pushAudio: () => {}, close: () => {} }));
 });
 
 describe('aiScriptureDetector — API key storage (privacy §1.7)', () => {

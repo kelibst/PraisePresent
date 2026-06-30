@@ -10,6 +10,11 @@ import type {
 } from '@/shared/schemas/present';
 import { FAILSAFE } from '@/shared/schemas/present';
 import { BLACK_ON_DISCONNECT_KEY, parseBlackOnDisconnect } from '@/shared/schemas/display';
+import {
+  SERVICE_BACKGROUND_KEY,
+  parseServiceBackground,
+  serializeServiceBackground,
+} from '@/shared/present/serviceBackground';
 import { settingsRepository } from '../db/repositories/settingsRepository';
 import { reduce, type PresentAction } from '../services/presentEngine';
 
@@ -169,7 +174,11 @@ function liveWindows(): BrowserWindow[] {
 // Send the rarely-changing deck (slides + rev) to BOTH windows. Called only on
 // deck-changing actions (rev bumped) and on a fresh window load (B1).
 function broadcastDeck() {
-  const payload = { rev: liveState.rev, deck: liveState.deck };
+  const payload = {
+    rev: liveState.rev,
+    deck: liveState.deck,
+    defaultBackground: liveState.defaultBackground,
+  };
   for (const win of liveWindows()) win.webContents.send(CHANNELS.present.deck, payload);
 }
 
@@ -217,7 +226,38 @@ export function dispatchPresent(action: PresentAction): void {
 }
 
 export function setDeck(deck: PresentSlide[], index?: number, transition?: Transition): void {
+  // The service-wide default background is NOT baked into the deck — it is live
+  // state resolved at render time (`effectiveBackground`), so the deck carries
+  // only explicit per-slide backgrounds. The reducer preserves `defaultBackground`.
   dispatchPresent({ type: 'setDeck', deck, index, transition });
+}
+
+// Set (or clear, with `null`) the SERVICE-WIDE default background. Persists it
+// (truth in SQLite — survives restart, §1.5) AND updates live state so the change
+// is visible on the CURRENT deck immediately, not just future decks. The value is
+// re-validated by the zod schema before reaching a slide (§5.7). A persistence
+// hiccup never throws into the live path.
+export function setDefaultBackground(background: SlideBackground | null): void {
+  try {
+    settingsRepository.set(SERVICE_BACKGROUND_KEY, serializeServiceBackground(background));
+  } catch (e) {
+    log.warn('Could not persist the service default background:', e);
+  }
+  dispatchPresent({ type: 'setDefaultBackground', background });
+}
+
+// Load the persisted service default background into live state at startup, before
+// the first broadcast (called after the DB is ready). A DB hiccup never throws —
+// the default just stays null (the gradient backdrop), fail safe (§5.7).
+export function initPresent(): void {
+  try {
+    liveState = {
+      ...liveState,
+      defaultBackground: parseServiceBackground(settingsRepository.get(SERVICE_BACKGROUND_KEY)),
+    };
+  } catch (e) {
+    log.warn('Could not load the service default background; using none:', e);
+  }
 }
 
 export function setBackground(

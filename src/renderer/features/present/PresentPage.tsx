@@ -109,6 +109,7 @@ export default function PresentPage() {
         onSetNext={deck.setAsNext}
         onAddToPlan={addStagedToPlan}
         liveBackground={deck.live.deck[deck.live.index]?.background ?? null}
+        defaultBackground={deck.live.defaultBackground}
         hasDeck={deck.live.deck.length > 0}
         onSetBackground={deck.setBackground}
       />

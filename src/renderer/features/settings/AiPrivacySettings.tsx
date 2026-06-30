@@ -3,6 +3,7 @@ import { FiCheck, FiWifi, FiWifiOff, FiShield } from 'react-icons/fi';
 import type {
   AiStatus,
   AiKeyStatus,
+  AiModelStatus,
   DetectionMode,
   TranscriptionAgent,
   AutoProjectConfig,
@@ -202,6 +203,9 @@ export default function AiPrivacySettings() {
         </div>
       </section>
 
+      {/* Local model download — for any on-device (whisper-backed) engine. */}
+      {activeAgent?.kind === 'offline-local' && <WhisperModelSection agentId={activeAgent.id} />}
+
       {/* Audio input source. */}
       <section className="rounded-lg border bg-card p-6">
         <Label htmlFor="audio-source">Audio input</Label>
@@ -345,6 +349,74 @@ export default function AiPrivacySettings() {
         )}
       </section>
     </div>
+  );
+}
+
+// Local-model (whisper) download manager. Reads `ai.modelStatus`, triggers
+// `ai.downloadModel`, and polls progress while a download is in flight. The
+// download is the engine's ONLY network use; once installed the offline path makes
+// zero network calls. No filesystem/network here — all of it is in main (§1.3).
+function WhisperModelSection({ agentId }: { agentId: string }) {
+  const [model, setModel] = useState<AiModelStatus | null>(null);
+
+  const refresh = useCallback(async () => {
+    const res = await window.api.ai.modelStatus(agentId);
+    if (res.ok) setModel(res.data);
+  }, [agentId]);
+
+  useEffect(() => {
+    void refresh();
+  }, [refresh]);
+
+  // Poll while a download is in flight so the progress bar advances + flips to
+  // Installed without the operator reloading the panel.
+  useEffect(() => {
+    if (model?.state !== 'downloading') return;
+    const handle = setInterval(() => void refresh(), 1000);
+    return () => clearInterval(handle);
+  }, [model?.state, refresh]);
+
+  const download = async () => {
+    const res = await window.api.ai.downloadModel(agentId);
+    if (res.ok) setModel(res.data);
+  };
+
+  const downloading = model?.state === 'downloading';
+  const ready = model?.installed ?? false;
+  const pct = model?.progress != null ? Math.round(model.progress * 100) : null;
+
+  return (
+    <section className="rounded-lg border bg-card p-6">
+      <div className="mb-1 flex items-center justify-between gap-2">
+        <h2 className="text-lg font-semibold text-foreground">Local model</h2>
+        {ready ? (
+          <Badge variant="success">Installed</Badge>
+        ) : (
+          <Badge variant="secondary">Not installed</Badge>
+        )}
+      </div>
+      <p className="mb-4 text-sm text-muted-foreground">
+        {model?.detail ?? 'Whisper transcribes speech entirely on this device.'}
+      </p>
+
+      {downloading && pct != null && (
+        <div className="mb-3">
+          <div className="mb-1 flex items-center justify-between text-xs text-muted-foreground">
+            <span>Downloading…</span>
+            <span className="tabular-nums">{pct}%</span>
+          </div>
+          <div className="h-2 w-full overflow-hidden rounded-full bg-secondary">
+            <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${pct}%` }} />
+          </div>
+        </div>
+      )}
+
+      {!ready && (
+        <Button type="button" onClick={() => void download()} disabled={downloading}>
+          {downloading ? 'Downloading…' : 'Download model'}
+        </Button>
+      )}
+    </section>
   );
 }
 

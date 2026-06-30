@@ -6,6 +6,7 @@ import {
   bookFragmentOf,
   normalizeFragment,
   isExactBook,
+  findExactBook,
 } from './bookMatch';
 
 // Minimal canonical-order book list (number drives order, like listBooks()).
@@ -69,6 +70,15 @@ describe('isExactBook', () => {
     expect(isExactBook(BOOKS, 'joh')).toBe(false); // prefix only
     expect(isExactBook(BOOKS, 'jo')).toBe(false);
     expect(isExactBook(BOOKS, '')).toBe(false);
+  });
+});
+
+describe('findExactBook', () => {
+  it('returns the matching book (for its number), or null', () => {
+    expect(findExactBook(BOOKS, 'John')?.number).toBe(43);
+    expect(findExactBook(BOOKS, '1thess')?.number).toBe(52);
+    expect(findExactBook(BOOKS, 'joh')).toBeNull();
+    expect(findExactBook(BOOKS, '')).toBeNull();
   });
 });
 

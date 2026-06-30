@@ -8,6 +8,7 @@ import {
   setTransitionInput,
   gotoInput,
   setBackgroundInput,
+  setDefaultBackgroundInput,
   slideBackground,
   isSafeCssColor,
   transition,
@@ -29,11 +30,26 @@ describe('present schemas', () => {
     expect(parsed.rev).toBe(0);
   });
 
+  it('presentState defaults defaultBackground to null when omitted (back-compat)', () => {
+    const parsed = presentState.parse({
+      mode: 'black',
+      deck: [],
+      index: 0,
+      transition: { type: 'fade', durationMs: 400 },
+    });
+    expect(parsed.defaultBackground).toBeNull();
+  });
+
+  it('presentDeckPayload defaults defaultBackground to null when omitted', () => {
+    const parsed = presentDeckPayload.parse({ rev: 1, deck: [] });
+    expect(parsed.defaultBackground).toBeNull();
+  });
+
   describe('split broadcast payloads (B1)', () => {
     it('deck payload requires rev + deck', () => {
-      expect(presentDeckPayload.safeParse({ rev: 3, deck: [{ id: 's1', lines: ['hi'] }] }).success).toBe(
-        true,
-      );
+      expect(
+        presentDeckPayload.safeParse({ rev: 3, deck: [{ id: 's1', lines: ['hi'] }] }).success,
+      ).toBe(true);
       expect(presentDeckPayload.safeParse({ deck: [] }).success).toBe(false); // missing rev
     });
 
@@ -49,7 +65,8 @@ describe('present schemas', () => {
 
     it('cursor payload rejects a bad mode / negative index', () => {
       expect(
-        presentCursorPayload.safeParse({ rev: 0, index: -1, mode: 'slide', transition: {} }).success,
+        presentCursorPayload.safeParse({ rev: 0, index: -1, mode: 'slide', transition: {} })
+          .success,
       ).toBe(false);
       expect(
         presentCursorPayload.safeParse({ rev: 0, index: 0, mode: 'nope', transition: {} }).success,
@@ -190,6 +207,35 @@ describe('present schemas', () => {
 
     it('rejects a negative index', () => {
       expect(setBackgroundInput.safeParse({ index: -1, background: null }).success).toBe(false);
+    });
+  });
+
+  describe('setDefaultBackgroundInput', () => {
+    it('accepts a color default', () => {
+      expect(
+        setDefaultBackgroundInput.safeParse({ background: { type: 'color', color: '#000000' } })
+          .success,
+      ).toBe(true);
+    });
+
+    it('accepts null to clear the default', () => {
+      const p = setDefaultBackgroundInput.parse({ background: null });
+      expect(p.background).toBeNull();
+    });
+
+    it('rejects an unsafe color across the IPC boundary', () => {
+      expect(
+        setDefaultBackgroundInput.safeParse({ background: { type: 'color', color: 'url(x)' } })
+          .success,
+      ).toBe(false);
+    });
+
+    it('rejects audio as a media background kind', () => {
+      expect(
+        setDefaultBackgroundInput.safeParse({
+          background: { type: 'media', kind: 'audio', url: 'app-media://media/1' },
+        }).success,
+      ).toBe(false);
     });
   });
 });

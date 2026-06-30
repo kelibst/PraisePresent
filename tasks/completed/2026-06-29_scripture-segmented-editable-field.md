@@ -61,6 +61,42 @@ canonical-first (Joshua before John for "j"), the genuinely EasyWorship-faithful
 unit-tested. Added an e2e range assertion (verse "16-18" → 3-verse deck). E2e updated to drive the
 three zones (Book locator uses {exact:true} to avoid the "Book suggestions" listbox name collision).
 
+Addendum (same session): the field reset to Genesis 1:1 when switching mode tabs (Reference/
+Card-picker/Keyword) or Source tabs (Scripture/Live Detect) and returning, because ReferenceMode
+unmounts and its local zones reset. Fixed by seeding the zones from the currently-staged passage:
+added pure `referenceDraft(verses)` to `scriptureDeck.ts` (+ tests); SearchPane memoizes it from
+`staged` and passes `initial` to ReferenceMode, which seeds state/lastValid from it and skips the
+default-resolve plus the redundant re-resolve when already staged (so the lead index is preserved
+too). Verses picked in Card-picker/Keyword now also show in the field (one source of truth). Verified
+by running (Romans 8:28 survives both tab round-trips) + new e2e tab-switch assertion. 261 unit · 23 e2e.
+
+Addendum 2 (same session): "books don't get listed" bug — because the field is never empty, focusing
+the Book zone (which already held a complete book like "Genesis") and typing APPENDED ("Genesis"+"p"
+→ "pGenesis"), matching nothing, so the autocomplete never listed. Fixed with select-on-focus: each
+zone selects its text on user focus (click/Tab) so typing replaces the segment; a `programmatic` ref
+suppresses it during focusSeg moves (Backspace-to-previous keeps caret at end; the digit-seed rAF
+keeps its caret). Verified by running (click "Genesis", type "p" → book "p", books list) + new e2e
+regression assertion. 298 unit · 23 e2e green (unit count up as parallel AI work landed more tests).
+
+Addendum 3 (same session): "verses don't load like EasyWorship" — Reference mode only showed the
+single resolved verse; the operator wanted the WHOLE CHAPTER listed (browse + pick). Added a chapter
+results list inside ReferenceMode: a getChapter load (keyed on book/chapter/abbr, cancelled-flag
+guarded) renders all verses of the current chapter, the reference's verse(s) highlighted (aria-current)
+and auto-scrolled into view; clicking a row stages that verse (`pickVerse`). Added `findExactBook`
+to bookMatch (book lookup for getChapter; isExactBook now derives from it) + tests. SearchPane hides
+the bottom ResultsList in reference mode (the chapter list replaces it; §1.9) — kept for picker/keyword.
+Projection semantics unchanged (typed single verse / range still stage exactly that). E2e: chapter
+list shows all 36 of John 3, 1 selected for a single verse, 3 selected for "16-18", click-to-stage,
+and Chapter/Verse locators made {exact:true} (avoid the "Chapter verses" listbox name collision).
+Verified by running (screenshot: "JOHN 3 · 36 verses", verse 16 highlighted + scrolled to).
+Reviewer (independent, §7) = PASS-WITH-NITS; confirmed chapter-load race guards, no wrong-chapter
+highlight, verse keystrokes don't refetch, persistence seeding, and a11y all correct. Fixed the
+worthwhile nits: (2) translation-switch race — persist `scripture.defaultTranslation` BEFORE flipping
+the chip so the chapter refetch reads the new translation; (3) moved `parseVerseRange` to scriptureDeck
+(pure) + unit tests (single/range/empty/incomplete/reversed); (4) try/finally on the `programmatic`
+focus guard so it can't leak; (5) `aria-current={isSel || undefined}` (omit when not current); plus
+`pickVerse` now updates `lastValid` (blur-restore points at the picked verse). 317 unit · 23 e2e green.
+
 Follow-up (NOT in scope, filed separately): TopBar and PresentPage each hold independent
 `useActiveService()` instances that only sync at mount, so picking a service in the TopBar doesn't
 refresh the Present Schedule / "Add to service" until remount. Recommend lifting to a shared

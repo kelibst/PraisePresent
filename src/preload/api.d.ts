@@ -68,6 +68,13 @@ export interface Api {
       applyToAll?: boolean,
     ): Promise<Result<void>>;
     /**
+     * Set (or clear, with `null`) the SERVICE-WIDE default background. Persisted
+     * (survives restart) AND applied to live state so the current deck updates
+     * immediately. Resolved at render time against each slide — a per-slide
+     * override wins and media slides are skipped. Main re-validates (§5.7).
+     */
+    setDefaultBackground(background: SlideBackground | null): Promise<Result<void>>;
+    /**
      * Replace a slide's text `lines` on the live deck. `index` omitted → the
      * current slide. Main bounds + clamps and REJECTS edits to a `locked`
      * (scripture) slide — the renderer is never trusted to honor the lock (§5.3).
@@ -145,10 +152,16 @@ export interface Api {
     setAutoProject(config: AutoProjectConfig): Promise<Result<AiStatus>>;
     /** Suppress detection but keep showing the transcript. Returns the new status. */
     setTranscriptOnly(transcriptOnly: boolean): Promise<Result<AiStatus>>;
-    /** Begin listening (stub in A1 — no-ops when the agent is unavailable). */
+    /** Begin a listening session (opens the active agent's ASR). Returns status. */
     startListening(): Promise<Result<AiStatus>>;
-    /** Stop listening. Returns the new status. */
+    /** Stop listening (closes the ASR session). Returns the new status. */
     stopListening(): Promise<Result<AiStatus>>;
+    /**
+     * Stream one frame of captured mic audio (16 kHz mono 16-bit PCM) to main —
+     * fire-and-forget, no response. Main routes it to the active ASR session.
+     * Only meaningful while `status.listening` is true; main ignores it otherwise.
+     */
+    sendAudioFrame(pcm: Int16Array, sampleRate: number): void;
     /** Store a cloud agent's API key in OS secure storage (value never returns). */
     setApiKey(agentId: string, apiKey: string): Promise<Result<AiKeyStatus>>;
     /** Whether a key is stored for an agent — a boolean only, never the value. */
@@ -159,6 +172,12 @@ export interface Api {
     onCandidates(callback: (candidates: AiCandidate[]) => void): () => void;
     /** Subscribe to pushed transcript segments; returns an unsubscribe function. */
     onTranscript(callback: (segment: TranscriptSegment) => void): () => void;
+    /**
+     * Subscribe to main-initiated status changes (e.g. a cloud session error or
+     * auto-degrade flipping listening off) so the UI reflects them without polling.
+     * Returns an unsubscribe function.
+     */
+    onStatus(callback: (status: AiStatus) => void): () => void;
   };
   media: {
     /** All library items (newest first). */

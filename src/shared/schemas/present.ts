@@ -107,6 +107,13 @@ export const presentState = z.object({
   index: z.number().int().min(0),
   transition,
   rev: z.number().int().min(0).default(0),
+  // The service-wide DEFAULT background (color | media), applied at RENDER time to
+  // any slide that lacks its own `background` — a per-slide override always wins,
+  // and a slide that is itself a media display is skipped (its media covers the
+  // surface). It is live state (broadcast to both windows) so changing it from
+  // Settings updates whatever is already on screen, not just future decks. `null`
+  // = the gradient backdrop (today's behaviour). See `effectiveBackground`.
+  defaultBackground: slideBackground.nullable().default(null),
 });
 
 // Split broadcast payloads (main -> windows). `deck` carries the slides + rev and
@@ -115,6 +122,10 @@ export const presentState = z.object({
 export const presentDeckPayload = z.object({
   rev: z.number().int().min(0),
   deck: z.array(presentSlide),
+  // Rides the deck broadcast (deck-level, rarely changes). A change to the service
+  // default bumps `rev`, so it ships on the next deck push and re-renders the
+  // audience immediately.
+  defaultBackground: slideBackground.nullable().default(null),
 });
 
 export const presentCursorPayload = z.object({
@@ -159,6 +170,14 @@ export const setTransitionInput = z.object({
   transition,
 });
 
+// Set (or clear, with `null`) the SERVICE-WIDE default background. Persisted in
+// main and applied to every slide that lacks its own background, across the
+// current live deck AND future decks (§1.5). Main re-validates the color/url
+// (the safe-form allow-list) before it can reach the audience compositor (§5.7).
+export const setDefaultBackgroundInput = z.object({
+  background: slideBackground.nullable(),
+});
+
 export type PresentMode = z.infer<typeof presentMode>;
 export type SlideMediaKind = z.infer<typeof slideMediaKind>;
 export type SlideMedia = z.infer<typeof slideMedia>;
@@ -174,6 +193,7 @@ export type GotoInput = z.infer<typeof gotoInput>;
 export type SetBackgroundInput = z.infer<typeof setBackgroundInput>;
 export type UpdateTextInput = z.infer<typeof updateTextInput>;
 export type SetTransitionInput = z.infer<typeof setTransitionInput>;
+export type SetDefaultBackgroundInput = z.infer<typeof setDefaultBackgroundInput>;
 
 // The default transition (compositor fade). Exported so both sides agree.
 export const DEFAULT_TRANSITION: Transition = { type: 'fade', durationMs: 400 };
@@ -186,4 +206,5 @@ export const FAILSAFE: PresentState = {
   index: 0,
   transition: DEFAULT_TRANSITION,
   rev: 0,
+  defaultBackground: null,
 };

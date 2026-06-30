@@ -1,9 +1,9 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Grid3x3, Search, Type } from 'lucide-react';
 import { cn } from '@/renderer/lib/utils';
 import { DEFAULT_TRANSLATION_KEY } from '@/shared/schemas/scripture';
 import type { BibleBook, BibleTranslation, BibleVerse } from '@/shared/schemas/scripture';
-import { referenceLabel, rangeLabel, verseId } from './scriptureDeck';
+import { referenceDraft, referenceLabel, rangeLabel, verseId } from './scriptureDeck';
 import type { StagedPassage } from '@/renderer/features/present/usePresentDeck';
 import ReferenceMode from './ReferenceMode';
 import CardPickerMode from './CardPickerMode';
@@ -62,8 +62,12 @@ export default function SearchPane({ staged, onStage, onStageIndex, onSendLive }
     async (abbreviation: string) => {
       const next = translations.find((t) => t.abbreviation === abbreviation);
       if (!next) return;
-      setTranslation(next);
+      // Persist the active translation BEFORE flipping the chip: getChapter/
+      // lookupReference resolve the translation from this setting, and flipping
+      // `abbr` retriggers ReferenceMode's chapter load — so the write must land
+      // first or that refetch reads the previous translation.
       await window.api.settings.set(DEFAULT_TRANSLATION_KEY, abbreviation);
+      setTranslation(next);
       if (staged && staged.verses.length > 0) {
         const first = staged.verses[0];
         const last = staged.verses[staged.verses.length - 1];
@@ -86,6 +90,11 @@ export default function SearchPane({ staged, onStage, onStageIndex, onSendLive }
     (verses: BibleVerse[]) => onStage(verses, 0),
     [onStage],
   );
+
+  // The staged passage as a reference draft, so Reference mode reflects it on
+  // (re)mount — switching mode tabs and returning keeps the reference, and a
+  // verse picked in Card-picker/Keyword mode shows up in the field too (§1.9).
+  const referenceInitial = useMemo(() => (staged ? referenceDraft(staged.verses) : null), [staged]);
 
   const lead = staged ? staged.verses[staged.index] : null;
   const stagedActiveVerse =
@@ -159,7 +168,12 @@ export default function SearchPane({ staged, onStage, onStageIndex, onSendLive }
         {/* Active mode body. */}
         <div className="flex min-h-0 flex-1 flex-col">
           {mode === 'reference' && (
-            <ReferenceMode books={books} abbr={abbr} onResolve={handleReferenceResolve} />
+            <ReferenceMode
+              books={books}
+              abbr={abbr}
+              initial={referenceInitial}
+              onResolve={handleReferenceResolve}
+            />
           )}
           {mode === 'picker' && <CardPickerMode onPick={onStage} activeVerse={stagedActiveVerse} />}
           {mode === 'keyword' && (
@@ -167,8 +181,10 @@ export default function SearchPane({ staged, onStage, onStageIndex, onSendLive }
           )}
         </div>
 
-        {/* Results: the staged passage's verses, with the lead verse marked. */}
-        {staged && staged.verses.length > 0 && (
+        {/* Results: the staged passage's verses, with the lead verse marked.
+            Reference mode shows the whole chapter inline (its own list), so the
+            staged-only list here would just duplicate it (§1.9) — skip it there. */}
+        {mode !== 'reference' && staged && staged.verses.length > 0 && (
           <ResultsList staged={staged} onSetLead={onStageIndex} onSendLive={onSendLive} />
         )}
       </div>

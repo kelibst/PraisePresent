@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { AiCandidate, AiStatus, DetectionMode, TranscriptSegment } from '@/shared/schemas/ai';
+import { startAudioCapture, type AudioCapture } from './audioCapture';
 
 // The Live-Detect tab's view of the A1 orchestrator (CLAUDE.md §1.3/§1.5): it
 // reads status through `window.api.ai`, drives start/stop + the passive⇄drive
@@ -45,6 +46,8 @@ export function useAiConsole(): AiConsole {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const captureRef = useRef<AudioCapture | null>(null);
+
   const apply = useCallback((next: AiStatus) => {
     setStatus(next);
     setError(next.lastError ?? null);
@@ -65,6 +68,12 @@ export function useAiConsole(): AiConsole {
     };
   }, [apply]);
 
+  // Always-on subscription to MAIN-initiated status changes: a cloud session error
+  // or an auto-degrade flips listening off without a renderer call, and the UI must
+  // reflect it (and tear down capture via the listening-gated effect below) without
+  // polling. Cheap — one listener for the tab's lifetime.
+  useEffect(() => window.api.ai.onStatus(apply), [apply]);
+
   // EFFICIENCY: subscribe to the pushed streams ONLY while listening. The effect
   // re-runs whenever `listening` flips, attaching on start and detaching on stop
   // (and on unmount) — so a tab that is mounted but idle holds no AI listeners.
@@ -84,6 +93,38 @@ export function useAiConsole(): AiConsole {
       offCandidates();
     };
   }, [listening]);
+
+  // MIC CAPTURE lifecycle (§5.2): capture runs ONLY while listening, on the
+  // operator-selected source. main owns whether we *should* be listening; this
+  // effect just turns the mic on/off to match, streaming PCM frames to main. A
+  // denied/absent mic stops listening in main and surfaces a clear message — it
+  // never leaves the UI stuck "Listening" with no audio. Re-runs if the source
+  // changes mid-listen. Tears the mic fully down on Stop / status-off / unmount.
+  const sourceId = status?.selectedSourceId ?? 'default';
+  useEffect(() => {
+    if (!listening) return;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const capture = await startAudioCapture(sourceId);
+        if (cancelled) {
+          capture.stop();
+          return;
+        }
+        captureRef.current = capture;
+      } catch {
+        if (cancelled) return;
+        setError('Microphone unavailable — check permissions and the selected input.');
+        const res = await window.api.ai.stopListening();
+        if (res.ok) setStatus(res.data);
+      }
+    })();
+    return () => {
+      cancelled = true;
+      captureRef.current?.stop();
+      captureRef.current = null;
+    };
+  }, [listening, sourceId]);
 
   const startListening = useCallback(async () => {
     const res = await window.api.ai.startListening();

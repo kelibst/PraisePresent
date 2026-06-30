@@ -13,9 +13,13 @@ function slide(id: string): PresentSlide {
 const deck = [slide('a'), slide('b'), slide('c')];
 
 function deckPayload(rev: number): PresentDeckPayload {
-  return { rev, deck };
+  return { rev, deck, defaultBackground: null };
 }
-function cursorPayload(rev: number, index: number, mode: 'slide' | 'black' = 'slide'): PresentCursorPayload {
+function cursorPayload(
+  rev: number,
+  index: number,
+  mode: 'slide' | 'black' = 'slide',
+): PresentCursorPayload {
   return { rev, index, mode, transition: DEFAULT_TRANSITION };
 }
 
@@ -54,7 +58,11 @@ describe('present reconciler (deck/cursor merge)', () => {
     const first = r.applyDeck(deckPayload(2));
     // A NEW array with the same rev (e.g. the other window reloaded → main re-pushed
     // a freshly-deserialized deck). The reconciler must keep its existing reference.
-    const second = r.applyDeck({ rev: 2, deck: [slide('a'), slide('b'), slide('c')] });
+    const second = r.applyDeck({
+      rev: 2,
+      deck: [slide('a'), slide('b'), slide('c')],
+      defaultBackground: null,
+    });
     expect(second.deck).toBe(first.deck); // identity preserved, not the new array
     expect(second.rev).toBe(2);
   });
@@ -88,6 +96,7 @@ describe('present reconciler (deck/cursor merge)', () => {
       index: 1,
       transition: DEFAULT_TRANSITION,
       rev: 7,
+      defaultBackground: null,
     });
     expect(seeded.index).toBe(1);
     expect(seeded.rev).toBe(7);
@@ -101,5 +110,15 @@ describe('present reconciler (deck/cursor merge)', () => {
     r.applyDeck(deckPayload(2));
     const black = r.applyCursor(cursorPayload(2, 0, 'black'));
     expect(black!.mode).toBe('black');
+  });
+
+  it('carries the service default background from the deck payload into state', () => {
+    const r = createPresentReconciler();
+    const bg = { type: 'color', color: '#000000' } as const;
+    const merged = r.applyDeck({ rev: 1, deck, defaultBackground: bg });
+    expect(merged.defaultBackground).toEqual(bg);
+    // It persists across cursor-only moves (stable reference, no churn).
+    const afterCursor = r.applyCursor(cursorPayload(1, 1))!;
+    expect(afterCursor.defaultBackground).toEqual(bg);
   });
 });

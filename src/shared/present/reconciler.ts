@@ -3,6 +3,7 @@ import type {
   PresentSlide,
   PresentMode,
   Transition,
+  SlideBackground,
   PresentDeckPayload,
   PresentCursorPayload,
 } from '@/shared/schemas/present';
@@ -48,11 +49,14 @@ export function createPresentReconciler(): PresentReconciler {
   let index = 0;
   let mode: PresentMode = 'black';
   let transition: Transition = INITIAL_TRANSITION;
+  // The service-wide default background rides the deck payload (deck-level). Kept
+  // as a stable reference across cursor moves so memoized slide layers don't churn.
+  let defaultBackground: SlideBackground | null = null;
   let hasDeck = false;
   let pendingCursor: PresentCursorPayload | null = null;
 
   function snapshot(): PresentState {
-    return { mode, deck, index, transition, rev: rev < 0 ? 0 : rev };
+    return { mode, deck, index, transition, rev: rev < 0 ? 0 : rev, defaultBackground };
   }
 
   return {
@@ -62,6 +66,7 @@ export function createPresentReconciler(): PresentReconciler {
       index = state.index;
       mode = state.mode;
       transition = state.transition;
+      defaultBackground = state.defaultBackground ?? null;
       hasDeck = true;
       pendingCursor = null;
       return snapshot();
@@ -78,6 +83,7 @@ export function createPresentReconciler(): PresentReconciler {
       }
       deck = payload.deck;
       rev = payload.rev;
+      defaultBackground = payload.defaultBackground ?? null;
       hasDeck = true;
       // A cursor that raced ahead of this deck applies now, if it matches.
       if (pendingCursor && pendingCursor.rev === rev) {

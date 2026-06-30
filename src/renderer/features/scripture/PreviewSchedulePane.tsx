@@ -30,8 +30,14 @@ type Props = {
   onSetNext: () => void;
   /** Append the staged passage to the active service as a scripture item. */
   onAddToPlan: () => void;
-  /** The current live slide's background, so the editor + preview reflect it. */
+  /** The current live slide's background (raw override), for the editor's state. */
   liveBackground: SlideBackground | null;
+  /**
+   * The service-wide default background. A staged passage is a text slide, so the
+   * preview shows the default it will inherit when sent (a per-slide override is
+   * set later, live). `null` = the gradient backdrop.
+   */
+  defaultBackground: SlideBackground | null;
   /** Whether a live deck exists — gates the background editor. */
   hasDeck: boolean;
   /** Set/clear the live slide background (applyToAll paints every slide). */
@@ -46,6 +52,7 @@ export default function PreviewSchedulePane({
   onSetNext,
   onAddToPlan,
   liveBackground,
+  defaultBackground,
   hasDeck,
   onSetBackground,
 }: Props) {
@@ -70,7 +77,7 @@ export default function PreviewSchedulePane({
             active
             lines={lead ? [lead.text] : undefined}
             reference={lead ? referenceLabel(lead) : undefined}
-            background={liveBackground ?? undefined}
+            background={defaultBackground ?? undefined}
             badge={{ label: 'Scripture · read-only', tone: 'neutral' }}
           />
           <div className="flex flex-wrap items-center gap-2">

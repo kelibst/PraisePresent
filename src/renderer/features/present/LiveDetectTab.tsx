@@ -1,10 +1,11 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Check, Ear, Gauge, Power, Radar, Send, Sparkles, X } from 'lucide-react';
 import { PaneHeader, SlidePreview } from '@/renderer/components/common';
 import { Badge } from '@/renderer/components/ui/badge';
 import { cn } from '@/renderer/lib/utils';
 import { useAiConsole } from '@/renderer/features/ai/useAiConsole';
 import { EqVisualizer } from '@/renderer/features/ai/EqVisualizer';
+import { shouldAutoProject } from '@/shared/ai/autoProject';
 import type { AiCandidate } from '@/shared/schemas/ai';
 import type { BibleVerse } from '@/shared/schemas/scripture';
 
@@ -45,6 +46,28 @@ export default function LiveDetectTab({ onProject }: Props) {
   const sendLive = (c: AiCandidate) => {
     onProject(c.verses, 0);
   };
+
+  // AUTO-PROJECT (R8): off by default. When the operator has enabled it in Settings,
+  // the highest-confidence candidate that clears the threshold is sent live without
+  // a click — using the SAME shared gate main applies, so the safety rule can't
+  // drift. We project at most once per distinct best-candidate so a re-pushed batch
+  // never re-fires. This is the only place a detection reaches the audience without
+  // an operator click, and only when explicitly opted in above a high threshold.
+  const lastAutoRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!status) return;
+    const best = console.candidates.reduce<AiCandidate | null>(
+      (top, c) => (!top || c.confidence > top.confidence ? c : top),
+      null,
+    );
+    if (!best) return;
+    const key = `${best.reference}@${best.confidence}`;
+    if (lastAutoRef.current === key) return;
+    if (shouldAutoProject(status, best.confidence)) {
+      lastAutoRef.current = key;
+      onProject(best.verses, 0);
+    }
+  }, [console.candidates, status, onProject]);
 
   return (
     <section className="flex h-full min-h-0 flex-col rounded-lg border border-pp-border-soft bg-pp-surface-1">
