@@ -2,12 +2,12 @@ import { memo, useEffect, useRef, useState } from 'react';
 import type {
   PresentState,
   PresentSlide,
-  SlideMedia,
   SlideBackground,
   TransitionType,
 } from '@/shared/schemas/present';
 import { FAILSAFE } from '@/shared/schemas/present';
 import { effectiveBackground } from '@/shared/present/serviceBackground';
+import { SlideStage } from '@/renderer/components/common/SlideStage';
 import { SAFE_AREA_KEY, parseSafeAreaPct } from '@/shared/schemas/display';
 
 // Full-screen projector view. Subscribes to main's live state and renders the
@@ -156,11 +156,12 @@ export default function AudienceView() {
   );
 }
 
-// One full-screen slide layer: the deep radial-gradient surface (the full-screen
-// twin of the SlidePreview atom) with its background → media → text → reference,
-// painted inside the safe area. Memoized so a re-render that doesn't change this
-// slide leaves its `<video>`/`<img>` mounted (B3). Media/background load errors are
-// handled locally so a moved/corrupt file fails safe to the gradient/black (§5.7).
+// One full-screen slide layer: the shared <SlideStage> surface (the same renderer
+// the operator previews via SlidePreview, §1.9), painted inside the TV safe area.
+// Memoized so a re-render that doesn't change this slide leaves its `<video>`/
+// `<img>` mounted (B3); SlideStage keys media/background by url and fails safe to
+// the backdrop on a load error (§5.7). `surface="projector"` so foreground media
+// plays with sound here (a preview stays muted).
 const SlideLayer = memo(function SlideLayer({
   slide,
   defaultBackground,
@@ -172,129 +173,24 @@ const SlideLayer = memo(function SlideLayer({
   animation: string | undefined;
   safeAreaPct: number;
 }) {
-  const [mediaFailed, setMediaFailed] = useState(false);
-  const [bgFailed, setBgFailed] = useState(false);
-  // Capture the entrance/exit animation once, at mount. Toggling the NEXT transition
-  // type must not re-fire the animation on a slide that's already on screen.
+  // Capture the entrance/exit animation once, at mount. Toggling the NEXT
+  // transition type must not re-fire the animation on a slide already on screen.
   const [anim] = useState(animation);
-
-  const showMedia = slide.media && !mediaFailed;
+  const padding = safeAreaPct > 0 ? `${safeAreaPct}%` : undefined;
   // The painted background is the per-slide override, else the service default —
   // resolved here so a media slide is skipped and an override always wins (§5.7).
   const background = effectiveBackground(slide, defaultBackground);
-  const showBg = background && !(background.type === 'media' && bgFailed);
-  const padding = safeAreaPct > 0 ? `${safeAreaPct}%` : undefined;
 
   return (
-    <div
-      className="absolute inset-0 will-change-[opacity]"
-      style={{ animation: anim, padding }}
-      aria-hidden={undefined}
-    >
-      <div className="relative h-full w-full overflow-hidden bg-pp-surface-live bg-[radial-gradient(circle_at_50%_38%,hsl(var(--pp-accent-deep)/0.55),transparent_62%),radial-gradient(circle_at_50%_120%,hsl(var(--background)/0.9),hsl(var(--pp-surface-live)))]">
-        {showBg && <BackgroundLayer background={background} onError={() => setBgFailed(true)} />}
-        {showMedia && <MediaLayer media={slide.media!} onError={() => setMediaFailed(true)} />}
-        {slide.lines.length > 0 && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center px-[7vw] text-center">
-            <div className="flex flex-col gap-[1.2vw]">
-              {slide.lines.map((line, i) => (
-                <p
-                  key={i}
-                  className="font-semibold leading-tight drop-shadow-lg [text-wrap:balance]"
-                  style={{ fontSize: '5.2vw' }}
-                >
-                  {line}
-                </p>
-              ))}
-            </div>
-          </div>
-        )}
-        {slide.reference && (
-          <p
-            className="absolute bottom-[3vw] right-[4vw] font-normal text-white/70 drop-shadow-lg"
-            style={{ fontSize: '3.2vw' }}
-          >
-            {slide.reference}
-          </p>
-        )}
-      </div>
+    <div className="absolute inset-0 will-change-[opacity]" style={{ animation: anim, padding }}>
+      <SlideStage
+        surface="projector"
+        scale="lg"
+        lines={slide.lines}
+        reference={slide.reference}
+        media={slide.media}
+        background={background}
+      />
     </div>
   );
 });
-
-// Renders one media element full-screen. Keyed by url by the caller so identical
-// media never remounts (B3). onError bubbles up so a moved/corrupt file fails safe
-// to the gradient/black instead of showing a broken-image icon (§5.7).
-function MediaLayer({ media, onError }: { media: SlideMedia; onError: () => void }) {
-  if (media.kind === 'image') {
-    return (
-      <img
-        key={media.url}
-        src={media.url}
-        alt=""
-        onError={onError}
-        className="absolute inset-0 h-full w-full object-cover"
-        aria-hidden
-      />
-    );
-  }
-  if (media.kind === 'video') {
-    return (
-      <video
-        key={media.url}
-        src={media.url}
-        onError={onError}
-        autoPlay
-        loop
-        playsInline
-        className="absolute inset-0 h-full w-full object-cover"
-        aria-hidden
-      />
-    );
-  }
-  // audio: no visual element; the file plays over a black background.
-  return <audio key={media.url} src={media.url} onError={onError} autoPlay loop aria-hidden />;
-}
-
-// Renders the slide background full-screen, beneath the media + text layers. A
-// color is an inline fill — the value is allow-listed in main before it reaches
-// here (§5.7), so it can never inject CSS. A media background that errors bubbles
-// up so we fall back to the gradient backdrop, never a broken-image icon.
-function BackgroundLayer({
-  background,
-  onError,
-}: {
-  background: SlideBackground;
-  onError: () => void;
-}) {
-  if (background.type === 'color') {
-    return (
-      <div className="absolute inset-0" style={{ backgroundColor: background.color }} aria-hidden />
-    );
-  }
-  if (background.kind === 'image') {
-    return (
-      <img
-        key={background.url}
-        src={background.url}
-        alt=""
-        aria-hidden
-        onError={onError}
-        className="absolute inset-0 h-full w-full object-cover"
-      />
-    );
-  }
-  return (
-    <video
-      key={background.url}
-      src={background.url}
-      aria-hidden
-      autoPlay
-      loop
-      muted
-      playsInline
-      onError={onError}
-      className="absolute inset-0 h-full w-full object-cover"
-    />
-  );
-}

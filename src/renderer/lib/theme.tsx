@@ -9,8 +9,23 @@ interface ThemeContextType {
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
+// The fixed theme the live projector is pinned to: the approved dark "stage" look.
+const PRESENTATION_THEME: Theme = 'dark';
+
+// True when THIS renderer instance is the audience/projector window (the
+// `#/audience` hash route). The projector must look identical regardless of the
+// operator's light/dark choice (CLAUDE.md §5.7), so it is pinned to the fixed
+// presentation theme and never reads, writes, or reacts to the operator's saved
+// theme. (The slide surface itself is already theme-independent via the
+// `--pp-stage-*` tokens; this guarantees nothing else on the projector can leak.)
+export function isAudienceWindow(): boolean {
+  return typeof window !== 'undefined' && window.location.hash.startsWith('#/audience');
+}
+
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
+  const audience = isAudienceWindow();
   const [theme, setTheme] = useState<Theme>(() => {
+    if (audience) return PRESENTATION_THEME;
     if (typeof window !== 'undefined') {
       const savedTheme = localStorage.getItem('theme') as Theme;
       if (savedTheme) return savedTheme;
@@ -37,12 +52,19 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
   // Apply theme on mount and when theme changes
   useEffect(() => {
+    // The projector is pinned to the presentation theme and never persisted — the
+    // operator's UI theme must never reach the audience output (§5.7).
+    if (audience) {
+      applyTheme(PRESENTATION_THEME);
+      return;
+    }
     applyTheme(theme);
     localStorage.setItem('theme', theme);
-  }, [theme]);
+  }, [theme, audience]);
 
   // Listen for system theme changes
   useEffect(() => {
+    if (audience) return; // the projector ignores system theme changes too.
     const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
 
     const handleChange = () => {
@@ -53,9 +75,15 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
     mediaQuery.addEventListener('change', handleChange);
     return () => mediaQuery.removeEventListener('change', handleChange);
-  }, [theme]);
+  }, [theme, audience]);
 
-  return <ThemeContext.Provider value={{ theme, setTheme }}>{children}</ThemeContext.Provider>;
+  // The projector has no theme UI and must stay pinned, so it exposes a no-op
+  // setter; only operator windows get the real one.
+  const value: ThemeContextType = audience
+    ? { theme: PRESENTATION_THEME, setTheme: () => {} }
+    : { theme, setTheme };
+
+  return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
 }
 
 export function useTheme() {

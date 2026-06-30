@@ -53,7 +53,7 @@ export const DeckStripThumb = memo(function DeckStripThumb({
         className,
       )}
     >
-      <span className="relative aspect-video w-full overflow-hidden rounded-md bg-pp-surface-live bg-[radial-gradient(circle_at_50%_38%,hsl(var(--pp-accent-deep)/0.45),transparent_62%)] [container-type:inline-size]">
+      <span className="relative aspect-video w-full overflow-hidden rounded-md bg-[hsl(var(--pp-stage-base))] bg-[radial-gradient(circle_at_50%_38%,hsl(var(--pp-stage-glow)/0.45),transparent_62%)] [container-type:inline-size]">
         <span className="absolute inset-0 flex items-center justify-center px-[7cqi]">
           <span
             className="line-clamp-3 font-semibold leading-tight text-pp-text-label [text-wrap:balance]"

@@ -151,11 +151,7 @@ export default function BackgroundPicker({ value, disabled = false, onChange }: 
                             : 'border-pp-border-soft hover:border-pp-border-strong',
                         )}
                       >
-                        {item.kind === 'image' ? (
-                          <BgThumb url={url} />
-                        ) : (
-                          <Film className="size-5" aria-hidden />
-                        )}
+                        <BgThumb url={url} kind={item.kind === 'video' ? 'video' : 'image'} />
                       </button>
                     </li>
                   );
@@ -169,11 +165,34 @@ export default function BackgroundPicker({ value, disabled = false, onChange }: 
   );
 }
 
-// Thumbnail for an image background option. Fails safe to the kind glyph rather
-// than a broken-image icon if the file is missing/moved (§5.7).
-function BgThumb({ url }: { url: string }) {
+// Thumbnail for an image OR video background option, so the operator can SEE the
+// clip before applying it (not just a generic film icon). A video previews muted +
+// looping (the library is small and the picker is lazy, so the few decoders are
+// affordable). Either kind fails safe to its glyph rather than a broken-image icon
+// if the file is missing/moved (§5.7).
+function BgThumb({ url, kind }: { url: string; kind: 'image' | 'video' }) {
   const [failed, setFailed] = useState(false);
-  if (failed) return <ImageIcon className="size-5" aria-hidden />;
+  if (failed) {
+    return kind === 'video' ? (
+      <Film className="size-5" aria-hidden />
+    ) : (
+      <ImageIcon className="size-5" aria-hidden />
+    );
+  }
+  if (kind === 'video') {
+    return (
+      <video
+        src={url}
+        aria-hidden
+        muted
+        loop
+        autoPlay
+        playsInline
+        onError={() => setFailed(true)}
+        className="absolute inset-0 h-full w-full object-cover"
+      />
+    );
+  }
   return (
     <img
       src={url}

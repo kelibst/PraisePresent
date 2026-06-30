@@ -77,6 +77,10 @@ export default function PreviewSchedulePane({
             active
             lines={lead ? [lead.text] : undefined}
             reference={lead ? referenceLabel(lead) : undefined}
+            // A staged verse is a text-only slide (no media, no per-slide override
+            // yet), so its effective background IS the service default — passing it
+            // directly is correct, not a bypass of `effectiveBackground`. The actual
+            // override is set later, live, on the deck.
             background={defaultBackground ?? undefined}
             badge={{ label: 'Scripture · read-only', tone: 'neutral' }}
           />

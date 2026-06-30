@@ -12,6 +12,13 @@ export {
   type SlidePreviewVariant,
 } from './SlidePreview';
 
+export {
+  SlideStage,
+  type SlideStageProps,
+  type SlideStageScale,
+  type SlideStageSurface,
+} from './SlideStage';
+
 export { PaneHeader, type PaneHeaderProps } from './PaneHeader';
 
 export { ScheduleRow, type ScheduleRowProps, type ScheduleItemType } from './ScheduleRow';

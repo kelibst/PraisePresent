@@ -1,6 +1,7 @@
 import { ChevronRight, MonitorX, Pencil, SkipForward, Square } from 'lucide-react';
 import { PaneHeader, SlidePreview } from '@/renderer/components/common';
 import type { PresentState } from '@/shared/schemas/present';
+import { effectiveBackground } from '@/shared/present/serviceBackground';
 
 // Pane 3: mirrors the live present state (CLAUDE.md §1.5 — view of main's truth).
 // "On screen now" is the big preview of deck[index]; "Next" is the small preview
@@ -62,6 +63,8 @@ export default function SongLivePane({ live, onNext, onBlack, onClear }: Props) 
             active={isLive}
             lines={current ? current.lines : undefined}
             reference={current?.reference}
+            media={current?.media}
+            background={current ? effectiveBackground(current, live.defaultBackground) : undefined}
             badge={{ label: 'Editable', tone: 'accent' }}
           />
           <p className="text-xs text-pp-text-dim">Lyrics are editable here — use Edit on a song.</p>
@@ -73,7 +76,13 @@ export default function SongLivePane({ live, onNext, onBlack, onClear }: Props) 
             <ChevronRight className="size-3.5" aria-hidden /> Next
           </span>
           {next ? (
-            <SlidePreview variant="sm" lines={next.lines} reference={next.reference} />
+            <SlidePreview
+              variant="sm"
+              lines={next.lines}
+              reference={next.reference}
+              media={next.media}
+              background={effectiveBackground(next, live.defaultBackground)}
+            />
           ) : (
             <div className="flex aspect-video w-full items-center justify-center rounded-md border border-dashed border-pp-border-soft text-xs text-pp-text-dim">
               End of song
