@@ -1,5 +1,10 @@
 import type { Result } from '@/shared/types/result';
-import type { PresentState, PresentSlide, Transition } from '@/shared/schemas/present';
+import type {
+  PresentState,
+  PresentSlide,
+  Transition,
+  SlideBackground,
+} from '@/shared/schemas/present';
 import type { Song, SongCreate, SongImportText, SongSummary } from '@/shared/schemas/song';
 import type { Plan, PlanCreate, PlanSummary } from '@/shared/schemas/plan';
 import type {
@@ -9,6 +14,7 @@ import type {
   BibleVerse,
 } from '@/shared/schemas/scripture';
 import type { DisplayInfo, AudienceSelection } from '@/shared/schemas/display';
+import type { CapabilityInfo, TierOverride } from '@/shared/schemas/capability';
 import type { MediaItem } from '@/shared/schemas/media';
 import type {
   AiCandidate,
@@ -39,12 +45,46 @@ export interface Api {
     /** Choose the audience display (null = auto); persists + re-places live. */
     setAudience(displayId: number | null): Promise<Result<AudienceSelection>>;
   };
+  capability: {
+    /** The resolved rendering tier + hardware signals the app adapts to (B6a). */
+    get(): Promise<Result<CapabilityInfo>>;
+    /** Set + persist the operator tier override ('auto' trusts detection). */
+    setOverride(override: TierOverride): Promise<Result<CapabilityInfo>>;
+  };
   present: {
     /** Replace the live deck (and optionally the start index + transition). */
     setDeck(deck: PresentSlide[], index?: number, transition?: Transition): Promise<Result<void>>;
     next(): Promise<Result<void>>;
     prev(): Promise<Result<void>>;
     goto(index: number): Promise<Result<void>>;
+    /**
+     * Set (or clear, with `background: null`) a slide's background on the live
+     * deck. `index` omitted → the current slide; `applyToAll` sets every slide.
+     * Main re-validates the color/url and clamps the index (§5.7).
+     */
+    setBackground(
+      background: SlideBackground | null,
+      index?: number,
+      applyToAll?: boolean,
+    ): Promise<Result<void>>;
+    /**
+     * Set (or clear, with `null`) the SERVICE-WIDE default background. Persisted
+     * (survives restart) AND applied to live state so the current deck updates
+     * immediately. Resolved at render time against each slide — a per-slide
+     * override wins and media slides are skipped. Main re-validates (§5.7).
+     */
+    setDefaultBackground(background: SlideBackground | null): Promise<Result<void>>;
+    /**
+     * Replace a slide's text `lines` on the live deck. `index` omitted → the
+     * current slide. Main bounds + clamps and REJECTS edits to a `locked`
+     * (scripture) slide — the renderer is never trusted to honor the lock (§5.3).
+     */
+    updateText(lines: string[], index?: number): Promise<Result<void>>;
+    /**
+     * Change ONLY the transition for the live deck. Cursor-only — does not re-send
+     * the deck (the transition rides the cursor payload). Main re-validates (§5.3).
+     */
+    setTransition(transition: Transition): Promise<Result<void>>;
     black(): Promise<Result<void>>;
     blank(): Promise<Result<void>>;
     clear(): Promise<Result<void>>;
@@ -112,10 +152,16 @@ export interface Api {
     setAutoProject(config: AutoProjectConfig): Promise<Result<AiStatus>>;
     /** Suppress detection but keep showing the transcript. Returns the new status. */
     setTranscriptOnly(transcriptOnly: boolean): Promise<Result<AiStatus>>;
-    /** Begin listening (stub in A1 — no-ops when the agent is unavailable). */
+    /** Begin a listening session (opens the active agent's ASR). Returns status. */
     startListening(): Promise<Result<AiStatus>>;
-    /** Stop listening. Returns the new status. */
+    /** Stop listening (closes the ASR session). Returns the new status. */
     stopListening(): Promise<Result<AiStatus>>;
+    /**
+     * Stream one frame of captured mic audio (16 kHz mono 16-bit PCM) to main —
+     * fire-and-forget, no response. Main routes it to the active ASR session.
+     * Only meaningful while `status.listening` is true; main ignores it otherwise.
+     */
+    sendAudioFrame(pcm: Int16Array, sampleRate: number): void;
     /** Store a cloud agent's API key in OS secure storage (value never returns). */
     setApiKey(agentId: string, apiKey: string): Promise<Result<AiKeyStatus>>;
     /** Whether a key is stored for an agent — a boolean only, never the value. */
@@ -126,6 +172,12 @@ export interface Api {
     onCandidates(callback: (candidates: AiCandidate[]) => void): () => void;
     /** Subscribe to pushed transcript segments; returns an unsubscribe function. */
     onTranscript(callback: (segment: TranscriptSegment) => void): () => void;
+    /**
+     * Subscribe to main-initiated status changes (e.g. a cloud session error or
+     * auto-degrade flipping listening off) so the UI reflects them without polling.
+     * Returns an unsubscribe function.
+     */
+    onStatus(callback: (status: AiStatus) => void): () => void;
   };
   media: {
     /** All library items (newest first). */

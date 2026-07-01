@@ -2,11 +2,9 @@ import { useEffect, useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import {
   Home,
-  BookOpen,
   Music,
   Image,
   ListChecks,
-  Sparkles,
   MonitorPlay,
   Settings,
   PanelLeftClose,
@@ -23,8 +21,9 @@ import {
 } from '@/renderer/components/ui/tooltip';
 
 // Left navigation rail (CLAUDE.md §5.4 — operated live, keyboard/aria mandatory).
-// Eight destinations in the approved design order; Settings is pinned to the
-// bottom. The rail collapses to icon-only and the collapsed state is persisted
+// Destinations in the approved design order; Settings is pinned to the bottom.
+// Live Detect is not a destination — it is a tab inside Present (M2, §1.9).
+// The rail collapses to icon-only and the collapsed state is persisted
 // through `window.api.settings` (truth in SQLite, §1.5) so it survives reloads.
 
 // Persisted under this settings key ('true'/'false').
@@ -36,11 +35,9 @@ type NavItem = { label: string; icon: LucideIcon; path: string; end?: boolean };
 // existing route while the label reads "Plans" per the design.
 const PRIMARY: NavItem[] = [
   { label: 'Home', icon: Home, path: '/', end: true },
-  { label: 'Scripture', icon: BookOpen, path: '/scripture' },
   { label: 'Songs', icon: Music, path: '/songs' },
   { label: 'Media', icon: Image, path: '/media' },
   { label: 'Plans', icon: ListChecks, path: '/services' },
-  { label: 'Live Detect', icon: Sparkles, path: '/detect' },
   { label: 'Present', icon: MonitorPlay, path: '/present' },
 ];
 

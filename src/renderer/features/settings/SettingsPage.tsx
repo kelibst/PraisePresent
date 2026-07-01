@@ -1,20 +1,27 @@
 import { useState } from 'react';
-import { FiUser, FiMonitor, FiBook, FiCpu, FiInfo } from 'react-icons/fi';
+import { FiUser, FiMonitor, FiImage, FiBook, FiCpu, FiInfo } from 'react-icons/fi';
 import type { IconType } from 'react-icons';
 import GeneralSettings from './GeneralSettings';
 import DisplaySettings from './DisplaySettings';
+import PresentationSettings from './PresentationSettings';
 import AiPrivacySettings from './AiPrivacySettings';
 import BibleSettings from './BibleSettings';
 import AboutSettings from './AboutSettings';
 
-// Settings shell: a fixed 218px left sub-nav (General · Display · Bible · AI &
-// Privacy · About) with a sage active-bar, beside a scrollable content panel.
-// Renders INSIDE the app shell's scrollable <main> (AppLayout), so it sizes to
-// `h-full` and owns its own internal scroll — not `min-h-screen`. Every panel is
-// real, wired through `window.api` (§1.3); no placeholder controls.
+// Settings shell: a fixed 218px left sub-nav (General · Display · Presentation ·
+// Bible · AI & Privacy · About) with a sage active-bar, beside a scrollable
+// content panel. Renders INSIDE the app shell's scrollable <main> (AppLayout), so
+// it sizes to `h-full` and owns its own internal scroll — not `min-h-screen`.
+// Every panel is real, wired through `window.api` (§1.3); no placeholder controls.
 const TABS: { id: string; label: string; icon: IconType; render: () => JSX.Element }[] = [
   { id: 'general', label: 'General', icon: FiUser, render: () => <GeneralSettings /> },
   { id: 'display', label: 'Display', icon: FiMonitor, render: () => <DisplaySettings /> },
+  {
+    id: 'presentation',
+    label: 'Presentation',
+    icon: FiImage,
+    render: () => <PresentationSettings />,
+  },
   { id: 'bible', label: 'Bible', icon: FiBook, render: () => <BibleSettings /> },
   { id: 'ai', label: 'AI & Privacy', icon: FiCpu, render: () => <AiPrivacySettings /> },
   { id: 'about', label: 'About', icon: FiInfo, render: () => <AboutSettings /> },

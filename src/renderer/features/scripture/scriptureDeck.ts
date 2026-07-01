@@ -17,12 +17,17 @@ export function verseId(v: BibleVerse): string {
   return `${v.bookNumber}-${v.chapter}-${v.verse}`;
 }
 
-/** One projectable slide per verse, each carrying its own reference label. */
+/**
+ * One projectable slide per verse, each carrying its own reference label. Every
+ * scripture slide is `locked: true` — the displayed verse text is read-only
+ * (translation integrity), enforced in both the UI and main (§5.3).
+ */
 export function versesToDeck(verses: BibleVerse[]): PresentSlide[] {
   return verses.map((v) => ({
     id: verseId(v),
     lines: [v.text],
     reference: referenceLabel(v),
+    locked: true,
   }));
 }
 
@@ -41,6 +46,40 @@ export function rangeLabel(verses: BibleVerse[]): string {
     return `${first.bookName} ${first.chapter}:${first.verse}–${last.verse}`;
   }
   return `${referenceLabel(first)}–${referenceLabel(last)}`;
+}
+
+/** A selected verse range within a chapter (from..to inclusive). */
+export type VerseRange = { from: number; to: number };
+
+/**
+ * Parse a verse-zone string ("15", "16-18", "") into the selected verse range,
+ * or null for a whole-chapter / empty selection. A reversed range ("18-16")
+ * collapses to a single verse (matching the reference parser, which normalizes
+ * verseEnd < verseStart to verseStart).
+ */
+export function parseVerseRange(v: string): VerseRange | null {
+  const m = v.trim().match(/^(\d+)(?:-(\d+))?$/);
+  if (!m) return null;
+  const from = Number(m[1]);
+  const to = m[2] ? Number(m[2]) : from;
+  return { from, to: Math.max(from, to) };
+}
+
+/**
+ * The editable reference draft ({ book, chapter, verse }) for a staged passage,
+ * so the segmented Reference field can reflect whatever is currently staged when
+ * the operator returns to it — state stays consistent across the mode tabs and
+ * with verses picked in the Card-picker/Keyword modes (one source of truth). A
+ * multi-verse passage yields a range verse string ("16-18"); empty → null.
+ */
+export function referenceDraft(
+  verses: BibleVerse[],
+): { book: string; chapter: string; verse: string } | null {
+  if (verses.length === 0) return null;
+  const first = verses[0];
+  const last = verses[verses.length - 1];
+  const verse = verses.length > 1 ? `${first.verse}-${last.verse}` : String(first.verse);
+  return { book: first.bookName, chapter: String(first.chapter), verse };
 }
 
 /**

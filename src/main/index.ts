@@ -5,10 +5,18 @@ import { initDatabase, closeDb } from './db';
 import { registerIpcHandlers } from './ipc';
 import { hydrateScripture } from './services/scriptureService';
 import { displayService } from './services/displayService';
-import { openWindows, createPresenterWindow, hasPresenterWindow } from './windows/windowManager';
+import { capabilityService } from './services/capabilityService';
+import { cancelAllTranscodes } from './services/transcodeSidecar';
+import {
+  openWindows,
+  createPresenterWindow,
+  hasPresenterWindow,
+  initPresent,
+} from './windows/windowManager';
 import { registerMediaScheme, handleMediaProtocol } from './windows/mediaProtocol';
 import { buildCsp } from './infra/csp';
 import { allowConnectSource } from './infra/config';
+import { setupPermissions } from './infra/permissions';
 import { ANTHROPIC_API_HOST } from './services/onlineScriptureExtractor';
 
 // Handle creating/removing shortcuts on Windows when installing/uninstalling.
@@ -30,6 +38,10 @@ app.on('ready', () => {
   allowConnectSource(ANTHROPIC_API_HOST);
   registerIpcHandlers();
   handleMediaProtocol();
+  // Explicit permission allow-list (mic for Live-Detect; deny the rest). The cloud
+  // STT sockets open in MAIN, which is NOT governed by the renderer CSP, so the
+  // STT hosts are deliberately NOT added to connect-src (least privilege §1.4).
+  setupPermissions();
   session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
     callback({
       responseHeaders: {
@@ -39,6 +51,8 @@ app.on('ready', () => {
     });
   });
   displayService.init(); // load persisted audience-display choice before windows open
+  capabilityService.init(); // detect hardware capability/tier before windows read it (B6a)
+  initPresent(); // load the persisted service-wide default background into live state
   openWindows();
 });
 
@@ -51,8 +65,10 @@ app.on('window-all-closed', () => {
   }
 });
 
-// Checkpoint and close the SQLite WAL connection cleanly on shutdown.
+// Checkpoint and close the SQLite WAL connection cleanly on shutdown; kill any
+// in-flight video transcode so we never strand an ffmpeg child process (B6c).
 app.on('before-quit', () => {
+  cancelAllTranscodes();
   closeDb();
 });
 

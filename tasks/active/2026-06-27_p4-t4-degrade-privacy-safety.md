@@ -12,3 +12,6 @@ Seamless online→offline fallback on connectivity loss (no operator action). On
 
 ## Update (2026-06-28)
 The **controls** for this task landed under `tasks/active/2026-06-28_a2a3-online-extractor-privacy.md`: `ai:setOnline` opt-in (wired A1's reducer action), `ai:setAutoProject` (off by default — default config NEVER auto-projects, R8), `ai:setTranscriptOnly`, and injectable-connectivity auto-degrade (online→offline, offline path asserts zero network calls). Kill-switch still hard-stops. Remaining for this task: the on-screen "online AI is on" indicator (renderer) and exercising the degrade against the real audio/network path.
+
+## Update (2026-06-29 — degrade now triggers + mic permission)
+Auto-degrade is now genuinely reachable in production: a dropped cloud socket (`AsrSession` onClose) → `degradeToOffline` (switches to the offline default, keeps listening, else stops fail-safe). An explicit mic-only permission allow-list was added (`infra/permissions.ts`) — Electron previously granted all. Auto-project guard wired via a shared gate (renderer projects only when opted in above threshold; default never projects — R8). Remaining: the on-screen "online AI is on" indicator polish + live degrade against a real socket.

@@ -20,6 +20,8 @@ export type ActiveService = {
   loading: boolean;
   /** Persist a new active service id (null clears it) and refresh the plan. */
   setActiveService: (id: number | null) => Promise<void>;
+  /** Re-resolve the current active plan (after an external update). */
+  refresh: () => Promise<void>;
 };
 
 function parseId(raw: string | null): number | null {
@@ -67,5 +69,9 @@ export function useActiveService(): ActiveService {
     [resolvePlan],
   );
 
-  return { id, plan, loading, setActiveService };
+  const refresh = useCallback(async (): Promise<void> => {
+    setPlan(await resolvePlan(id));
+  }, [id, resolvePlan]);
+
+  return { id, plan, loading, setActiveService, refresh };
 }

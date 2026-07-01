@@ -112,17 +112,19 @@ function resolveBook(token: string): number | null {
   return NAME_INDEX.get(normalizeName(token)) ?? null;
 }
 
-// Parse "John 3:16", "Gen 1:1-3", "Psalm 23", "1 John 2:1-5". Returns null if
-// the reference can't be resolved. Whole-chapter refs (no verse) yield
-// verseStart=null, verseEnd=null. A single verse yields verseStart=verseEnd.
+// Parse "John 3:16", "Gen 1:1-3", "Psalm 23", "1 John 2:1-5", and the
+// EasyWorship-style space form "John 3 16". Returns null if the reference can't
+// be resolved. Whole-chapter refs (no verse) yield verseStart=null,
+// verseEnd=null. A single verse yields verseStart=verseEnd.
 export function parseReference(input: string): ScriptureReference | null {
   const trimmed = input.trim();
   if (!trimmed) return null;
 
   // Split into "<book part> <numeric part>". The book part is everything up to
   // the last whitespace before the first chapter digit. Books may start with a
-  // leading numeral (1/2/3), so anchor on the chapter:verse tail.
-  const m = trimmed.match(/^(.*?)\s*(\d+)(?::(\d+)(?:\s*-\s*(\d+))?)?\s*$/);
+  // leading numeral (1/2/3), so anchor on the chapter:verse tail. The verse
+  // separator accepts ":" or whitespace ("John 3 16") for spacebar navigation.
+  const m = trimmed.match(/^(.*?)\s*(\d+)(?:[:\s]+(\d+)(?:\s*-\s*(\d+))?)?\s*$/);
   if (!m) return null;
 
   const bookToken = m[1].trim();

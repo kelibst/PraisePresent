@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Monitor, MonitorOff, BookText, Radio } from 'lucide-react';
+import { MonitorOff, BookText, Radio } from 'lucide-react';
 
 import { cn } from '@/renderer/lib/utils';
 import type { DisplayInfo } from '@/shared/schemas/display';
@@ -78,13 +78,17 @@ export default function StatusStrip() {
       {/* Audience display */}
       <span className="flex items-center gap-1.5" title="Audience display">
         {display.connected ? (
-          <Monitor className="size-3.5 text-pp-text-muted" aria-hidden="true" />
+          <span
+            className="size-1.5 rounded-full bg-pp-success shadow-[0_0_6px_1px_hsl(var(--pp-success)/0.5)]"
+            aria-hidden="true"
+          />
         ) : (
           <MonitorOff className="size-3.5 text-pp-warn" aria-hidden="true" />
         )}
         {display.connected ? (
           <span className="text-pp-text-muted">
-            {display.label}
+            <span className="text-pp-text-dim">Audience: </span>
+            {display.label} connected
             {display.resolution ? ` · ${display.resolution}` : ''}
           </span>
         ) : (
@@ -95,7 +99,7 @@ export default function StatusStrip() {
       {/* Bible */}
       <span className="flex items-center gap-1.5" title="Bundled translation">
         <BookText className="size-3.5 text-pp-text-muted" aria-hidden="true" />
-        <span className="text-pp-text-muted">WEB · offline</span>
+        <span className="text-pp-text-muted">Bible: WEB (bundled, offline)</span>
       </span>
 
       {/* Live Detect */}

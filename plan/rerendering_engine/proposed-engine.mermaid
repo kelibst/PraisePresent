@@ -1,0 +1,80 @@
+%% PraisePresent — PROPOSED rendering engine (re-architecture for low-end hardware)
+%% Render with the Mermaid CLI, the Mermaid Live Editor, or any Mermaid viewer.
+flowchart TB
+    subgraph MAIN["MAIN — source of truth (unchanged authority)"]
+        REDUCE2["presentEngine.reduce()<br/>now also bumps rev on deck-changing actions"]
+        DECK["deckState {rev, deck[]}<br/>changes RARELY"]
+        CURSOR["cursorState {rev, index, mode, transition}<br/>changes on EVERY transport action"]
+        REDUCE2 --> DECK
+        REDUCE2 --> CURSOR
+
+        subgraph BSPLIT["Split broadcast (O(cursor), not O(deck))"]
+            BDECK["present:deck → full deck + rev<br/>ONLY on setDeck/setBackground/updateText"]
+            BCUR["present:cursor → {rev,index,mode,transition}<br/>on next/prev/goto/black/blank/clear/setTransition<br/>(tiny, ~40 bytes)"]
+        end
+        DECK --> BDECK
+        CURSOR --> BCUR
+
+        subgraph NATIVE["Adaptive media pipeline + ingest guard rails (decision-gated B6)"]
+            INGEST["On import (ffmpeg/sharp sidecar, OUT-OF-PROCESS):<br/>pre-flight size/duration/free-disk checks<br/>STREAMED transcode, bounded mem/threads<br/>watchdog + timeout + cancel · serialized queue"]
+            ORIG["Keep ORIGINAL untouched"]
+            LADDER["Rendition ladder (additive cache, keyed by res+codec):<br/>• projector-native high-quality<br/>• low-power light rendition<br/>LRU-evicted to a disk budget"]
+            PICK["Show-time pick = f(machine tier, projector res, source)<br/>strong box → high rendition · weak box → light<br/>fallback: stream ORIGINAL, GPU-downscaled"]
+            MPROTO2["app-media:// serves the CHOSEN rendition (range-streamed)"]
+            INGEST --> ORIG
+            INGEST --> LADDER
+            ORIG --> PICK
+            LADDER --> PICK
+            PICK --> MPROTO2
+        end
+    end
+
+    CAPS["Capability probe (startup):<br/>GPU · RAM · HW-decode · quick benchmark<br/>→ tier Low / Standard / High (operator override)"]
+    CAPS -.->|"tier selects rendition + effects"| PICK
+    CAPS -.->|"tier informs"| GATE
+
+    BDECK -->|"present:deck (rare)"| RECON
+    BCUR -->|"present:cursor (hot, tiny)"| RECON
+
+    subgraph PRELOAD2["PRELOAD — window.api.present (+ onDeck / onCursor)"]
+        RECON["Client reconciler<br/>caches last deck by rev<br/>applies cursor deltas locally<br/>rev guards stale cursors<br/>re-exposes unified PresentState"]
+    end
+
+    RECON -->|"unified state (minimal change<br/>to existing consumers)"| OPVIEW
+    RECON --> PROJ
+
+    subgraph OP["RENDERER — Operator (React, kept)"]
+        OPVIEW["usePresentDeck (view cache)<br/>LiveCockpit: memoized + virtualized rail (>100)"]
+    end
+
+    subgraph PROJBOX["Audience / Projector path"]
+        GATE{"B0 profiling gate:<br/>is React the bottleneck<br/>on 8GB / iGPU?"}
+        PROJ["GATE input"] --> GATE
+        GATE -->|"No → keep React"| RAUD["AudienceView<br/>React.memo all layers"]
+        GATE -->|"Yes → B5"| MINI["Dedicated minimal projector bundle<br/>separate HTML, vanilla/imperative DOM<br/>no Redux, no app shell"]
+
+        subgraph DBUF["Double-buffer cross-fade (B2) — both variants"]
+            LA["Layer A (outgoing)"]
+            LB["Layer B (incoming, mounts hidden)"]
+            XF["opacity cross-fade A↔B<br/>true dissolve, fade ≠ dissolve<br/>cut = 0ms, GPU-composited"]
+            LA --> XF
+            LB --> XF
+        end
+        RAUD --> DBUF
+        MINI --> DBUF
+
+        STAB["Media stability (B3):<br/>key video/img by url+slide-id<br/>cursor-only move = NO remount"]
+        DBUF --> STAB
+    end
+
+    MPROTO2 -.->|"chosen-rendition bytes"| STAB
+
+    subgraph HARNESS["B0 — Profiling harness (deliverable, gates B5/B6)"]
+        METRICS["Throttled low-end emulation<br/>CPU 6x · 8GB cap · software GL<br/>Metrics: input→photon latency,<br/>transition fps, peak RSS · before/after"]
+    end
+    METRICS -.->|"evidence drives"| GATE
+
+    classDef new fill:#1f5e3a,stroke:#4ade80,color:#fff;
+    classDef gate fill:#5a4a00,stroke:#e0b000,color:#fff;
+    class BDECK,BCUR,RECON,DBUF,STAB,NATIVE,METRICS,CAPS new;
+    class GATE gate;

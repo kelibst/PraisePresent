@@ -114,6 +114,13 @@ const migrations: Migration[] = [
            created_at TEXT NOT NULL DEFAULT (datetime('now'))
          );`,
   },
+  {
+    id: 7,
+    name: 'media_rendition',
+    // Optional pre-scaled rendition cached under userData (B6b). NULL = none →
+    // serve the original. Additive column; existing rows keep working unchanged.
+    up: `ALTER TABLE media ADD COLUMN rendition_path TEXT;`,
+  },
 ];
 
 // Idempotent: applied migrations are tracked in _migrations; only pending ones

@@ -1,15 +1,16 @@
-import { useState } from 'react';
 import { cn } from '@/renderer/lib/utils';
+import { SlideStage } from './SlideStage';
 
-// A pure, presentational, scaled-down twin of the audience output (AudienceView).
-// It renders plain data — text lines, an optional reference, optional media, an
-// optional corner badge — inside a fixed 16:9 box and NEVER fetches anything
-// (CLAUDE.md §1.3). Text scales to the box via container-query units (`cqi`) so
-// the same component reads correctly at a large "live" size and a small "next"
-// size without hard-coded font sizes. Tokens only, no hard-coded hex (§5.6).
+// A scaled-down twin of the audience output (AudienceView). It wraps the shared
+// <SlideStage> surface (CLAUDE.md §1.9 — one slide renderer for projector AND
+// preview) in a fixed 16:9 box with the operator-UI chrome: a focus ring for the
+// staged/live slide and an optional corner badge. It renders plain data and NEVER
+// fetches (§1.3). Because the actual painting lives in <SlideStage>, a preview can
+// never drift from the projector (e.g. a video background plays in both). Tokens
+// only, no hard-coded hex (§5.6).
 
 // The media kinds the preview can show. Mirrors `SlideMedia` from the present
-// schema but kept local so this atom imports no schema/runtime — it's plain data.
+// schema but kept local so callers need not import the schema — it's plain data.
 export type SlidePreviewMediaKind = 'image' | 'video' | 'audio';
 
 export type SlidePreviewMedia = {
@@ -17,6 +18,13 @@ export type SlidePreviewMedia = {
   /** Already-resolved, renderable URL (e.g. `app-media://media/12`). */
   url: string;
 };
+
+// Optional background, painted BENEATH the media + text layers. Mirrors
+// `SlideBackground` from the present schema but kept local so callers need not
+// import the schema — it's plain data (validated in main before it ever arrives).
+export type SlidePreviewBackground =
+  | { type: 'color'; color: string }
+  | { type: 'media'; kind: 'image' | 'video'; url: string };
 
 // A small label pinned to the top-left corner, e.g. "Scripture · read-only".
 export type SlidePreviewBadge = {
@@ -34,8 +42,11 @@ export type SlidePreviewProps = {
   lines?: string[];
   /** Reference label pinned bottom-right, e.g. "John 3:16". */
   reference?: string;
-  /** Optional background media. Text overlays it, matching the audience view. */
+  /** Optional foreground media. Text overlays it, matching the audience view. */
   media?: SlidePreviewMedia;
+  /** Optional background (color or media), painted beneath media + text. Pass the
+   *  already-resolved background (per-slide override else service default). */
+  background?: SlidePreviewBackground;
   /** Optional corner badge chip. */
   badge?: SlidePreviewBadge;
   /** Size variant. Defaults to `lg`. */
@@ -44,24 +55,6 @@ export type SlidePreviewProps = {
   active?: boolean;
   className?: string;
 };
-
-// Font sizes expressed in container-inline-size units so text tracks the box.
-const TYPE = {
-  lg: {
-    line: '5.2cqi',
-    reference: '3.2cqi',
-    gap: 'gap-[2.2cqi]',
-    lineGap: 'gap-[1.2cqi]',
-    pad: 'px-[7cqi]',
-  },
-  sm: {
-    line: '7cqi',
-    reference: '4.4cqi',
-    gap: 'gap-[2.4cqi]',
-    lineGap: 'gap-[1.4cqi]',
-    pad: 'px-[6cqi]',
-  },
-} as const;
 
 const BADGE_TONE: Record<NonNullable<SlidePreviewBadge['tone']>, string> = {
   neutral: 'bg-black/55 text-pp-text-label ring-1 ring-white/10',
@@ -73,25 +66,19 @@ export function SlidePreview({
   lines,
   reference,
   media,
+  background,
   badge,
   variant = 'lg',
   active = false,
   className,
 }: SlidePreviewProps) {
-  // A media file that failed to load (moved/corrupt) fails safe to the gradient
-  // backdrop rather than a broken-image icon — the projector never shows junk.
-  const [mediaFailed, setMediaFailed] = useState(false);
-  const t = TYPE[variant];
-  const hasText = (lines?.length ?? 0) > 0;
-  const showMedia = media && media.kind !== 'audio' && !mediaFailed;
-
   return (
     <div
       className={cn(
-        'relative aspect-video w-full overflow-hidden rounded-md text-white shadow-sm',
-        '[container-type:inline-size]',
-        // Deep radial-gradient slide backdrop (matches the audience look).
-        'bg-pp-surface-live bg-[radial-gradient(circle_at_50%_38%,hsl(var(--pp-accent-deep)/0.55),transparent_62%),radial-gradient(circle_at_50%_120%,hsl(var(--background)/0.9),hsl(var(--pp-surface-live)))]',
+        // The 16:9 box + operator-UI chrome. `[container-type:inline-size]` so the
+        // corner badge's `cqi` units track the box (the inner <SlideStage> is its
+        // own container for the slide content).
+        'relative aspect-video w-full overflow-hidden rounded-md shadow-sm [container-type:inline-size]',
         'ring-1 ring-inset',
         active
           ? 'ring-2 ring-pp-accent ring-offset-2 ring-offset-pp-surface-1'
@@ -100,38 +87,14 @@ export function SlidePreview({
       )}
       data-active={active || undefined}
     >
-      {showMedia && <SlideMediaLayer media={media} onError={() => setMediaFailed(true)} />}
-
-      {hasText && (
-        <div
-          className={cn(
-            'absolute inset-0 flex flex-col items-center justify-center text-center',
-            t.gap,
-            t.pad,
-          )}
-        >
-          <div className={cn('flex flex-col', t.lineGap)}>
-            {lines!.map((line, i) => (
-              <p
-                key={i}
-                className="font-semibold leading-tight drop-shadow-md [text-wrap:balance]"
-                style={{ fontSize: t.line }}
-              >
-                {line}
-              </p>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {reference && (
-        <p
-          className="absolute bottom-[3cqi] right-[4cqi] font-normal text-white/70 drop-shadow-md"
-          style={{ fontSize: t.reference }}
-        >
-          {reference}
-        </p>
-      )}
+      <SlideStage
+        scale={variant}
+        surface="preview"
+        lines={lines}
+        reference={reference}
+        media={media}
+        background={background}
+      />
 
       {badge && (
         <span
@@ -145,33 +108,6 @@ export function SlidePreview({
         </span>
       )}
     </div>
-  );
-}
-
-// Renders one media element to fill the box. onError fails safe to the gradient
-// backdrop (§5.7). Image/video only; audio has no visual element.
-function SlideMediaLayer({ media, onError }: { media: SlidePreviewMedia; onError: () => void }) {
-  if (media.kind === 'image') {
-    return (
-      <img
-        src={media.url}
-        alt=""
-        aria-hidden
-        onError={onError}
-        className="absolute inset-0 h-full w-full object-cover"
-      />
-    );
-  }
-  // video — muted + non-interactive; this is a preview, not playback.
-  return (
-    <video
-      src={media.url}
-      aria-hidden
-      muted
-      playsInline
-      onError={onError}
-      className="absolute inset-0 h-full w-full object-cover"
-    />
   );
 }
 

@@ -1,10 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Grid3x3, Search, Type } from 'lucide-react';
 import { cn } from '@/renderer/lib/utils';
-import { PaneHeader } from '@/renderer/components/common';
+import { DEFAULT_TRANSLATION_KEY } from '@/shared/schemas/scripture';
 import type { BibleBook, BibleTranslation, BibleVerse } from '@/shared/schemas/scripture';
-import { referenceLabel, rangeLabel, verseId } from './scriptureDeck';
-import type { StagedPassage } from './useScripturePresenter';
+import { referenceDraft, referenceLabel, rangeLabel, verseId } from './scriptureDeck';
+import type { StagedPassage } from '@/renderer/features/present/usePresentDeck';
 import ReferenceMode from './ReferenceMode';
 import CardPickerMode from './CardPickerMode';
 import KeywordMode from './KeywordMode';
@@ -33,18 +33,68 @@ type Props = {
 export default function SearchPane({ staged, onStage, onStageIndex, onSendLive }: Props) {
   const [mode, setMode] = useState<Mode>('reference');
   const [books, setBooks] = useState<BibleBook[]>([]);
+  const [translations, setTranslations] = useState<BibleTranslation[]>([]);
   const [translation, setTranslation] = useState<BibleTranslation | null>(null);
 
   useEffect(() => {
     void (async () => {
-      const [bookRes, transRes] = await Promise.all([
+      const [bookRes, transRes, defRes] = await Promise.all([
         window.api.scripture.listBooks(),
         window.api.scripture.listTranslations(),
+        window.api.settings.get(DEFAULT_TRANSLATION_KEY),
       ]);
       if (bookRes.ok) setBooks(bookRes.data);
-      if (transRes.ok && transRes.data[0]) setTranslation(transRes.data[0]);
+      if (transRes.ok) {
+        setTranslations(transRes.data);
+        // Reflect the persisted default (Settings → Bible), else the first.
+        const stored = defRes.ok ? defRes.data : null;
+        const active =
+          (stored && transRes.data.find((t) => t.abbreviation === stored)) ?? transRes.data[0];
+        if (active) setTranslation(active);
+      }
     })();
   }, []);
+
+  // Switch the active translation: persist the shared default key, then
+  // re-resolve the currently staged passage in the new translation so what's on
+  // screen (and headed to Live) updates immediately.
+  const changeTranslation = useCallback(
+    async (abbreviation: string) => {
+      const next = translations.find((t) => t.abbreviation === abbreviation);
+      if (!next) return;
+      // Persist the active translation BEFORE flipping the chip: getChapter/
+      // lookupReference resolve the translation from this setting, and flipping
+      // `abbr` retriggers ReferenceMode's chapter load — so the write must land
+      // first or that refetch reads the previous translation.
+      await window.api.settings.set(DEFAULT_TRANSLATION_KEY, abbreviation);
+      setTranslation(next);
+      if (staged && staged.verses.length > 0) {
+        const first = staged.verses[0];
+        const last = staged.verses[staged.verses.length - 1];
+        const query =
+          staged.verses.length > 1
+            ? `${first.bookName} ${first.chapter}:${first.verse}-${last.verse}`
+            : `${first.bookName} ${first.chapter}:${first.verse}`;
+        const res = await window.api.scripture.lookupReference(query);
+        if (res.ok && res.data.length > 0) {
+          onStage(res.data, Math.min(staged.index, res.data.length - 1));
+        }
+      }
+    },
+    [translations, staged, onStage],
+  );
+
+  // Stable callback so ReferenceMode's debounced live-resolve isn't re-armed by
+  // unrelated parent re-renders (reviewer finding).
+  const handleReferenceResolve = useCallback(
+    (verses: BibleVerse[]) => onStage(verses, 0),
+    [onStage],
+  );
+
+  // The staged passage as a reference draft, so Reference mode reflects it on
+  // (re)mount — switching mode tabs and returning keeps the reference, and a
+  // verse picked in Card-picker/Keyword mode shows up in the field too (§1.9).
+  const referenceInitial = useMemo(() => (staged ? referenceDraft(staged.verses) : null), [staged]);
 
   const lead = staged ? staged.verses[staged.index] : null;
   const stagedActiveVerse =
@@ -53,45 +103,77 @@ export default function SearchPane({ staged, onStage, onStageIndex, onSendLive }
   const abbr = translation?.abbreviation ?? 'WEB';
 
   return (
-    <section className="flex h-full min-h-0 flex-col rounded-lg border border-pp-border-soft bg-pp-surface-1">
-      <PaneHeader label="Scripture" meta={translation ? `${abbr} · ${translation.name}` : abbr} />
-
+    <section className="flex h-full min-h-0 flex-col">
       <div className="flex min-h-0 flex-1 flex-col gap-3 p-3">
-        {/* Mode toggle. */}
-        <div
-          className="inline-flex shrink-0 gap-1 rounded-md bg-pp-surface-2 p-1"
-          role="tablist"
-          aria-label="Scripture mode"
-        >
-          {MODES.map((m) => {
-            const Icon = m.icon;
-            return (
-              <button
-                key={m.id}
-                role="tab"
-                aria-selected={mode === m.id}
-                onClick={() => setMode(m.id)}
-                className={cn(
-                  'inline-flex items-center gap-1.5 rounded px-2.5 py-1 text-xs font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring',
-                  mode === m.id
-                    ? 'bg-pp-surface-1 text-pp-text-primary shadow-sm'
-                    : 'text-pp-text-muted hover:text-pp-text-body',
-                )}
-              >
-                <Icon className="size-3.5" aria-hidden />
-                {m.label}
-              </button>
-            );
-          })}
+        {/* Mode toggle + Bible meta (the design's second header row). */}
+        <div className="flex shrink-0 flex-wrap items-center justify-between gap-2">
+          <div
+            className="inline-flex flex-wrap gap-1 rounded-md bg-pp-surface-2 p-1"
+            role="tablist"
+            aria-label="Scripture mode"
+          >
+            {MODES.map((m) => {
+              const Icon = m.icon;
+              return (
+                <button
+                  key={m.id}
+                  role="tab"
+                  aria-selected={mode === m.id}
+                  onClick={() => setMode(m.id)}
+                  className={cn(
+                    'inline-flex items-center gap-1.5 rounded px-2.5 py-1 text-xs font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring',
+                    mode === m.id
+                      ? 'bg-pp-accent/20 text-pp-accent-light'
+                      : 'text-pp-text-muted hover:text-pp-text-body',
+                  )}
+                >
+                  <Icon className="size-3.5" aria-hidden />
+                  {m.label}
+                </button>
+              );
+            })}
+          </div>
+          {/* Active translation switcher — persists the shared default key and
+              re-resolves the staged passage. One source of truth with Settings
+              → Bible (CLAUDE.md §1.9). */}
+          <label className="flex items-center gap-1.5 text-[11px] text-pp-text-muted">
+            <span className="sr-only">Bible translation</span>
+            <select
+              aria-label="Bible translation"
+              title="Active Bible translation"
+              value={abbr}
+              onChange={(e) => void changeTranslation(e.target.value)}
+              className="rounded-md border border-pp-border-strong bg-pp-surface-1 px-2 py-1 text-[11px] font-semibold text-pp-text-body focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring"
+            >
+              {translations.length === 0 ? (
+                <option value={abbr}>{abbr}</option>
+              ) : (
+                translations.map((t) => (
+                  <option key={t.id} value={t.abbreviation}>
+                    {t.abbreviation} · {t.name}
+                  </option>
+                ))
+              )}
+            </select>
+          </label>
         </div>
 
-        {/* Segmented reference display + translation note for the staged lead. */}
-        <SegmentedReference lead={lead} abbr={abbr} count={staged?.verses.length ?? 0} />
+        {/* In Reference mode the editable field IS the segmented display, so the
+            read-only strip would just duplicate it (§1.9) — show it only for the
+            picker/keyword modes, which have no reference input of their own. */}
+        {mode !== 'reference' && (
+          <SegmentedReference lead={lead} abbr={abbr} count={staged?.verses.length ?? 0} />
+        )}
 
         {/* Active mode body. */}
         <div className="flex min-h-0 flex-1 flex-col">
           {mode === 'reference' && (
-            <ReferenceMode books={books} onResolve={(verses) => onStage(verses, 0)} />
+            <ReferenceMode
+              books={books}
+              abbr={abbr}
+              initial={referenceInitial}
+              onResolve={handleReferenceResolve}
+            />
           )}
           {mode === 'picker' && <CardPickerMode onPick={onStage} activeVerse={stagedActiveVerse} />}
           {mode === 'keyword' && (
@@ -99,8 +181,10 @@ export default function SearchPane({ staged, onStage, onStageIndex, onSendLive }
           )}
         </div>
 
-        {/* Results: the staged passage's verses, with the lead verse marked. */}
-        {staged && staged.verses.length > 0 && (
+        {/* Results: the staged passage's verses, with the lead verse marked.
+            Reference mode shows the whole chapter inline (its own list), so the
+            staged-only list here would just duplicate it (§1.9) — skip it there. */}
+        {mode !== 'reference' && staged && staged.verses.length > 0 && (
           <ResultsList staged={staged} onSetLead={onStageIndex} onSendLive={onSendLive} />
         )}
       </div>
@@ -121,23 +205,32 @@ function SegmentedReference({
     ? [lead.bookName, String(lead.chapter), String(lead.verse)]
     : ['Book', 'Ch', 'Vs'];
   return (
-    <div className="flex shrink-0 items-center gap-1.5 rounded-md border border-pp-border-soft bg-pp-surface-2/50 px-2 py-1.5">
+    <div
+      className={cn(
+        'flex shrink-0 items-center gap-2 rounded-[11px] border px-2.5 py-2 transition-shadow',
+        lead
+          ? 'border-pp-accent/40 bg-pp-surface-alt shadow-[0_0_0_3px_hsl(var(--pp-accent)/0.18)]'
+          : 'border-pp-border-strong bg-pp-surface-alt',
+      )}
+    >
       {chips.map((c, i) => (
-        <span key={i} className="flex items-center gap-1.5">
-          {i > 0 && <span className="text-pp-text-dim">{i === 1 ? '›' : ':'}</span>}
+        <span key={i} className="flex items-center gap-2">
+          {i > 0 && <span className="text-base text-pp-text-dim">{i === 1 ? '›' : ':'}</span>}
           <span
             className={cn(
-              'rounded px-1.5 py-0.5 text-sm font-medium',
-              lead
-                ? 'bg-pp-surface-1 text-pp-text-body ring-1 ring-pp-accent/30'
-                : 'text-pp-text-dim',
+              'rounded-lg px-2.5 py-1 text-base font-semibold leading-none',
+              i === 0 && lead
+                ? 'bg-pp-accent/20 text-pp-accent-light'
+                : lead
+                  ? 'bg-pp-surface-2 text-pp-text-body'
+                  : 'text-pp-text-dim',
             )}
           >
             {c}
           </span>
         </span>
       ))}
-      <span className="ml-auto rounded bg-pp-surface-1 px-2 py-0.5 text-xs font-semibold text-pp-text-muted">
+      <span className="ml-auto rounded-lg border border-pp-border-strong bg-pp-surface-1 px-2.5 py-1 text-xs font-semibold text-pp-text-muted">
         {abbr}
       </span>
       {count > 1 && <span className="text-xs text-pp-text-dim">· {count} verses</span>}

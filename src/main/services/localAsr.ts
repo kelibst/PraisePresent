@@ -57,7 +57,7 @@ export class NullLocalAsr implements LocalAsr {
   }
 }
 
-// The single app-wide local ASR backend. Swapped for a real whisper-backed
-// implementation when the binary/weights land (R6); callers depend on the
-// interface, not this concrete value.
-export const localAsr: LocalAsr = new NullLocalAsr();
+// The concrete app-wide local ASR backend now lives in `whisperAsr.ts`
+// (`whisperLocalAsr`), which implements this interface over the whisper.cpp
+// sidecar + model download manager. This module stays the stable contract (R6)
+// plus `NullLocalAsr` for environments where whisper can't be wired.

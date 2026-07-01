@@ -1,7 +1,8 @@
 import { dialog } from 'electron';
-import { existsSync } from 'node:fs';
+import { existsSync, unlinkSync } from 'node:fs';
 import { mediaRepository } from '../db/repositories/mediaRepository';
 import { classifyMedia, baseName } from './mediaClassify';
+import { optimizeImage, optimizeVideo } from './mediaOptimizer';
 import log from '../infra/logger';
 import type { MediaItem } from '@/shared/schemas/media';
 
@@ -44,8 +45,10 @@ export const mediaService = {
   list: (): MediaItem[] => mediaRepository.list(),
 
   // Register known paths (classifiable ones only). Returns the full library so
-  // the renderer refreshes in one round-trip.
-  add: (paths: string[]): MediaItem[] => {
+  // the renderer refreshes in one round-trip. Images are pre-scaled to a projector
+  // -fit rendition on import (B6b) — error-isolated, so a bad file never fails the
+  // import; it just keeps its original.
+  add: async (paths: string[]): Promise<MediaItem[]> => {
     for (const p of paths) {
       const kind = classifyMedia(p);
       if (!kind) {
@@ -58,7 +61,9 @@ export const mediaService = {
         log.warn(`Media add: skipping non-existent file ${p}`);
         continue;
       }
-      mediaRepository.add(baseName(p), p, kind);
+      const id = mediaRepository.add(baseName(p), p, kind);
+      if (kind === 'image') await optimizeImage(id, p);
+      else if (kind === 'video') optimizeVideo(id, p); // background (non-blocking)
     }
     return mediaRepository.list();
   },
@@ -75,6 +80,16 @@ export const mediaService = {
   },
 
   remove: (id: number): MediaItem[] => {
+    // Delete the cached rendition (if any) so we don't leak files; the original is
+    // never touched (the library only references it). Best-effort — never throws.
+    const info = mediaRepository.getServeInfo(id);
+    if (info?.rendition) {
+      try {
+        unlinkSync(info.rendition);
+      } catch (e) {
+        log.warn(`Media remove: could not delete rendition for ${id}:`, e);
+      }
+    }
     mediaRepository.remove(id);
     return mediaRepository.list();
   },

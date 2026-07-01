@@ -94,7 +94,7 @@ export default function CommandPalette({ open, onOpenChange }: CommandPalettePro
               <CommandItem
                 key={`scripture-${hit.bookNumber}-${hit.chapter}-${hit.verse}`}
                 value={`scripture-${hit.reference}`}
-                onSelect={() => go('/scripture')}
+                onSelect={() => go('/present')}
               >
                 <BookOpen aria-hidden="true" />
                 <span className="font-medium">{hit.reference}</span>

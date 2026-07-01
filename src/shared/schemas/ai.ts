@@ -71,6 +71,28 @@ export const aiModelStatus = z.object({
   state: modelState,
   // Operator-facing reason when the model can't be made ready in this build.
   detail: z.string().optional(),
+  // Download progress 0..1 while `state` is `downloading` (omitted otherwise).
+  progress: z.number().min(0).max(1).optional(),
+});
+
+// The one capture rate the whole pipeline standardizes on. whisper.cpp requires
+// 16 kHz; Deepgram/AssemblyAI accept it; it keeps the PCM stream small. The
+// renderer downsamples its mic to exactly this before streaming frames to main.
+export const TARGET_SAMPLE_RATE = 16000;
+
+// A frame of captured microphone audio streamed renderer → main while listening.
+// The renderer (the only place allowed `navigator.mediaDevices`, §5.2) downsamples
+// to 16 kHz mono 16-bit PCM — the lowest common denominator every ASR backend
+// accepts (whisper.cpp + Deepgram linear16 + AssemblyAI pcm_s16le). It is a
+// FIRE-AND-FORGET stream (`ipcMain.on`, not invoke); validated cheaply at the
+// boundary (§5.3) — the payload is binary, so we bound its size rather than its
+// contents. ~6 s @ 16 kHz is a generous per-frame ceiling against a hostile sender.
+export const MAX_PCM_SAMPLES = 16000 * 6;
+export const aiAudioFrame = z.object({
+  sampleRate: z.number().int().positive().max(192000),
+  pcm: z.instanceof(Int16Array).refine((a) => a.length > 0 && a.length <= MAX_PCM_SAMPLES, {
+    message: 'PCM frame is empty or exceeds the maximum size',
+  }),
 });
 
 // One chunk of (eventually) transcribed speech, with any references found in it.
@@ -142,6 +164,7 @@ export const aiHasKey = z.object({ agentId: z.string().min(1) });
 export const aiClearApiKey = z.object({ agentId: z.string().min(1) });
 
 export type AiSubmitText = z.infer<typeof aiSubmitText>;
+export type AiAudioFrame = z.infer<typeof aiAudioFrame>;
 export type DetectionType = z.infer<typeof detectionType>;
 export type AiCandidate = z.infer<typeof aiCandidate>;
 export type DetectionMode = z.infer<typeof detectionMode>;

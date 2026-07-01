@@ -2,7 +2,7 @@ import React from 'react';
 import { createRoot } from 'react-dom/client';
 import AppRouter from './app/router';
 import ErrorBoundary from './app/ErrorBoundary';
-import { ThemeProvider } from './lib/theme';
+import { ThemeProvider, isAudienceWindow } from './lib/theme';
 import './styles/globals.css';
 
 // Apply the persisted theme synchronously, before React renders, to avoid a
@@ -10,6 +10,12 @@ import './styles/globals.css';
 // lives in the bundle (not an inline <script> in index.html) so the production
 // CSP can stay `script-src 'self'`.
 (() => {
+  // The audience/projector window is pinned to the fixed presentation theme so the
+  // operator's light/dark choice never leaks onto the live output (§5.7).
+  if (isAudienceWindow()) {
+    document.documentElement.classList.add('dark');
+    return;
+  }
   const saved = localStorage.getItem('theme') ?? 'system';
   const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
   const isDark = saved === 'dark' || (saved === 'system' && prefersDark);

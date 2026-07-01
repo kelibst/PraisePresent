@@ -7,8 +7,14 @@ import { VitePlugin } from '@electron-forge/plugin-vite';
 import { FusesPlugin } from '@electron-forge/plugin-fuses';
 import { AutoUnpackNativesPlugin } from '@electron-forge/plugin-auto-unpack-natives';
 import { FuseV1Options, FuseVersion } from '@electron/fuses';
+import ffmpegStatic from 'ffmpeg-static';
 import fs from 'node:fs';
 import path from 'node:path';
+
+// The per-platform ffmpeg binary (ffmpeg-static) shipped OUTSIDE the asar into
+// resources/ so it's executable at runtime (transcodeSidecar resolves it via
+// process.resourcesPath when packaged — B6c). Absolute path on the build machine.
+const ffmpegBinary: string[] = ffmpegStatic ? [ffmpegStatic] : [];
 
 // Native modules can't be bundled by Vite, and forge-vite ships no node_modules
 // in the package. Copy better-sqlite3 + its runtime deps (with the Electron-ABI
@@ -24,7 +30,7 @@ const config: ForgeConfig = {
     // resolves at runtime as `path.join(process.resourcesPath, 'bible', ...)`
     // (see bibleBundle.ts). In dev the same file is read from the repo's
     // resources/bible via app.getAppPath() (P3-D1).
-    extraResource: ['resources/bible'],
+    extraResource: ['resources/bible', ...ffmpegBinary],
   },
   rebuildConfig: {},
   hooks: {

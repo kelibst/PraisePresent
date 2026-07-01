@@ -3,9 +3,12 @@ import { FiCheck, FiWifi, FiWifiOff, FiShield } from 'react-icons/fi';
 import type {
   AiStatus,
   AiKeyStatus,
+  AiModelStatus,
+  DetectionMode,
   TranscriptionAgent,
   AutoProjectConfig,
 } from '@/shared/schemas/ai';
+import { useAudioSources } from '@/renderer/features/ai/useAudioSources';
 import { Switch } from '@/renderer/components/ui/switch';
 import { Label } from '@/renderer/components/ui/label';
 import { Input } from '@/renderer/components/ui/input';
@@ -31,6 +34,9 @@ export default function AiPrivacySettings() {
   const [agents, setAgents] = useState<TranscriptionAgent[]>([]);
   const [keyStatus, setKeyStatus] = useState<AiKeyStatus | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // The audio-input list (enumerated in the renderer, merged by main) lives here
+  // in config — the live tab only reads the selected id; it never picks a device.
+  const { sources } = useAudioSources();
 
   const applyStatus = useCallback((next: AiStatus) => {
     setStatus(next);
@@ -70,6 +76,16 @@ export default function AiPrivacySettings() {
       applyStatus(res.data);
       await refreshKey(agentId);
     }
+  };
+
+  const chooseSource = async (sourceId: string) => {
+    const res = await window.api.ai.setSource(sourceId);
+    if (res.ok) applyStatus(res.data);
+  };
+
+  const chooseMode = async (mode: DetectionMode) => {
+    const res = await window.api.ai.setMode(mode);
+    if (res.ok) applyStatus(res.data);
   };
 
   const setOnline = async (online: boolean) => {
@@ -187,6 +203,72 @@ export default function AiPrivacySettings() {
         </div>
       </section>
 
+      {/* Local model download — for any on-device (whisper-backed) engine. */}
+      {activeAgent?.kind === 'offline-local' && <WhisperModelSection agentId={activeAgent.id} />}
+
+      {/* Audio input source. */}
+      <section className="rounded-lg border bg-card p-6">
+        <Label htmlFor="audio-source">Audio input</Label>
+        <p className="mb-3 mt-1 text-sm text-muted-foreground">
+          The microphone or line-in the detector listens on during a service.
+        </p>
+        <select
+          id="audio-source"
+          value={status.selectedSourceId}
+          disabled={killed}
+          onChange={(e) => void chooseSource(e.target.value)}
+          aria-label="Audio input source"
+          className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          {sources.map((s) => (
+            <option key={s.id} value={s.id}>
+              {s.label}
+            </option>
+          ))}
+        </select>
+      </section>
+
+      {/* Default detection mode (passive ⇄ drive). */}
+      <section className="rounded-lg border bg-card p-6">
+        <h2 className="mb-1 text-lg font-semibold text-foreground">Default detection mode</h2>
+        <p className="mb-4 text-sm text-muted-foreground">
+          How detected verses are handled. Passive is the safe default (R8) — you confirm every
+          send.
+        </p>
+        <div
+          className="grid grid-cols-2 gap-3"
+          role="radiogroup"
+          aria-label="Default detection mode"
+        >
+          {(['passive', 'drive'] as const).map((mode) => {
+            const active = status.mode === mode;
+            return (
+              <button
+                key={mode}
+                type="button"
+                role="radio"
+                aria-checked={active}
+                disabled={killed}
+                onClick={() => void chooseMode(mode)}
+                className={`flex flex-col gap-2 rounded-lg border-2 p-4 text-left transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring disabled:cursor-not-allowed disabled:opacity-50 ${
+                  active ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/50'
+                }`}
+              >
+                <span className="flex items-center justify-between gap-2">
+                  <span className="font-medium capitalize text-foreground">{mode}</span>
+                  {active && <FiCheck className="h-4 w-4 shrink-0 text-primary" aria-hidden />}
+                </span>
+                <span className="text-xs text-muted-foreground">
+                  {mode === 'passive'
+                    ? 'Surface candidates; you confirm and send each one.'
+                    : 'Auto-advance detected verses (still operator-confirmed unless auto-project is on).'}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </section>
+
       {/* API key — only for the selected online agent that requires one. */}
       {activeAgent?.requiresKey && (
         <ApiKeySection
@@ -267,6 +349,74 @@ export default function AiPrivacySettings() {
         )}
       </section>
     </div>
+  );
+}
+
+// Local-model (whisper) download manager. Reads `ai.modelStatus`, triggers
+// `ai.downloadModel`, and polls progress while a download is in flight. The
+// download is the engine's ONLY network use; once installed the offline path makes
+// zero network calls. No filesystem/network here — all of it is in main (§1.3).
+function WhisperModelSection({ agentId }: { agentId: string }) {
+  const [model, setModel] = useState<AiModelStatus | null>(null);
+
+  const refresh = useCallback(async () => {
+    const res = await window.api.ai.modelStatus(agentId);
+    if (res.ok) setModel(res.data);
+  }, [agentId]);
+
+  useEffect(() => {
+    void refresh();
+  }, [refresh]);
+
+  // Poll while a download is in flight so the progress bar advances + flips to
+  // Installed without the operator reloading the panel.
+  useEffect(() => {
+    if (model?.state !== 'downloading') return;
+    const handle = setInterval(() => void refresh(), 1000);
+    return () => clearInterval(handle);
+  }, [model?.state, refresh]);
+
+  const download = async () => {
+    const res = await window.api.ai.downloadModel(agentId);
+    if (res.ok) setModel(res.data);
+  };
+
+  const downloading = model?.state === 'downloading';
+  const ready = model?.installed ?? false;
+  const pct = model?.progress != null ? Math.round(model.progress * 100) : null;
+
+  return (
+    <section className="rounded-lg border bg-card p-6">
+      <div className="mb-1 flex items-center justify-between gap-2">
+        <h2 className="text-lg font-semibold text-foreground">Local model</h2>
+        {ready ? (
+          <Badge variant="success">Installed</Badge>
+        ) : (
+          <Badge variant="secondary">Not installed</Badge>
+        )}
+      </div>
+      <p className="mb-4 text-sm text-muted-foreground">
+        {model?.detail ?? 'Whisper transcribes speech entirely on this device.'}
+      </p>
+
+      {downloading && pct != null && (
+        <div className="mb-3">
+          <div className="mb-1 flex items-center justify-between text-xs text-muted-foreground">
+            <span>Downloading…</span>
+            <span className="tabular-nums">{pct}%</span>
+          </div>
+          <div className="h-2 w-full overflow-hidden rounded-full bg-secondary">
+            <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${pct}%` }} />
+          </div>
+        </div>
+      )}
+
+      {!ready && (
+        <Button type="button" onClick={() => void download()} disabled={downloading}>
+          {downloading ? 'Downloading…' : 'Download model'}
+        </Button>
+      )}
+    </section>
   );
 }
 

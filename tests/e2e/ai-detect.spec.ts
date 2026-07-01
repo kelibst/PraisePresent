@@ -61,16 +61,19 @@ test('detect references in text (digits + spoken), review, and project one', asy
   );
   expect(none.ok && none.data).toHaveLength(0);
 
-  // The Live Detect UI: type text, detect, and project a candidate.
+  // The Live Detect UI now lives as a tab inside the unified Present screen (M2).
+  // Open Present, switch to the Live Detect tab, type text, detect, and send the
+  // candidate to the SAME shared deck via the tab's Send-to-Live (no second
+  // present subscription).
   await presenter.evaluate(() => {
-    window.location.hash = '#/detect';
+    window.location.hash = '#/present';
   });
-  await expect(presenter.getByRole('heading', { name: 'Live Detect' })).toBeVisible();
+  await presenter.getByRole('tab', { name: 'Live Detect' }).click();
   await presenter.getByLabel(/Paste or type/).fill('please turn to romans eight twenty eight');
   await presenter.getByRole('button', { name: 'Detect references' }).click();
-  const candidate = presenter.getByRole('button', { name: /Romans 8:28/ });
-  await expect(candidate).toBeVisible();
-  await candidate.click();
+  const sendLive = presenter.getByRole('button', { name: /Send Romans 8:28 live/ });
+  await expect(sendLive).toBeVisible();
+  await sendLive.click();
   await expect(audience.getByText(/all things work together for good/i)).toBeVisible();
 
   await app.close();

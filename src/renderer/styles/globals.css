@@ -66,6 +66,17 @@
     --pp-text-label: 215.4 16.3% 35%;
     --pp-text-muted: 215.4 16.3% 46.9%;
     --pp-text-dim: 215.4 16.3% 58%;
+
+    /* ---- Presentation STAGE backdrop — THEME-INDEPENDENT (CLAUDE.md §5.7) ----
+       The live projector and its preview twins must look IDENTICAL regardless of
+       the operator's light/dark UI theme. These carry the approved dark "stage"
+       look and are deliberately defined ONCE here and NEVER overridden in `.dark`,
+       so `.pp-stage-backdrop` resolves to the same value in both themes. Do NOT add
+       a `.dark` counterpart — a theme-dependent backdrop is exactly the bug this
+       replaces (the old gradient used `--background`, near-white in light). */
+    --pp-stage-base: 225.9 48.6% 6.9%; /* deep stage surface #090d1a */
+    --pp-stage-glow: 105.8 22.6% 32.9%; /* sage top glow #4A6741 */
+    --pp-stage-edge: 222.9 50% 5.5%; /* near-black bottom edge #070b15 */
   }
 
   .dark {
@@ -130,5 +141,46 @@
     @apply bg-background text-foreground;
     font-family:
       -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  }
+}
+
+/*
+  The live "stage" backdrop — the deep radial-gradient surface every projectable
+  slide is painted on, beneath background -> media -> text -> reference. Built ONLY
+  from the theme-independent `--pp-stage-*` tokens so the projector (AudienceView)
+  and its preview twins (SlidePreview) look identical in light or dark mode (§5.7),
+  and defined in ONE place (§1.9 — one source for the backdrop). Applied by the
+  shared <SlideStage> atom.
+*/
+.pp-stage-backdrop {
+  background-color: hsl(var(--pp-stage-base));
+  background-image:
+    radial-gradient(circle at 50% 38%, hsl(var(--pp-stage-glow) / 0.55), transparent 62%),
+    radial-gradient(circle at 50% 120%, hsl(var(--pp-stage-edge) / 0.9), hsl(var(--pp-stage-base)));
+}
+
+/*
+  Audience double-buffer cross-fade (B2). Opacity-only so the compositor can run it
+  on the GPU at ≥60fps even on weak integrated GPUs — no layout/paint thrash. Two
+  layers animate: the incoming slide fades IN, the outgoing slide fades OUT, over a
+  permanent black backdrop (fail-safe — §5.7).
+    • dissolve → both run together (a true cross-dissolve).
+    • fade     → outgoing runs first half, incoming second half (through black).
+  Used by AudienceView via inline `animation` shorthand with per-slide durations.
+*/
+@keyframes ppLayerIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes ppLayerOut {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
   }
 }

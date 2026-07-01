@@ -1,24 +1,15 @@
 import { useCallback, useEffect, useState } from 'react';
 import { FiCheck } from 'react-icons/fi';
 import { useTheme } from '@/renderer/lib/theme';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/renderer/components/ui/select';
-import { Label } from '@/renderer/components/ui/label';
-import type { BibleTranslation } from '@/shared/schemas/scripture';
 
-// General settings: appearance/theme, the default Bible translation, and what the
-// app does on startup. Theme is wired to the ThemeProvider (persisted + toggles
-// the `dark` class, §1.5); translation + startup persist via `settings:get/set`
-// (truth in SQLite, §1.5) through `window.api` only (§1.3). No fake controls.
+// General settings: appearance/theme and what the app does on startup. Theme is
+// wired to the ThemeProvider (persisted + toggles the `dark` class, §1.5);
+// startup persists via `settings:get/set` (truth in SQLite, §1.5) through
+// `window.api` only (§1.3). The default Bible translation lives in Settings →
+// Bible (one source, §1.9). No fake controls.
 
-// Persisted settings keys (truth in SQLite). Kept beside their UI so the contract
+// Persisted settings key (truth in SQLite). Kept beside its UI so the contract
 // is one source per concern; main stores the raw string and the renderer parses.
-export const DEFAULT_TRANSLATION_KEY = 'scripture.defaultTranslation';
 export const STARTUP_KEY = 'app.onStartup';
 
 const THEMES = [
@@ -43,8 +34,6 @@ function parseStartup(raw: string | null): StartupChoice {
 export default function GeneralSettings() {
   const { theme, setTheme } = useTheme();
 
-  const [translations, setTranslations] = useState<BibleTranslation[]>([]);
-  const [defaultTranslation, setDefaultTranslation] = useState<string>('');
   const [startup, setStartup] = useState<StartupChoice>(DEFAULT_STARTUP);
   const [savedKey, setSavedKey] = useState<string | null>(null);
 
@@ -55,27 +44,10 @@ export default function GeneralSettings() {
 
   useEffect(() => {
     void (async () => {
-      const [transRes, defRes, startRes] = await Promise.all([
-        window.api.scripture.listTranslations(),
-        window.api.settings.get(DEFAULT_TRANSLATION_KEY),
-        window.api.settings.get(STARTUP_KEY),
-      ]);
-      if (transRes.ok) setTranslations(transRes.data);
+      const startRes = await window.api.settings.get(STARTUP_KEY);
       if (startRes.ok) setStartup(parseStartup(startRes.data));
-      // Fall back to the first available translation when none was chosen yet.
-      const stored = defRes.ok ? defRes.data : null;
-      if (stored) setDefaultTranslation(stored);
-      else if (transRes.ok && transRes.data[0]) {
-        setDefaultTranslation(transRes.data[0].abbreviation);
-      }
     })();
   }, []);
-
-  const chooseTranslation = async (abbreviation: string) => {
-    setDefaultTranslation(abbreviation);
-    const res = await window.api.settings.set(DEFAULT_TRANSLATION_KEY, abbreviation);
-    if (res.ok) flashSaved(DEFAULT_TRANSLATION_KEY);
-  };
 
   const chooseStartup = async (value: StartupChoice) => {
     setStartup(value);
@@ -106,39 +78,6 @@ export default function GeneralSettings() {
               {t.label}
             </button>
           ))}
-        </div>
-      </section>
-
-      {/* Default Bible translation. */}
-      <section className="rounded-lg border bg-card p-6">
-        <div className="mb-4 flex items-center justify-between">
-          <div>
-            <h2 className="text-lg font-semibold text-foreground">Default Bible translation</h2>
-            <p className="text-sm text-muted-foreground">
-              Used when you open the Scripture browser.
-            </p>
-          </div>
-          {savedKey === DEFAULT_TRANSLATION_KEY && <SavedTag />}
-        </div>
-        <div className="max-w-xs">
-          <Label htmlFor="default-translation" className="sr-only">
-            Default Bible translation
-          </Label>
-          <Select
-            value={defaultTranslation || undefined}
-            onValueChange={(v) => void chooseTranslation(v)}
-          >
-            <SelectTrigger id="default-translation" aria-label="Default Bible translation">
-              <SelectValue placeholder="Select a translation" />
-            </SelectTrigger>
-            <SelectContent>
-              {translations.map((t) => (
-                <SelectItem key={t.id} value={t.abbreviation}>
-                  {t.abbreviation} · {t.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
         </div>
       </section>
 

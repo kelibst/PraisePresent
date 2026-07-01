@@ -95,23 +95,62 @@ test('hydrate WEB offline, search by reference + keyword, and present a verse', 
   });
   await expect(audience.getByText(/For God so loved the world/)).toBeVisible();
 
-  // The ScripturePage 3-pane workspace renders. Reference mode is the default and
-  // is NOT blank — its field is prefilled with "John 3:16"; resolving it stages
-  // the verse and sending it live mirrors it to the audience.
+  // The unified Present screen renders. Its left Source panel defaults to the
+  // Scripture tab, where Reference mode is the default and is NOT blank — its
+  // field defaults to "Genesis 1:1" (never blank); typing John 3:16 stages the
+  // verse and sending it live mirrors it to the audience.
   await presenter.evaluate(() => {
-    window.location.hash = '#/scripture';
+    window.location.hash = '#/present';
   });
   await expect(presenter.getByText('Scripture').first()).toBeVisible();
-  // Resolve the prefilled reference (Enter) → the staged verse appears in Pane 1.
-  await presenter.getByLabel('Scripture reference').press('Enter');
-  await expect(presenter.getByText(/For God so loved the world/).first()).toBeVisible();
-  // Send the staged verse live; the audience window mirrors it.
+  // The segmented field resolves live from its three zones — no Enter required.
+  await presenter.getByLabel('Book', { exact: true }).fill('John');
+  await presenter.getByLabel('Chapter', { exact: true }).fill('3');
+  await presenter.getByLabel('Verse', { exact: true }).fill('16');
+  // Wait on the PREVIEW pane's "Up next · John 3:16" label specifically, so we
+  // confirm the field has *staged* John 3:16 (debounced) before sending it live —
+  // not the leftover live-cockpit text projected via setDeck above.
+  await expect(presenter.getByText(/Up next.*John 3:16/)).toBeVisible();
+  // Send the staged verse live; the audience window mirrors it. Use `.first()`:
+  // the true double-buffer cross-fade (B2) briefly shows BOTH the outgoing and the
+  // incoming slide layers, and here both happen to carry the same verse text (it was
+  // already projected once above), so two transient copies are expected mid-fade.
   await presenter.getByRole('button', { name: 'Send to Live' }).click();
-  await expect(audience.getByText(/For God so loved the world/)).toBeVisible();
+  await expect(audience.getByText(/For God so loved the world/).first()).toBeVisible();
+  // Regression (§5.8): once the cross-fade settles, the outgoing layer must unmount,
+  // leaving exactly ONE copy of the text — proving the layer cleanup timer fires and
+  // layers never accumulate (the B2 double-buffer is bounded to a single live slide).
+  await expect(async () => {
+    expect(await audience.getByText(/For God so loved the world/).count()).toBe(1);
+  }).toPass({ timeout: 3000 });
 
-  // The reference field still drives an arbitrary lookup (Psalm 23).
-  await presenter.getByLabel('Scripture reference').fill('Psalm 23');
-  await presenter.getByLabel('Scripture reference').press('Enter');
+  // The live deck renders as a horizontal strip in the cockpit's right pane, with
+  // a LIVE badge on the slide currently on the projector (design: deck moved under
+  // ON SCREEN NOW, no separate vertical rail).
+  const liveDeck = presenter.getByRole('group', { name: 'Live deck slides' });
+  await expect(liveDeck).toBeVisible();
+  await expect(liveDeck.getByText('Live')).toBeVisible();
+
+  // A multi-slide deck: clicking a deck card jumps the audience to that slide
+  // (goto), proving the relocated strip still drives transport.
+  await presenter.evaluate(async () => {
+    const res = await window.api.scripture.lookupReference('John 3:16-18');
+    if (res.ok) {
+      await window.api.present.setDeck(
+        res.data.map((v, i) => ({ id: `jn-${i}`, lines: [v.text], reference: `John 3:${16 + i}` })),
+        0,
+      );
+    }
+  });
+  const deckCards = liveDeck.getByRole('button');
+  await expect(deckCards).toHaveCount(3);
+  await deckCards.nth(2).click();
+  await expect(audience.getByText('John 3:18')).toBeVisible();
+
+  // The segmented field still drives an arbitrary lookup (Psalm 23:1).
+  await presenter.getByLabel('Book', { exact: true }).fill('Psalms');
+  await presenter.getByLabel('Chapter', { exact: true }).fill('23');
+  await presenter.getByLabel('Verse', { exact: true }).fill('1');
   // WEB renders the divine name as "Yahweh" (Psalm 23:1).
   await expect(presenter.getByText(/Yahweh is my shepherd/).first()).toBeVisible();
 
@@ -120,6 +159,131 @@ test('hydrate WEB offline, search by reference + keyword, and present a verse', 
   await presenter.getByLabel('Keyword search').fill('love your enemies');
   await presenter.getByRole('button', { name: 'Search', exact: true }).click();
   await expect(presenter.getByText(/containing/).first()).toBeVisible();
+
+  await app.close();
+  fs.rmSync(userDataDir, { recursive: true, force: true });
+});
+
+// Multiple public-domain translations hydrate side by side; every read is scoped
+// to the active translation (set via the shared default-translation setting), so
+// switching changes the text and never returns cross-translation duplicates.
+test('multiple translations hydrate, scope reads, and switch by setting', async () => {
+  const userDataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'pp-scripture-multi-'));
+  const app = await electron.launch({
+    args: [mainPath, '--no-sandbox', `--user-data-dir=${userDataDir}`],
+    env: launchEnv(),
+  });
+  const presenter = await app.firstWindow();
+  await presenter.waitForLoadState('domcontentloaded');
+
+  // Wait for hydration of the bundled set.
+  await expect
+    .poll(
+      async () => {
+        const res = await presenter.evaluate(() => window.api.scripture.listTranslations());
+        return res.ok ? res.data.length : 0;
+      },
+      { timeout: 30_000 },
+    )
+    .toBeGreaterThanOrEqual(6);
+
+  const trans = await presenter.evaluate(() => window.api.scripture.listTranslations());
+  const abbrs = trans.ok ? trans.data.map((t) => t.abbreviation) : [];
+  expect(abbrs).toEqual(expect.arrayContaining(['WEB', 'KJV', 'ASV', 'YLT', 'BBE', 'WBT']));
+
+  // Default (WEB) — scoped to exactly one verse, with WEB's wording.
+  const web = await presenter.evaluate(() => window.api.scripture.lookupReference('John 3:16'));
+  expect(web.ok && web.data).toHaveLength(1);
+  expect(web.data[0].text).toContain('one and only Son');
+
+  // Switch the active translation via the shared setting, then re-query: KJV
+  // wording, still exactly one verse (no cross-translation duplication).
+  await presenter.evaluate(() => window.api.settings.set('scripture.defaultTranslation', 'KJV'));
+  const kjv = await presenter.evaluate(() => window.api.scripture.lookupReference('John 3:16'));
+  expect(kjv.ok && kjv.data).toHaveLength(1);
+  expect(kjv.data[0].text).toContain('only begotten Son');
+  expect(kjv.data[0].text).not.toContain('one and only Son');
+
+  await app.close();
+  fs.rmSync(userDataDir, { recursive: true, force: true });
+});
+
+// EasyWorship-style reference field: never blank (defaults to Genesis 1:1),
+// nearest-book on type, Space completes the book, and the space form resolves —
+// all with no Enter required.
+test('reference field defaults to Genesis 1:1 and resolves the EasyWorship space form', async () => {
+  const userDataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'pp-scripture-ew-'));
+  const app = await electron.launch({
+    args: [mainPath, '--no-sandbox', `--user-data-dir=${userDataDir}`],
+    env: launchEnv(),
+  });
+  const pages: Page[] = [await app.firstWindow()];
+  while (pages.length < 2) pages.push(await app.waitForEvent('window'));
+  for (const p of pages) await p.waitForLoadState('domcontentloaded');
+  const presenter = pages.find((p) => !p.url().includes('/audience'))!;
+
+  // Navigate to the Present screen (app opens on Home).
+  await presenter.evaluate(() => {
+    window.location.hash = '#/present';
+  });
+  await expect(presenter.getByText('Scripture').first()).toBeVisible();
+
+  const bookField = presenter.getByLabel('Book', { exact: true });
+
+  // Never-empty: the segmented field starts at Genesis 1:1 and is already staged.
+  await expect(bookField).toHaveValue('Genesis');
+  await expect(presenter.getByLabel('Chapter', { exact: true })).toHaveValue('1');
+  await expect(presenter.getByLabel('Verse', { exact: true })).toHaveValue('1');
+  await expect(presenter.getByText(/In the beginning/).first()).toBeVisible({
+    timeout: 30_000,
+  });
+
+  // Type a book fragment, Space to complete it to the nearest book (focus jumps to
+  // the chapter zone), then the space form "3 16" — no colon, no Enter — where the
+  // space advances Chapter → Verse and John 3:16 resolves live.
+  await bookField.click();
+  await bookField.fill('');
+  await bookField.pressSequentially('joh', { delay: 40 });
+  await bookField.press(' ');
+  await expect(bookField).toHaveValue('John');
+  await presenter.keyboard.type('3 16', { delay: 40 });
+  await expect(presenter.getByLabel('Chapter', { exact: true })).toHaveValue('3');
+  await expect(presenter.getByLabel('Verse', { exact: true })).toHaveValue('16');
+  await expect(presenter.getByText(/For God so loved the world/).first()).toBeVisible({
+    timeout: 10_000,
+  });
+
+  // The WHOLE chapter loads as the EasyWorship-style results list — all 36 verses
+  // of John 3 (not just verse 16), with the typed verse the single selected/lead row.
+  const chapterList = presenter.getByLabel('Chapter verses');
+  await expect(chapterList.getByRole('button')).toHaveCount(36);
+  await expect(chapterList.locator('[aria-current="true"]')).toHaveCount(1);
+
+  // Inline range in the verse zone: "16-18" highlights three rows in the chapter
+  // list (the EasyWorship multi-verse selection) while the whole chapter stays shown.
+  await presenter.getByLabel('Verse', { exact: true }).fill('16-18');
+  await expect(chapterList.locator('[aria-current="true"]')).toHaveCount(3, { timeout: 10_000 });
+  await expect(chapterList.getByRole('button')).toHaveCount(36);
+
+  // State persists across the mode tabs: leave Reference for another mode and come
+  // back — the field still reflects the staged passage, not the Genesis 1:1 reset.
+  await presenter.getByRole('tab', { name: 'Card picker' }).click();
+  await presenter.getByRole('tab', { name: 'Reference' }).click();
+  await expect(presenter.getByLabel('Book', { exact: true })).toHaveValue('John');
+  await expect(presenter.getByLabel('Chapter', { exact: true })).toHaveValue('3');
+  await expect(presenter.getByLabel('Verse', { exact: true })).toHaveValue('16-18');
+
+  // Clicking a verse row stages it (and reflects it in the field) — browse + pick.
+  await presenter.getByLabel('Chapter verses').getByRole('button').first().click();
+  await expect(presenter.getByLabel('Verse', { exact: true })).toHaveValue('1');
+
+  // With a complete book already in the field (never empty), focusing it selects
+  // the book so typing REPLACES it and the matches list — instead of appending
+  // ("John" + "p" → "pJohn") and matching nothing (the "books don't list" bug).
+  await presenter.getByLabel('Book', { exact: true }).click();
+  await presenter.keyboard.type('p');
+  await expect(presenter.getByLabel('Book', { exact: true })).toHaveValue('p');
+  await expect(presenter.getByRole('listbox', { name: 'Book suggestions' })).toBeVisible();
 
   await app.close();
   fs.rmSync(userDataDir, { recursive: true, force: true });

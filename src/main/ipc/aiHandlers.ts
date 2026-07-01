@@ -1,3 +1,4 @@
+import { ipcMain } from 'electron';
 import { z } from 'zod';
 import { CHANNELS } from '@/shared/constants/channels';
 import {
@@ -15,6 +16,7 @@ import {
   aiSetSource,
   aiModelStatusRequest,
   aiDownloadModel,
+  aiAudioFrame,
 } from '@/shared/schemas/ai';
 import { aiScriptureDetector } from '../services/aiScriptureDetector';
 import { handle } from './registry';
@@ -95,7 +97,8 @@ export function registerAiHandlers(): void {
     ({ transcriptOnly }): AiStatus => aiScriptureDetector.setTranscriptOnly(transcriptOnly),
   );
 
-  // Stubbed capture controls (A1) — no-op with a clear status when unavailable.
+  // Capture controls. startListening opens the active agent's ASR session (or
+  // returns a clear status when it can't); stopListening tears it down.
   handle(
     CHANNELS.ai.startListening,
     z.undefined(),
@@ -106,6 +109,16 @@ export function registerAiHandlers(): void {
     z.undefined(),
     (): AiStatus => aiScriptureDetector.stopListening(),
   );
+
+  // The hot PCM stream (renderer → main). Fire-and-forget `on`, not `invoke` — no
+  // per-frame Result round-trip. Validated at the boundary like any untrusted
+  // payload (§5.3); a frame that fails validation is dropped silently rather than
+  // logged per-frame (per-frame logging on a hot path is itself a DoS vector).
+  ipcMain.on(CHANNELS.ai.audioFrame, (_event, raw) => {
+    const parsed = aiAudioFrame.safeParse(raw);
+    if (!parsed.success) return;
+    aiScriptureDetector.pushAudio(parsed.data.pcm);
+  });
 
   // Key management (A2). setApiKey/clearApiKey store/remove the cloud key in OS
   // secure storage; hasKey returns ONLY a boolean (+ masked hint) — the key
