@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import { CalendarDays, Search, Sun, Moon, Monitor } from 'lucide-react';
 
+import logoDark from '@/renderer/assets/logo-dark.png';
+import logoLight from '@/renderer/assets/logo-light.png';
 import { Button } from '@/renderer/components/ui/button';
 import {
   Select,
@@ -101,9 +103,12 @@ export default function TopBar() {
     <header className="flex h-[52px] shrink-0 items-center gap-3 border-b border-pp-border-soft bg-pp-surface-2 px-3">
       {/* Brand */}
       <div className="flex items-center gap-2">
-        <div className="grid size-7 place-items-center rounded-md bg-pp-accent text-xs font-bold text-primary-foreground">
-          PP
-        </div>
+        <img src={logoDark} alt="PraisePresent" className="block h-7 w-auto dark:hidden" />
+        <img
+          src={logoLight}
+          alt="PraisePresent"
+          className="hidden h-7 w-auto dark:block"
+        />
         <span className="hidden text-sm font-semibold text-pp-text-primary sm:inline">
           PraisePresent
         </span>

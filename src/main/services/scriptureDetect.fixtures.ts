@@ -103,6 +103,13 @@ export const SCRIPTURE_CORPUS: CorpusCase[] = [
     note: 'spoken "chapter X verse Y" phrasing',
   },
   {
+    id: 'pos-whisper-punctuated-chapter-verse',
+    kind: 'positive',
+    text: 'Turn with me to the book of John, chapter 3, verse 16.',
+    expected: ['John 3:16'],
+    note: 'whisper-style natural punctuation around chapter/verse keywords (regression)',
+  },
+  {
     id: 'pos-spoken-hundreds-psalm',
     kind: 'positive',
     text: 'turn to psalm one hundred nineteen',

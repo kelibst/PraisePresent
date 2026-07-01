@@ -107,7 +107,12 @@ const api: Api = {
     listSources: (sources) => ipcRenderer.invoke(CHANNELS.ai.listSources, { sources }),
     setSource: (sourceId) => ipcRenderer.invoke(CHANNELS.ai.setSource, { sourceId }),
     modelStatus: (agentId) => ipcRenderer.invoke(CHANNELS.ai.modelStatus, { agentId }),
-    downloadModel: (agentId) => ipcRenderer.invoke(CHANNELS.ai.downloadModel, { agentId }),
+    downloadModel: (agentId, modelId) =>
+      ipcRenderer.invoke(CHANNELS.ai.downloadModel, { agentId, modelId }),
+    listModels: () => ipcRenderer.invoke(CHANNELS.ai.listModels),
+    setPreferredModel: (modelId) =>
+      ipcRenderer.invoke(CHANNELS.ai.setPreferredModel, { modelId }),
+    deleteModel: (modelId) => ipcRenderer.invoke(CHANNELS.ai.deleteModel, { modelId }),
     status: () => ipcRenderer.invoke(CHANNELS.ai.status),
     setMode: (mode) => ipcRenderer.invoke(CHANNELS.ai.setMode, { mode }),
     setEnabled: (enabled) => ipcRenderer.invoke(CHANNELS.ai.setEnabled, { enabled }),

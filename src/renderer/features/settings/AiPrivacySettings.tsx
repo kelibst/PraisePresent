@@ -1,12 +1,14 @@
 import { useCallback, useEffect, useState } from 'react';
-import { FiCheck, FiWifi, FiWifiOff, FiShield } from 'react-icons/fi';
+import { FiCheck, FiWifi, FiWifiOff, FiShield, FiDownload, FiTrash2 } from 'react-icons/fi';
 import type {
   AiStatus,
   AiKeyStatus,
-  AiModelStatus,
   DetectionMode,
   TranscriptionAgent,
   AutoProjectConfig,
+  WhisperModelId,
+  WhisperModelInfo,
+  WhisperModelsStatus,
 } from '@/shared/schemas/ai';
 import { useAudioSources } from '@/renderer/features/ai/useAudioSources';
 import { Switch } from '@/renderer/components/ui/switch';
@@ -352,71 +354,242 @@ export default function AiPrivacySettings() {
   );
 }
 
-// Local-model (whisper) download manager. Reads `ai.modelStatus`, triggers
-// `ai.downloadModel`, and polls progress while a download is in flight. The
-// download is the engine's ONLY network use; once installed the offline path makes
-// zero network calls. No filesystem/network here — all of it is in main (§1.3).
+// Human-readable byte size for an installed model's actual file size.
+function formatBytes(bytes: number): string {
+  const mb = bytes / 1_000_000;
+  return mb >= 1000 ? `${(mb / 1000).toFixed(1)} GB` : `${Math.round(mb)} MB`;
+}
+
+// Local-model (whisper) manager. Reads `ai.listModels` (every tiny/base/small
+// variant's install state + the operator's preference + which is active),
+// lets the operator download/delete/pick a specific variant via
+// `ai.downloadModel`/`ai.deleteModel`/`ai.setPreferredModel`, and polls
+// progress while a download is in flight. Downloading is the engine's ONLY
+// network use; once installed the offline path makes zero network calls. No
+// filesystem/network here — all of it is in main (§1.3).
 function WhisperModelSection({ agentId }: { agentId: string }) {
-  const [model, setModel] = useState<AiModelStatus | null>(null);
+  const [status, setStatus] = useState<WhisperModelsStatus | null>(null);
+  const [busyId, setBusyId] = useState<WhisperModelId | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
-    const res = await window.api.ai.modelStatus(agentId);
-    if (res.ok) setModel(res.data);
-  }, [agentId]);
+    try {
+      const res = await window.api.ai.listModels();
+      if (res.ok) setStatus(res.data);
+      else setError(res.error);
+    } catch {
+      // invoke() itself rejected (e.g. a stale preload build without this
+      // channel) — surface it instead of leaving the panel on "Loading…"
+      // forever with no feedback.
+      setError('Could not reach the model manager — try restarting the app.');
+    }
+  }, []);
 
   useEffect(() => {
     void refresh();
   }, [refresh]);
 
-  // Poll while a download is in flight so the progress bar advances + flips to
-  // Installed without the operator reloading the panel.
+  // Poll while a download is in flight so progress advances + the list flips
+  // to Installed without the operator reloading the panel.
+  const downloadingId = status?.models.find((m) => m.downloading)?.id ?? null;
   useEffect(() => {
-    if (model?.state !== 'downloading') return;
+    if (!downloadingId) return;
     const handle = setInterval(() => void refresh(), 1000);
     return () => clearInterval(handle);
-  }, [model?.state, refresh]);
+  }, [downloadingId, refresh]);
 
-  const download = async () => {
-    const res = await window.api.ai.downloadModel(agentId);
-    if (res.ok) setModel(res.data);
+  const download = async (modelId: WhisperModelId) => {
+    setError(null);
+    const res = await window.api.ai.downloadModel(agentId, modelId);
+    if (res.ok) setStatus((prev) => (prev ? { ...prev, progress: res.data.progress } : prev));
+    else setError(res.error);
+    void refresh();
   };
 
-  const downloading = model?.state === 'downloading';
-  const ready = model?.installed ?? false;
-  const pct = model?.progress != null ? Math.round(model.progress * 100) : null;
+  const use = async (modelId: WhisperModelId | null) => {
+    setError(null);
+    const res = await window.api.ai.setPreferredModel(modelId);
+    if (res.ok) setStatus(res.data);
+    else setError(res.error);
+  };
+
+  const remove = async (modelId: WhisperModelId) => {
+    setError(null);
+    setBusyId(modelId);
+    const res = await window.api.ai.deleteModel(modelId);
+    setBusyId(null);
+    if (res.ok) setStatus(res.data);
+    else setError(res.error);
+  };
+
+  if (!status) {
+    return (
+      <section className="rounded-lg border bg-card p-6">
+        <h2 className="text-lg font-semibold text-foreground">Local model</h2>
+        <p className="mt-1 text-sm text-muted-foreground">
+          {error ?? 'Loading…'}
+        </p>
+      </section>
+    );
+  }
+
+  const anyDownloading = downloadingId !== null;
+  const anyInstalled = status.models.some((m) => m.installed);
 
   return (
     <section className="rounded-lg border bg-card p-6">
-      <div className="mb-1 flex items-center justify-between gap-2">
-        <h2 className="text-lg font-semibold text-foreground">Local model</h2>
-        {ready ? (
-          <Badge variant="success">Installed</Badge>
-        ) : (
-          <Badge variant="secondary">Not installed</Badge>
-        )}
-      </div>
-      <p className="mb-4 text-sm text-muted-foreground">
-        {model?.detail ?? 'Whisper transcribes speech entirely on this device.'}
+      <h2 className="text-lg font-semibold text-foreground">Local model</h2>
+      <p className="mb-4 mt-1 text-sm text-muted-foreground">
+        Whisper transcribes speech entirely on this device. Bigger models are more accurate but
+        slower — pick one that keeps up on this machine, or leave it automatic.
       </p>
 
-      {downloading && pct != null && (
-        <div className="mb-3">
+      {error && <p className="mb-3 text-sm text-destructive">{error}</p>}
+
+      <div className="flex flex-col gap-2" role="radiogroup" aria-label="Local whisper model">
+        {/* Automatic — the app picks the fastest installed model (base > tiny > small). */}
+        <button
+          type="button"
+          role="radio"
+          aria-checked={status.preferredModelId === null}
+          disabled={!anyInstalled}
+          onClick={() => void use(null)}
+          className={`flex items-center justify-between gap-2 rounded-lg border-2 p-3 text-left transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring disabled:cursor-not-allowed disabled:opacity-50 ${
+            status.preferredModelId === null
+              ? 'border-primary bg-primary/5'
+              : 'border-border hover:border-primary/50'
+          }`}
+        >
+          <span className="flex flex-col">
+            <span className="font-medium text-foreground">Automatic (recommended)</span>
+            <span className="text-xs text-muted-foreground">
+              Uses the fastest installed model for reliable real-time detection.
+            </span>
+          </span>
+          {status.preferredModelId === null && (
+            <FiCheck className="h-4 w-4 shrink-0 text-primary" aria-hidden />
+          )}
+        </button>
+
+        {status.models.map((m) => (
+          <ModelRow
+            key={m.id}
+            model={m}
+            isActive={status.activeModelId === m.id}
+            isPreferred={status.preferredModelId === m.id}
+            progress={m.downloading ? status.progress : undefined}
+            anyDownloading={anyDownloading}
+            busy={busyId === m.id}
+            onDownload={() => void download(m.id)}
+            onUse={() => void use(m.id)}
+            onDelete={() => void remove(m.id)}
+          />
+        ))}
+      </div>
+    </section>
+  );
+}
+
+// One downloadable whisper variant: install state, progress, and the actions
+// available for it (download / use / delete). Split out from the parent's
+// radiogroup body to keep each row's local layout readable.
+function ModelRow({
+  model,
+  isActive,
+  isPreferred,
+  progress,
+  anyDownloading,
+  busy,
+  onDownload,
+  onUse,
+  onDelete,
+}: {
+  model: WhisperModelInfo;
+  isActive: boolean;
+  isPreferred: boolean;
+  progress: number | undefined;
+  anyDownloading: boolean;
+  busy: boolean;
+  onDownload: () => void;
+  onUse: () => void;
+  onDelete: () => void;
+}) {
+  const pct = progress != null ? Math.round(progress * 100) : null;
+
+  return (
+    <div
+      role="radio"
+      aria-checked={isPreferred}
+      aria-disabled={!model.installed}
+      className={`flex flex-col gap-2 rounded-lg border-2 p-3 transition ${
+        isPreferred ? 'border-primary bg-primary/5' : 'border-border'
+      }`}
+    >
+      <div className="flex items-center justify-between gap-2">
+        <button
+          type="button"
+          onClick={onUse}
+          disabled={!model.installed}
+          className="flex flex-1 items-center justify-between gap-2 text-left disabled:cursor-not-allowed"
+        >
+          <span className="flex flex-col">
+            <span className="font-medium text-foreground">{model.label}</span>
+            <span className="text-xs text-muted-foreground">
+              {model.installed && model.sizeBytes
+                ? `${formatBytes(model.sizeBytes)} installed`
+                : 'Not installed'}
+            </span>
+          </span>
+          {isPreferred && <FiCheck className="h-4 w-4 shrink-0 text-primary" aria-hidden />}
+        </button>
+        <span className="flex shrink-0 items-center gap-1.5">
+          {isActive && (
+            <Badge variant="success" className="whitespace-nowrap">
+              In use
+            </Badge>
+          )}
+          {model.installed ? (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={onDelete}
+              disabled={anyDownloading || busy}
+              aria-label={`Delete ${model.label}`}
+              title="Delete to free disk space"
+            >
+              <FiTrash2 className="h-3.5 w-3.5" aria-hidden />
+            </Button>
+          ) : (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={onDownload}
+              disabled={anyDownloading}
+            >
+              <FiDownload className="mr-1.5 h-3.5 w-3.5" aria-hidden />
+              {model.downloading ? 'Downloading…' : 'Download'}
+            </Button>
+          )}
+        </span>
+      </div>
+
+      {model.downloading && pct != null && (
+        <div>
           <div className="mb-1 flex items-center justify-between text-xs text-muted-foreground">
             <span>Downloading…</span>
             <span className="tabular-nums">{pct}%</span>
           </div>
           <div className="h-2 w-full overflow-hidden rounded-full bg-secondary">
-            <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${pct}%` }} />
+            <div
+              className="h-full rounded-full bg-primary transition-all"
+              style={{ width: `${pct}%` }}
+            />
           </div>
         </div>
       )}
-
-      {!ready && (
-        <Button type="button" onClick={() => void download()} disabled={downloading}>
-          {downloading ? 'Downloading…' : 'Download model'}
-        </Button>
-      )}
-    </section>
+    </div>
   );
 }
 

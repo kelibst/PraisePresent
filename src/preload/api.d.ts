@@ -26,6 +26,8 @@ import type {
   DetectionMode,
   TranscriptionAgent,
   TranscriptSegment,
+  WhisperModelId,
+  WhisperModelsStatus,
 } from '@/shared/schemas/ai';
 import type { SearchResults } from '@/shared/schemas/search';
 
@@ -134,10 +136,16 @@ export interface Api {
     listSources(sources: AudioSource[]): Promise<Result<AudioSource[]>>;
     /** Choose the active audio input source. Returns the new status. */
     setSource(sourceId: string): Promise<Result<AiStatus>>;
-    /** Read a local engine's model-download-manager status (R6 stub today). */
+    /** Read a local engine's model-download-manager status. */
     modelStatus(agentId: string): Promise<Result<AiModelStatus>>;
-    /** Trigger a local model download — a no-op stub in this build (R6). */
-    downloadModel(agentId: string): Promise<Result<AiModelStatus>>;
+    /** Download a whisper model variant (tiny/base/small); omit for the default (base). */
+    downloadModel(agentId: string, modelId?: WhisperModelId): Promise<Result<AiModelStatus>>;
+    /** Every whisper variant's install state + the operator's preference + the active one. */
+    listModels(): Promise<Result<WhisperModelsStatus>>;
+    /** Pin (or, with null, clear) which downloaded variant to use. */
+    setPreferredModel(modelId: WhisperModelId | null): Promise<Result<WhisperModelsStatus>>;
+    /** Remove a downloaded variant to free disk space. */
+    deleteModel(modelId: WhisperModelId): Promise<Result<WhisperModelsStatus>>;
     /** Current orchestrator status (enabled/mode/listening/agent/online). */
     status(): Promise<Result<AiStatus>>;
     /** Set the detection mode (passive | drive). Returns the new status. */

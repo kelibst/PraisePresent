@@ -201,9 +201,13 @@ const BOOK_ALT = [...phraseToBook.keys()]
   .join('|');
 
 // <book> [chapter] [(:|.|verse|space) verse] [(-|to|through) verseEnd]
+// Commas are tolerated around the "chapter"/"verse" keywords ([\s.,]* / [\s,]*)
+// because whisper-transcribed speech naturally punctuates "John, chapter 3,
+// verse 16" — without that, real spoken references with natural pauses go
+// undetected (offline explicit-recall bar, spec §6.3).
 const REF_RE = new RegExp(
-  `\\b(${BOOK_ALT})\\b[\\s.]*(?:chapters?\\s+)?(\\d{1,3})` +
-    `(?:\\s*[:.]\\s*|\\s+verses?\\s+|\\s+)?(\\d{1,3})?` +
+  `\\b(${BOOK_ALT})\\b[\\s.,]*(?:chapters?\\s+)?(\\d{1,3})` +
+    `(?:\\s*[:.]\\s*|[\\s,]*verses?\\s+|\\s+)?(\\d{1,3})?` +
     `(?:\\s*(?:[-–]|to|thru|through)\\s*(\\d{1,3}))?`,
   'gi',
 );

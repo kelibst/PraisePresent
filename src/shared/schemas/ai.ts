@@ -75,6 +75,39 @@ export const aiModelStatus = z.object({
   progress: z.number().min(0).max(1).optional(),
 });
 
+// --- whisper model choice (offline-local ASR) -----------------------------
+// The three whisper.cpp GGUF variants PraisePresent can run. Bigger = more
+// accurate but slower; the live rolling-window pipeline has a hard real-time
+// budget (~5s per window), so the operator may need a faster model on modest
+// hardware — this is a genuine speed/accuracy trade-off, not a default to hide.
+export const whisperModelId = z.enum(['tiny', 'base', 'small']);
+
+// One downloadable variant's state, for the Settings model-picker list.
+export const whisperModelInfo = z.object({
+  id: whisperModelId,
+  label: z.string(), // e.g. "Base (~142 MB)"
+  approxBytes: z.number().int().positive(),
+  installed: z.boolean(),
+  sizeBytes: z.number().int().nonnegative().optional(), // actual installed size
+  downloading: z.boolean(),
+});
+
+// The full local-model picture for Settings: every variant's install state,
+// the operator's explicit preference (or null = automatic), and which one is
+// actually in effect right now (the preference if installed, else the
+// automatic fastest-available pick — see modelManager.installedModel).
+export const whisperModelsStatus = z.object({
+  models: z.array(whisperModelInfo),
+  progress: z.number().min(0).max(1).optional(), // if any model is downloading
+  preferredModelId: whisperModelId.nullable(),
+  activeModelId: whisperModelId.nullable(),
+});
+
+// Settings key for the operator's explicit model preference (mirrors
+// scripture.ts's DEFAULT_TRANSLATION_KEY pattern — persisted, one source of
+// truth). Unset/null means "pick automatically" (modelManager.installedModel).
+export const WHISPER_PREFERRED_MODEL_KEY = 'ai.whisper.preferredModel';
+
 // The one capture rate the whole pipeline standardizes on. whisper.cpp requires
 // 16 kHz; Deepgram/AssemblyAI accept it; it keeps the PCM stream small. The
 // renderer downsamples its mic to exactly this before streaming frames to main.
@@ -150,7 +183,15 @@ export const aiSetSource = z.object({ sourceId: z.string().min(1) });
 // list is allowed (main falls back to the built-in default source).
 export const aiListSources = z.object({ sources: z.array(audioSource) });
 export const aiModelStatusRequest = z.object({ agentId: z.string().min(1) });
-export const aiDownloadModel = z.object({ agentId: z.string().min(1) });
+// modelId is optional — omit to download the app's default (base); pass a
+// specific variant to let the operator choose (tiny/base/small).
+export const aiDownloadModel = z.object({
+  agentId: z.string().min(1),
+  modelId: whisperModelId.optional(),
+});
+// null = "pick automatically" (clears the operator's explicit override).
+export const aiSetPreferredModel = z.object({ modelId: whisperModelId.nullable() });
+export const aiDeleteModel = z.object({ modelId: whisperModelId });
 
 // Key management (A2). The renderer may SET a key for an agent and CLEAR it, but
 // it can only ever READ a boolean back — the value never returns over the bridge.
@@ -174,6 +215,9 @@ export type TranscriptionAgent = z.infer<typeof transcriptionAgent>;
 export type AudioSource = z.infer<typeof audioSource>;
 export type ModelState = z.infer<typeof modelState>;
 export type AiModelStatus = z.infer<typeof aiModelStatus>;
+export type WhisperModelId = z.infer<typeof whisperModelId>;
+export type WhisperModelInfo = z.infer<typeof whisperModelInfo>;
+export type WhisperModelsStatus = z.infer<typeof whisperModelsStatus>;
 export type TranscriptSegment = z.infer<typeof transcriptSegment>;
 export type AutoProjectConfig = z.infer<typeof autoProjectConfig>;
 export type AiStatus = z.infer<typeof aiStatus>;
@@ -188,6 +232,8 @@ export type AiSetSource = z.infer<typeof aiSetSource>;
 export type AiListSources = z.infer<typeof aiListSources>;
 export type AiModelStatusRequest = z.infer<typeof aiModelStatusRequest>;
 export type AiDownloadModel = z.infer<typeof aiDownloadModel>;
+export type AiSetPreferredModel = z.infer<typeof aiSetPreferredModel>;
+export type AiDeleteModel = z.infer<typeof aiDeleteModel>;
 export type AiSetApiKey = z.infer<typeof aiSetApiKey>;
 export type AiHasKey = z.infer<typeof aiHasKey>;
 export type AiClearApiKey = z.infer<typeof aiClearApiKey>;

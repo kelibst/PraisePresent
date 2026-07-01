@@ -17,26 +17,46 @@ import { installedModel, modelPath, whisperModelStatus } from './modelManager';
 //
 // The binary is NOT bundled in this build; it is resolved from (1) the
 // `PRAISEPRESENT_WHISPER_BIN` env var (point it at your whisper-cli build to try
-// locally), or (2) `resources/whisper-cli` when packaged. The GGUF weights come
-// from the model download manager. When either is missing, `isInstalled()` is
-// false and the orchestrator keeps the engine unavailable with a clear reason —
-// it never fakes a transcription.
+// locally), (2) `resources/whisper-cli` when packaged, or (3) in dev only, the
+// conventional local build tree at `.tools/whisper.cpp/build/bin/` (mirrors
+// bibleBundle.ts's app.getAppPath()-relative walk-up) — so a one-time local
+// build keeps working across restarts without re-exporting the env var every
+// session. The GGUF weights come from the model download manager. When either
+// is missing, `isInstalled()` is false and the orchestrator keeps the engine
+// unavailable with a clear reason — it never fakes a transcription.
 
 const WATCHDOG_MS = 60_000; // kill a whisper run that hangs on a pathological window
 // Live window: transcribe ~5 s of speech at a time. Long enough for whisper to
 // have context, short enough to keep candidates flowing during a sermon.
 const WINDOW_SAMPLES = TARGET_SAMPLE_RATE * 5;
 
+// Dev-only fallback: the local whisper.cpp build tree a contributor builds once
+// (see docs/revival or the P4-T3 task note). app.getAppPath() is the Vite build
+// dir (.vite/build) in dev, so we also walk up to the repo root — same pattern
+// bibleBundle.ts uses for resources/bible.
+function devFallbackBinaryPath(name: string): string | null {
+  const appPath = app.getAppPath();
+  const candidates = [
+    path.join(appPath, '.tools', 'whisper.cpp', 'build', 'bin', name),
+    path.join(appPath, '..', '..', '.tools', 'whisper.cpp', 'build', 'bin', name),
+  ];
+  for (const c of candidates) {
+    if (existsSync(c)) return c;
+  }
+  return null;
+}
+
 // Resolve the whisper-cli binary, or null when it isn't available.
 export function whisperBinaryPath(): string | null {
   const fromEnv = process.env.PRAISEPRESENT_WHISPER_BIN;
   if (fromEnv && existsSync(fromEnv)) return fromEnv;
+  const name = process.platform === 'win32' ? 'whisper-cli.exe' : 'whisper-cli';
   if (app.isPackaged) {
-    const name = process.platform === 'win32' ? 'whisper-cli.exe' : 'whisper-cli';
     const bundled = path.join(process.resourcesPath, name);
     if (existsSync(bundled)) return bundled;
+    return null;
   }
-  return null;
+  return devFallbackBinaryPath(name);
 }
 
 // Encode 16-bit mono PCM as a minimal WAV (44-byte header + samples). PURE +
@@ -104,6 +124,15 @@ export function runWhisperOnce(pcm: Int16Array): Promise<string> {
       '-nt', // no timestamps — stdout is plain text
       '-l', 'en',
       '-t', String(Math.max(1, Math.min(8, os.cpus().length - 1))),
+      // Greedy decoding (whisper-cli defaults to beam-size 5 + best-of 5, which
+      // multiplies decode cost for a small latency win in accuracy). Live
+      // rolling-window transcription needs to keep up with the 5s window
+      // budget more than it needs beam search's marginal WER improvement —
+      // this is the same decoding choice whisper.cpp's own real-time examples
+      // make. Benchmarked: ~10% faster on top of the model-size choice below.
+      '-bs', '1',
+      '-bo', '1',
+      '-nf', // skip the temperature-fallback retry loop — another latency tax
     ];
 
     let stdout = '';

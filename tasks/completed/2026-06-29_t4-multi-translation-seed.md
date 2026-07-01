@@ -2,7 +2,7 @@
 - **ID:** 2026-06-29_t4-multi-translation-seed
 - **Phase:** 3 (D1 Scripture)
 - **Assigned agent type:** implementer (+ reviewer + security pending)
-- **Status:** in-progress (implementation + tests done; awaiting reviewer + security sign-off)
+- **Status:** done
 
 ## Goal
 Bundle several offline public-domain Bible translations and make the whole scripture stack
@@ -39,13 +39,13 @@ seed default.
 - [x] tsc 0 · lint 0 · prettier clean · 257 unit tests · scripture e2e (3 incl. new multi-translation).
 - [x] Reviewer sign-off — PASS (code clean; one minor callback-stability fix applied in SearchPane).
 - [x] Security sign-off — PASS (all SQL parameterized, no secrets, no new IPC, fail-safe, no traversal).
-- [ ] **Commit the bundles** — `git add resources/bible/*.json.gz` (5 new + modified web.json.gz, ~7.7 MB)
-      is the ONE remaining blocker both reviewers raised: without it a clean checkout/CI ships WEB only
-      and the new e2e fails. Not committed yet (PM has unrelated in-flight work; §5.10 commit-on-request).
+- [x] **Commit the bundles** — all six `resources/bible/*.json.gz` are tracked in git (confirmed via
+      `git ls-files resources/bible/`); a clean checkout now carries the full set.
 
 ## Outcome (filled on completion)
-Implementation complete and verified locally; reviewer + security both PASS the code. NOT committed
-(PM has unrelated uncommitted work on the branch). No PM-owned files touched (preload/channels/
-ipc-index untouched — translation switching reuses the existing settings IPC). Remaining step before
-close: commit the six `resources/bible/*.json.gz` bundles alongside the code so CI/clean builds carry
-the full set. KJV bundled as PD with documented US-PD vs UK-Crown-copyright note (maintainer flag).
+Implementation complete and verified locally; reviewer + security both PASS the code. Bundles are
+committed. No PM-owned files touched (preload/channels/ipc-index untouched — translation switching
+reuses the existing settings IPC). Confirmed 2026-07-01: `logs/main.log` shows all six translations
+hydrate on app start (WEB 31095, ASV 31086, BBE 31086, KJV 31102, WBT 31102, YLT 31102 verses) —
+sync is fully automatic on launch, no manual action needed. KJV bundled as PD with documented
+US-PD vs UK-Crown-copyright note (maintainer flag).

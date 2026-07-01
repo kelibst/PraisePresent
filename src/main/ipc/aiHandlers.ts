@@ -16,6 +16,8 @@ import {
   aiSetSource,
   aiModelStatusRequest,
   aiDownloadModel,
+  aiSetPreferredModel,
+  aiDeleteModel,
   aiAudioFrame,
 } from '@/shared/schemas/ai';
 import { aiScriptureDetector } from '../services/aiScriptureDetector';
@@ -27,6 +29,7 @@ import type {
   AiStatus,
   AudioSource,
   TranscriptionAgent,
+  WhisperModelsStatus,
 } from '@/shared/schemas/ai';
 
 // AI detection IPC — zod-validated at the main boundary (§5.3). The text path
@@ -63,7 +66,23 @@ export function registerAiHandlers(): void {
   handle(
     CHANNELS.ai.downloadModel,
     aiDownloadModel,
-    ({ agentId }): AiModelStatus => aiScriptureDetector.downloadModel(agentId),
+    ({ agentId, modelId }): AiModelStatus => aiScriptureDetector.downloadModel(agentId, modelId),
+  );
+  // Model choice (operator picks which whisper variant to download/use).
+  handle(
+    CHANNELS.ai.listModels,
+    z.undefined(),
+    (): WhisperModelsStatus => aiScriptureDetector.listModels(),
+  );
+  handle(
+    CHANNELS.ai.setPreferredModel,
+    aiSetPreferredModel,
+    ({ modelId }): WhisperModelsStatus => aiScriptureDetector.setPreferredModel(modelId),
+  );
+  handle(
+    CHANNELS.ai.deleteModel,
+    aiDeleteModel,
+    ({ modelId }): WhisperModelsStatus => aiScriptureDetector.deleteModel(modelId),
   );
 
   handle(CHANNELS.ai.status, z.undefined(), (): AiStatus => aiScriptureDetector.status());

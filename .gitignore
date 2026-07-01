@@ -94,3 +94,6 @@ out/
 # Playwright
 test-results/
 playwright-report/
+
+# Local dev-only native toolchains/binaries (e.g. whisper.cpp build for local ASR)
+.tools/

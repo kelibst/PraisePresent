@@ -118,6 +118,19 @@ export default function LiveDetectTab({ onProject }: Props) {
           </p>
         )}
 
+        {/* Surface WHY Start/an action was blocked (e.g. "not available — install
+            it first") — a silent no-op here is exactly the "clicking Start does
+            nothing" failure mode; the kill-switch notice above already covers the
+            enabled=false case, so skip a redundant second banner for it. */}
+        {!killed && console.error && (
+          <p
+            className="rounded-md border border-pp-warn/40 bg-pp-warn/10 px-3 py-2 text-xs text-pp-warn"
+            role="alert"
+          >
+            {console.error}
+          </p>
+        )}
+
         {/* Detection mode (live operation — passive ⇄ drive). */}
         <div className="flex flex-col gap-1.5">
           <FieldLabel icon={<Gauge className="size-3.5" aria-hidden />}>Detection mode</FieldLabel>

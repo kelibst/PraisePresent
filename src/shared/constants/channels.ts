@@ -64,7 +64,10 @@ export const CHANNELS = {
     listSources: 'ai:list-sources', // renderer -> main: persist renderer-enumerated audio sources
     setSource: 'ai:set-source', // renderer -> main: choose the active audio source
     modelStatus: 'ai:model-status', // renderer -> main: local-model download manager state
-    downloadModel: 'ai:download-model', // renderer -> main: trigger model download (no-op stub, R6)
+    downloadModel: 'ai:download-model', // renderer -> main: trigger a model download (tiny/base/small)
+    listModels: 'ai:list-models', // renderer -> main: every whisper variant's install state + preference
+    setPreferredModel: 'ai:set-preferred-model', // renderer -> main: pin (or clear) which variant to use
+    deleteModel: 'ai:delete-model', // renderer -> main: remove a downloaded variant to free disk space
     startListening: 'ai:start-listening', // renderer -> main: begin a listening session
     stopListening: 'ai:stop-listening', // renderer -> main: stop listening
     audioFrame: 'ai:audio-frame', // renderer -> main (fire-and-forget stream): 16kHz mono PCM frame

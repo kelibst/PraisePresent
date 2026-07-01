@@ -2,7 +2,9 @@ import { app } from 'electron';
 import { createWriteStream, existsSync, mkdirSync, renameSync, rmSync, statSync } from 'node:fs';
 import path from 'node:path';
 import log from '../infra/logger';
-import type { AiModelStatus } from '@/shared/schemas/ai';
+import { settingsRepository } from '../db/repositories/settingsRepository';
+import { WHISPER_PREFERRED_MODEL_KEY } from '@/shared/schemas/ai';
+import type { AiModelStatus, WhisperModelId, WhisperModelInfo } from '@/shared/schemas/ai';
 
 // Whisper GGUF model download manager (spec §4, P4-T3). Fetches a whisper.cpp
 // model into `userData/models/whisper/` so the offline ASR has weights to run.
@@ -11,8 +13,6 @@ import type { AiModelStatus } from '@/shared/schemas/ai';
 // minimum size and an atomic rename from a `.part` temp so a half-download is
 // never mistaken for `ready` (§5.7). Once installed, the offline path makes ZERO
 // network calls — downloading is the only egress and it is explicit + operator-driven.
-
-export type WhisperModelId = 'tiny' | 'base' | 'small';
 
 export type WhisperModelDef = {
   id: WhisperModelId;
@@ -72,9 +72,36 @@ export function isModelInstalled(id: WhisperModelId): boolean {
   }
 }
 
-// The best installed model (prefer larger = more accurate), or null if none.
+// The operator's explicit model choice (Settings), or null for "pick
+// automatically". Persisted so it survives a restart (§1.5 — truth in SQLite).
+export function getPreferredModel(): WhisperModelId | null {
+  const stored = settingsRepository.get(WHISPER_PREFERRED_MODEL_KEY);
+  return stored === 'tiny' || stored === 'base' || stored === 'small' ? stored : null;
+}
+
+// Set (or clear, with null) the operator's explicit model preference. Setting
+// a not-yet-installed model is allowed — it simply won't take effect (via
+// `installedModel`) until that model is actually downloaded.
+export function setPreferredModel(id: WhisperModelId | null): void {
+  settingsRepository.set(WHISPER_PREFERRED_MODEL_KEY, id ?? '');
+}
+
+// The model actually in effect for LIVE transcription, or null if none
+// installed. Honors the operator's explicit preference when it's installed;
+// otherwise falls back to the automatic order `base` → `tiny` → `small`.
+//
+// Why that order (not "prefer larger = more accurate"): benchmarked on a
+// ~9.3s utterance, `small` takes ~4.4-4.8s (beam-5 vs greedy) — for the
+// sidecar's 5s rolling window that leaves almost no margin once real Electron
+// CPU contention and per-window process/model-reload overhead are added, so
+// it reliably falls behind and sheds audio (dropped speech). `base` (~1.4-1.6s)
+// and `tiny` (~0.8s) both have large margin. `small` is still picked
+// automatically if it's the ONLY model installed — degraded-but-working beats
+// "no local ASR at all" (§5.7).
 export function installedModel(): WhisperModelId | null {
-  for (const id of ['small', 'base', 'tiny'] as WhisperModelId[]) {
+  const preferred = getPreferredModel();
+  if (preferred && isModelInstalled(preferred)) return preferred;
+  for (const id of ['base', 'tiny', 'small'] as WhisperModelId[]) {
     if (isModelInstalled(id)) return id;
   }
   return null;
@@ -87,6 +114,48 @@ let inFlight: { id: WhisperModelId; received: number; total: number } | null = n
 // Whether a download (or any work) is currently in progress.
 export function isDownloading(): boolean {
   return inFlight !== null;
+}
+
+// Current download progress (0..1), or null when nothing is downloading.
+export function downloadProgress(): number | null {
+  if (!inFlight) return null;
+  return inFlight.total > 0 ? Math.min(1, inFlight.received / inFlight.total) : 0;
+}
+
+// Every whisper variant's install state, for the Settings model-picker list.
+export function listModels(): WhisperModelInfo[] {
+  return (Object.keys(WHISPER_MODELS) as WhisperModelId[]).map((id) => {
+    const installed = isModelInstalled(id);
+    let sizeBytes: number | undefined;
+    if (installed) {
+      try {
+        sizeBytes = statSync(modelPath(id)).size;
+      } catch {
+        /* best-effort — installed flag already came from a fresh check */
+      }
+    }
+    return {
+      id,
+      label: WHISPER_MODELS[id].label,
+      approxBytes: WHISPER_MODELS[id].approxBytes,
+      installed,
+      sizeBytes,
+      downloading: inFlight?.id === id,
+    };
+  });
+}
+
+// Remove a downloaded variant to free disk space. Refuses to delete a model
+// that's currently downloading (the download would just recreate it, and
+// deleting mid-stream would race the `.part` rename) — the caller should
+// disable the control while any download is in flight, since only one runs
+// at a time. A no-op (never throws) if the file is already absent.
+export function deleteModel(id: WhisperModelId): void {
+  if (inFlight?.id === id) {
+    throw new Error(`Cannot delete ${id} while it is downloading`);
+  }
+  rmSync(modelPath(id), { force: true });
+  log.info(`Whisper model ${id} deleted.`);
 }
 
 // Start (and await) a model download. Streams to a `.part` temp with progress,

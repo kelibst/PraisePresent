@@ -12,8 +12,15 @@ import {
 import { whisperLocalAsr as localAsr, createWhisperSession } from './whisperAsr';
 import {
   DEFAULT_WHISPER_MODEL,
+  deleteModel as deleteWhisperModel,
   downloadModel as downloadWhisperModel,
+  downloadProgress as whisperDownloadProgress,
+  getPreferredModel,
   isDownloading as isWhisperDownloading,
+  isModelInstalled,
+  installedModel,
+  listModels as listWhisperModels,
+  setPreferredModel as setPreferredWhisperModel,
   whisperModelStatus,
 } from './modelManager';
 import { secrets } from '../infra/secrets';
@@ -36,6 +43,8 @@ import type {
   DetectedReference,
   TranscriptionAgent,
   TranscriptSegment,
+  WhisperModelId,
+  WhisperModelsStatus,
 } from '@/shared/schemas/ai';
 
 // The secure-storage key namespace for an agent's API key. The VALUE is only
@@ -293,6 +302,19 @@ function detectAndResolve(text: string): AiCandidate[] {
   return candidates;
 }
 
+// Every whisper variant's install state + the operator's preference (or null =
+// automatic) + which one is actually active right now. Module-level (not a
+// method) so the three model-manager actions below can share it without a
+// `this` reference (this object is a plain literal, not a class instance).
+function buildModelsStatus(): WhisperModelsStatus {
+  return {
+    models: listWhisperModels(),
+    progress: whisperDownloadProgress() ?? undefined,
+    preferredModelId: getPreferredModel(),
+    activeModelId: installedModel(),
+  };
+}
+
 export const aiScriptureDetector = {
   // --- text path (unchanged) ----------------------------------------------
   submitText(text: string): AiCandidate[] {
@@ -334,19 +356,41 @@ export const aiScriptureDetector = {
     return modelStatusFor(agentId);
   },
 
-  // Kick off a whisper model download (default model) in the background and return
-  // the now-`downloading` status immediately; the renderer polls `modelStatus` for
-  // progress. Idempotent: a no-op if already installed or a download is in flight.
-  // Cloud agents have nothing to download.
-  downloadModel(agentId: string): AiModelStatus {
+  // Kick off a whisper model download in the background and return the
+  // now-`downloading` status immediately; the renderer polls `modelStatus`/
+  // `listModels` for progress. `modelId` lets the operator pick which variant
+  // (tiny/base/small); omitted, it downloads the app's default (base).
+  // Idempotent: a no-op if THAT variant is already installed or a download is
+  // in flight (only one runs at a time). Cloud agents have nothing to download.
+  downloadModel(agentId: string, modelId?: WhisperModelId): AiModelStatus {
     if (!isOfflineLocal(agentId)) return modelStatusFor(agentId);
-    const status = whisperModelStatus(agentId);
-    if (status.installed || isWhisperDownloading()) return status;
+    const id = modelId ?? DEFAULT_WHISPER_MODEL;
+    if (isModelInstalled(id) || isWhisperDownloading()) return whisperModelStatus(agentId);
     // Fire-and-forget; failures are logged and surface as `absent` on the next poll.
-    void downloadWhisperModel(DEFAULT_WHISPER_MODEL).catch((e) => {
+    void downloadWhisperModel(id).catch((e) => {
       log.error('Whisper model download failed:', e);
     });
     return whisperModelStatus(agentId);
+  },
+
+  // Every whisper variant's install state + the operator's preference (or
+  // null = automatic) + which one is actually active right now.
+  listModels(): WhisperModelsStatus {
+    return buildModelsStatus();
+  },
+
+  // Pin (or, with null, clear) the operator's explicit model choice.
+  setPreferredModel(modelId: WhisperModelId | null): WhisperModelsStatus {
+    setPreferredWhisperModel(modelId);
+    return buildModelsStatus();
+  },
+
+  // Remove a downloaded variant to free disk space. Throws (surfaced as a
+  // generic IPC error, §5.7) if that variant is currently downloading — the UI
+  // should disable the control while any download is in flight.
+  deleteModel(modelId: WhisperModelId): WhisperModelsStatus {
+    deleteWhisperModel(modelId);
+    return buildModelsStatus();
   },
 
   status(): AiStatus {
